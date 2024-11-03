@@ -72,7 +72,15 @@ class Euler:
             # Flux in y-direction
             flux_y[self.c.RHOCOMP] = rho * v
             flux_y[self.c.MUCOMP] = rho * u * v
-            flux_y[self.c.MVCOMP] = rho * v**2 + p
+            
+            print (self.c.ics)
+            # Add gravity to MVCOMP for rayleigh_taylor only
+            if self.c.ics == "rayleigh_taylor":
+                flux_y[self.c.MVCOMP] = rho * v**2 + p + rho * -9.81
+                # print ("EULER SEES RAYLEIGH")
+            else:
+                flux_y[self.c.MVCOMP] = rho * v**2 + p
+
             flux_y[self.c.ECOMP] = (E + p) * v
 
         else:
