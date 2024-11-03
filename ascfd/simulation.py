@@ -207,59 +207,7 @@ class Simulation:
             os.makedirs(frames_dir)
 
         # List all the output files and sort them
-        #output_files = sorted(glob.glob(os.path.join(self.inp.output_dir, "output_*.png")))
-            
-        #movie_filename = os.path.join(self.inp.output_dir, "simulation_movie.mp4")
-
+        
 
         ffmpeg_command = f"ffmpeg -y -framerate 24 -i {self.inp.output_dir}/output_%06d.png -c:v libx264 -pix_fmt yuv420p {self.inp.output_dir}/movie.mp4"
         os.system(ffmpeg_command)
-
-
-
-        # if self.c.NUMQ == 3:
-        #     fig, axs = plt.subplots(3, 1, figsize=(10, 15))
-        # elif self.c.NUMQ == 4:
-        #     fig, axs = plt.subplots(2,2, figsize=(10, 15))
-        # else:
-        #     print("self.c.NUMQ: ", self.c.NUMQ)
-        #     raise RuntimeError("System not implemented for movie.")
-        
-        # axs = axs.ravel()  # Flatten the array to index by i
-
-
-
-
-        # def update_plot(file):
-        #     data = np.loadtxt(file, delimiter=',', skiprows=2)
-        #     x = data[:, 0]
-
-        #     #data is indexed by
-        #     # data[:,i] where i = 0 for x, i = 1 for icomp1, i=2 for icomp2
-
-        #     with open(file, 'r') as f:
-        #         lines = f.readlines()
-        #         time_line = lines[0]
-        #         time = float(time_line.split(':')[1].strip())
-
-        #     timestep = int(file.split('_')[-1].split('.')[0])
-
-
-        #     for i in range(self.c.NUMQ):
-        #         axs[i].clear()
-                
-
-        #         axs[i].scatter(x, data[:,i+1], c="black")
-        #         axs[i].set_ylabel(self.c.variable_names[i])
-
-
-        #     axs[0].set_title(f"Time: {time:.4f}, Timestep: {timestep}")
-        
-        # # Create an animation by updating the plot for each output file
-        # ani = animation.FuncAnimation(fig, update_plot, frames=output_files, repeat=False)
-
-        # # Save the animation as a movie file using ffmpeg
-        # movie_filename = os.path.join(self.inp.output_dir, "simulation_movie.mp4")
-        # ani.save(movie_filename, writer='ffmpeg', fps=10)
-
-        # print(f"Movie saved as {movie_filename}")
