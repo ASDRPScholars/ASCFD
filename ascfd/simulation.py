@@ -123,20 +123,24 @@ class Simulation:
 
         fig, axs = plt.subplots(3, 1, figsize=(10, 15))
 
-        axs[0].scatter(self.grid.x, self.grid.grid[self.c.RHOCOMP, :], c="black")
+        density_values = self.grid.grid[self.c.RHOCOMP, :]
+        density_min, density_max = min(density_values) - 0.1, max(density_values) + 0.1
+        axs[0].scatter(self.grid.x, density_values, c="black", vmin=density_min, vmax=density_max)
         axs[0].set_ylabel("Density")
 
-        axs[1].scatter(self.grid.x, self.grid.grid[self.c.UCOMP, :],  c="black")
+        velocity_values = self.grid.grid[self.c.UCOMP, :]
+        velocity_min, velocity_max = min(velocity_values) - 0.1, max(velocity_values) + 0.1
+        axs[1].scatter(self.grid.x, velocity_values, c="black", vmin=velocity_min, vmax=velocity_max)
         axs[1].set_ylabel("Velocity")
 
-        axs[2].scatter(self.grid.x, self.grid.grid[self.c.PCOMP, :],  c="black")
+        pressure_values = self.grid.grid[self.c.PCOMP, :]
+        pressure_min, pressure_max = min(pressure_values) - 0.1, max(pressure_values) + 0.1
+        axs[2].scatter(self.grid.x, pressure_values, c="black", vmin=pressure_min, vmax=pressure_max)
         axs[2].set_ylabel("Pressure")
 
         axs[0].set_title(f"Time: {self.t:.4f}")
         plt.savefig(f"{self.inp.output_dir}/plot_dt{str(self.timestepNum).zfill(6)}")
         plt.close()
-
-    
 
     def applyICS(self):
 
