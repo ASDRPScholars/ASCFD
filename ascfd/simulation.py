@@ -33,6 +33,8 @@ class Simulation:
         self.bcs.apply_bcs()
         self.grid.check_grid(self.c)
 
+        #setup initial time to be the starting time from the inputs file.
+        #The starting timestep will always be 0.
         self.t = self.inp.t0
         self.timestepNum = 0
 
