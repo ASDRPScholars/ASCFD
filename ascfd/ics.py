@@ -101,12 +101,12 @@ def rayleigh_taylor(a_x, a_y, a_var):
     """
     
     rho = np.select([
-        (a_x > 0.5 + 0.01 * np.cos(6 * np.pi * a_y)),
-        (a_x <= 0.5 + 0.01 * np.cos(6 * np.pi * a_y))
+        (a_x > 0.5 + 0.2 * np.cos(np.pi * a_y - 1.5) - 0.05),
+        (a_x <= 0.5 + 0.2 * np.cos(np.pi * a_y - 1.5) - 0.05)
     ], [2, 1])
     
-    u = 0
     v = 0
+    u = 0
     
     # !!change g and h later to dynamic code!!
     p = rho * 9.81 * (400 - a_x)
