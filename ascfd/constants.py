@@ -8,6 +8,7 @@ class Constants:
 
         self.gamma = 1.4
         self.system = inputs.system
+        self.do_gravity = inputs.do_gravity
 
         if inputs.system == "euler2D":
 

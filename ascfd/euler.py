@@ -53,6 +53,8 @@ class Euler:
         flux_x = np.zeros_like(a_prim)
         flux_y = np.zeros_like(a_prim)
 
+        g = 9.81
+
         if self.c.system == "euler2D":
             rho = a_prim[self.c.RHOCOMP]
             u = a_prim[self.c.UCOMP]
@@ -73,6 +75,8 @@ class Euler:
             flux_y[self.c.RHOCOMP] = rho * v
             flux_y[self.c.MUCOMP] = rho * u * v
             flux_y[self.c.MVCOMP] = rho * v**2 + p
+            if self.c.do_gravity == True:
+                flux_y[self.c.MVCOMP] -= (rho * g)
             flux_y[self.c.ECOMP] = (E + p) * v
 
         else:
