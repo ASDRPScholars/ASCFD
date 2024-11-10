@@ -71,7 +71,7 @@ class Euler:
             
             # Flux in y-direction
             flux_y[self.c.RHOCOMP] = rho * v
-            flux_y[self.c.MUCOMP] = rho * u * v
+            flux_y[self.c.MUCOMP] = rho * u * v - g
             flux_y[self.c.MVCOMP] = rho * v**2 + p
             flux_y[self.c.ECOMP] = (E + p) * v
 
@@ -91,3 +91,5 @@ class Euler:
             print("unsupported")
             exit()
 
+def g():
+    g = rho * 9.81
