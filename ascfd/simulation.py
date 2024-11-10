@@ -124,6 +124,7 @@ class Simulation:
         fig, axs = plt.subplots(3, 1, figsize=(10, 15))
 
         density_values = self.grid.grid[self.c.RHOCOMP, :]
+        # uses current array of density to establish bounds for plot
         density_min, density_max = min(density_values) - 0.1, max(density_values) + 0.1
         axs[0].scatter(self.grid.x, density_values, c="black", vmin=density_min, vmax=density_max)
         axs[0].set_ylabel("Density")
