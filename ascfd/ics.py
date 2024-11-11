@@ -1,7 +1,7 @@
 from ascfd.constants import *
 import numpy as np
 
-#ics density
+
 
 def diagonal_advection_2d(a_x, a_y, a_var, t=0):
     """
