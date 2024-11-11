@@ -83,11 +83,10 @@ class Euler:
 
  
     def get_max_speed(self, a_grid):
-        if a_grid.variables == "prim":
-            return np.max(a_grid.grid[self.c.UCOMP])
-        elif a_grid.variables == "cons":
-            return np.max(a_grid.grid[self.c.MUCOMP] / a_grid.grid[self.c.RHOCOMP])
-        else:
-            print("unsupported")
-            exit()
+    if a_grid.variables == "prim":
+        return np.max(a_grid.grid[self.c.UCOMP])
+    elif a_grid.variables == "cons":
+        return np.max(a_grid.grid[self.c.MUCOMP] / a_grid.grid[self.c.RHOCOMP])
+    else:
+        raise ValueError("Unsupported variable type in grid")
 
