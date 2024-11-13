@@ -117,6 +117,32 @@ class Simulation:
         print("SUCCESS!")
         return self.grid
 
+    def plot(self):
+        if not os.path.exists(self.inp.output_dir):
+            os.makedirs(self.inp.output_dir)
+
+        fig, axs = plt.subplots(3, 1, figsize=(10, 15))
+
+        density_values = self.grid.grid[self.c.RHOCOMP, :]
+        # uses current array of density to establish bounds for plot
+        density_min, density_max = min(density_values) - 0.1, max(density_values) + 0.1
+        axs[0].scatter(self.grid.x, density_values, c="black", vmin=density_min, vmax=density_max)
+        axs[0].set_ylabel("Density")
+
+        velocity_values = self.grid.grid[self.c.UCOMP, :]
+        velocity_min, velocity_max = min(velocity_values) - 0.1, max(velocity_values) + 0.1
+        axs[1].scatter(self.grid.x, velocity_values, c="black", vmin=velocity_min, vmax=velocity_max)
+        axs[1].set_ylabel("Velocity")
+
+        pressure_values = self.grid.grid[self.c.PCOMP, :]
+        pressure_min, pressure_max = min(pressure_values) - 0.1, max(pressure_values) + 0.1
+        axs[2].scatter(self.grid.x, pressure_values, c="black", vmin=pressure_min, vmax=pressure_max)
+        axs[2].set_ylabel("Pressure")
+
+        axs[0].set_title(f"Time: {self.t:.4f}")
+        plt.savefig(f"{self.inp.output_dir}/plot_dt{str(self.timestepNum).zfill(6)}")
+        plt.close()
+
     def applyICS(self):
 
         if self.inp.system == "euler2D":
@@ -165,7 +191,7 @@ class Simulation:
             extent = [self.grid.x[self.grid.Nghost], self.grid.x[-self.grid.Nghost-1],
                       self.grid.y[self.grid.Nghost], self.grid.y[-self.grid.Nghost-1]]
             
-            im = axs[i].imshow(plot_data, origin='lower', extent=extent, vmin=plot_data.min() - 0.1, vmax=plot_data.max() + 0.1)
+            im = axs[i].imshow(plot_data, origin='lower', extent=extent)
             plt.colorbar(im, ax=axs[i])
             axs[i].set_title(self.c.variable_names[i])
             axs[i].set_xlabel('x')
