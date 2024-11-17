@@ -32,6 +32,8 @@ class Simulation:
 
         self.bcs.apply_bcs()
         self.grid.check_grid(self.c)
+        
+        self.bounds = self.find_bounds()
 
         #setup initial time to be the starting time from the inputs file.
         #The starting timestep will always be 0.
@@ -95,17 +97,12 @@ class Simulation:
             # assert np.all(np.isfinite(self.grid.grid)), f"Invalid values in grid at timestep {self.timestepNum}"
             # assert np.all(self.grid.grid[self.c.PCOMP] > 0), f"Negative pressure detected at timestep {self.timestepNum}"
 
-
-
-
             self.timestepNum += 1
             self.t += dt
-
+            
             #always output the last timestep.
             if (self.timestepNum % self.inp.output_freq == 0) or (self.timestepNum == self.inp.nt-1):
-                
                 self.output()
-
 
             # DEBUG
             # self.grid.plot()
@@ -165,7 +162,8 @@ class Simulation:
             extent = [self.grid.x[self.grid.Nghost], self.grid.x[-self.grid.Nghost-1],
                       self.grid.y[self.grid.Nghost], self.grid.y[-self.grid.Nghost-1]]
             
-            im = axs[i].imshow(plot_data, origin='lower', extent=extent, vmin=plot_data.min() - 0.1, vmax=plot_data.max() + 0.1)
+            im = axs[i].imshow(plot_data, origin='lower', extent=extent, vmin=self.bounds[i][0], vmax=self.bounds[i][1])
+            print (self.bounds[i][0], self.bounds[i][1])
             plt.colorbar(im, ax=axs[i])
             axs[i].set_title(self.c.variable_names[i])
             axs[i].set_xlabel('x')
@@ -175,10 +173,15 @@ class Simulation:
         plt.tight_layout()
         fig.savefig(output_plotname)
         plt.close()
-    
-
-
-
+        
+    def find_bounds(self):
+        bounds = []  # List to store (vmin, vmax) tuples for each component
+        for i in range(self.c.NUMQ):  # Loop over all components
+            plot_data = self.grid.grid[i, self.grid.Nghost:-self.grid.Nghost, self.grid.Nghost:-self.grid.Nghost].T
+            vmin = plot_data.min() - 0.1  # Compute vmin with padding
+            vmax = plot_data.max() + 0.1  # Compute vmax with padding
+            bounds.append((vmin, vmax))  # Store bounds for this component
+        return bounds
 
 
     def generate_movie(self):
