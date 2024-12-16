@@ -19,6 +19,17 @@ class Euler:
                  0.5 * (a_prim[self.c.UCOMP]**2 + a_prim[self.c.VCOMP]**2))
             cons[self.c.ECOMP] = E * a_prim[self.c.RHOCOMP]
 
+        elif self.c.system == "mhd2d":
+            cons[self.c.RHOCOMP] = a_prim[self.c.RHOCOMP]
+            cons[self.c.MUCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.UCOMP]
+            cons[self.c.MVCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.VCOMP]
+            cons[self.c.BXCOMP] = a_prim[self.c.B_XCOMP]
+            cons[self.c.BYCOMP] = a_prim[self.c.B_YCOMP]
+            E = (a_prim[self.c.PCOMP] / ((self.c.gamma - 1) * a_prim[self.c.RHOCOMP]) + 
+                 0.5 * (a_prim[self.c.UCOMP]**2 + a_prim[self.c.VCOMP]**2)) + 0.5 * (a_prim[self.c.B_XCOMP]**2 + a_prim[self.c.B_YCOMP]**2)
+            cons[self.c.ECOMP] = E * a_prim[self.c.RHOCOMP]
+            
+
         else:
             raise RuntimeError(f"System not supported: {self.c.system}")    
         
@@ -36,6 +47,18 @@ class Euler:
             kinetic_energy = 0.5 * (prim[self.c.UCOMP]**2 + prim[self.c.VCOMP]**2)
             prim[self.c.PCOMP] = (self.c.gamma - 1) * (
                 a_cons[self.c.ECOMP] - a_cons[self.c.RHOCOMP] * kinetic_energy
+            )
+
+        if self.c.system == "mhd2d":
+            prim[self.c.RHOCOMP] = a_cons[self.c.RHOCOMP]
+            prim[self.c.UCOMP] = a_cons[self.c.MUCOMP] / a_cons[self.c.RHOCOMP]
+            prim[self.c.VCOMP] = a_cons[self.c.MVCOMP] / a_cons[self.c.RHOCOMP]
+            prim[self.c.B_XCOMP] = a_cons[self.c.BXCOMP]
+            prim[self.c.B_YCOMP] = a_cons[self.c.BYCOMP]
+            kinetic_energy = 0.5 * (prim[self.c.UCOMP]**2 + prim[self.c.VCOMP]**2)
+            magnetic_energy = 0.5 * (prim[self.c.B_XCOMP]**2 + prim[self.c.B_YCOMP]**2)
+            prim[self.c.PCOMP] = (self.c.gamma - 1) * (
+                a_cons[self.c.ECOMP] - a_cons[self.c.RHOCOMP] * kinetic_energy - magnetic_energy
             )
 
         else:
@@ -74,6 +97,34 @@ class Euler:
             flux_y[self.c.MUCOMP] = rho * u * v
             flux_y[self.c.MVCOMP] = rho * v**2 + p
             flux_y[self.c.ECOMP] = (E + p) * v
+
+        elif self.c.system == "mhd2d":
+            rho = a_prim[self.c.RHOCOMP]
+            u = a_prim[self.c.UCOMP]
+            v = a_prim[self.c.VCOMP]
+            p = a_prim[self.c.PCOMP]
+            b_x = a_prim[self.c.B_XCOMP]
+            b_y = a_prim[self.c.B_YCOMP]
+            
+            # Compute total energy 
+            e = p / ((self.c.gamma - 1) * rho)
+            E = rho * (e + 0.5 * (u**2 + v**2))
+            
+            # Flux in x-direction
+            flux_x[self.c.RHOCOMP] = rho * u
+            flux_x[self.c.MUCOMP] = rho * u**2 + p + 0.5 * (b_x**2 + b_y**2) - b_x**2
+            flux_x[self.c.MVCOMP] = rho * u * v - b_x * b_y
+            flux_x[self.c.ECOMP] = (E + p + 0.5 * (b_x**2 + b_y**2)) * u - b_x * (u * b_x + v * b_y)
+            flux_x[self.c.BXCOMP] = 0
+            flux_x[self.c.BYCOMP] = u * b_y - v * b_x
+
+            # Flux in y-direction
+            flux_y[self.c.RHOCOMP] = rho * v
+            flux_y[self.c.MUCOMP] = rho * u * v - b_x * b_y
+            flux_y[self.c.MVCOMP] = rho * v**2 + p + 0.5 * (b_x**2 + b_y**2) - b_y**2
+            flux_y[self.c.ECOMP] = (E + p + 0.5 * (b_x**2 + b_y**2)) * v - b_y * (u * b_x + v * b_y)
+            flux_y[self.c.BXCOMP] = v * b_x - u * b_y
+            flux_y[self.c.BYCOMP] = 0
 
         else:
             raise RuntimeError(f"System not supported: {self.c.system}")
