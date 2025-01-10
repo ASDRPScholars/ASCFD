@@ -49,7 +49,7 @@ class Euler:
                 a_cons[self.c.ECOMP] - a_cons[self.c.RHOCOMP] * kinetic_energy
             )
 
-        if self.c.system == "mhd2d":
+        elif self.c.system == "mhd2d":
             prim[self.c.RHOCOMP] = a_cons[self.c.RHOCOMP]
             prim[self.c.UCOMP] = a_cons[self.c.MUCOMP] / a_cons[self.c.RHOCOMP]
             prim[self.c.VCOMP] = a_cons[self.c.MVCOMP] / a_cons[self.c.RHOCOMP]
