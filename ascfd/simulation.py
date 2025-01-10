@@ -131,6 +131,10 @@ class Simulation:
 
         axs[2].scatter(self.grid.x, self.grid.grid[self.c.PCOMP, :],  c="black")
         axs[2].set_ylabel("Pressure")
+        
+        if self.inp.system == "mhd2d":
+            axs[3].scatter(self.grid.x, self.grid.grid[self.c.PCOMP, :],  c="black")
+            axs[3].set_ylabel("hi this is mhd")
 
         axs[0].set_title(f"Time: {self.t:.4f}")
         plt.savefig(f"{self.inp.output_dir}/plot_dt{str(self.timestepNum).zfill(6)}")
@@ -151,6 +155,10 @@ class Simulation:
                 self.grid.fill_grid(ics.riemann_2d)
             else:
                 raise RuntimeError("[FLUID] ICS not valid.")
+            
+        elif self.inp.system == "mhd2d":
+            self.grid.fill_grid(ics.diagonal_advection_2d)
+            print ("hi this is mhd!")
             
         else:
             raise RuntimeError("[FLUID] ICS not valid.")
