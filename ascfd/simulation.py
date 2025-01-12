@@ -146,6 +146,8 @@ class Simulation:
         elif self.inp.system == "mhd2d":
             self.grid.fill_grid(ics.diagonal_advection_2d)
             print ("hi this is mhd!")
+            #if self.inp.ics == "orszag_tang":
+                #self.grid.fill_grid(ics.orszag_tang_2d)
            
         else:
             raise RuntimeError("[FLUID] ICS not valid.")
