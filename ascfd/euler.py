@@ -134,11 +134,34 @@ class Euler:
 
  
     def get_max_speed(self, a_grid):
-        if a_grid.variables == "prim":
-            return np.max(a_grid.grid[self.c.UCOMP])
-        elif a_grid.variables == "cons":
-            return np.max(a_grid.grid[self.c.MUCOMP] / a_grid.grid[self.c.RHOCOMP])
-        else:
-            print("unsupported")
-            exit()
+        if self.c.system == "euler2D":
+            if a_grid.variables == "prim":
+                return np.max(a_grid.grid[self.c.UCOMP])
+            elif a_grid.variables == "cons":
+                return np.max(a_grid.grid[self.c.MUCOMP] / a_grid.grid[self.c.RHOCOMP])
+            else:
+                print("unsupported")
+                exit()
+        elif self.c.system == "mhd2d":
+            if a_grid.variables == "prim":
+                cs = np.sqrt(self.c.gamma * a_grid.grid[self.c.PCOMP] / a_grid.grid[self.c.RHOCOMP])
+                mag_pressure = (a_grid.grid[self.c.BXCOMP]**2 + a_grid.grid[self.c.BYCOMP]**2) / a_grid.grid[self.c.RHOCOMP]
+                cf = np.sqrt(cs**2 + mag_pressure)  
+                speed = np.sqrt(a_grid.grid[self.c.UCOMP]**2 + a_grid.grid[self.c.VCOMP]**2) + cf
+                return np.max(speed)
+            elif a_grid.variables == "cons":
+                u = a_grid.grid[self.c.MUCOMP] / a_grid.grid[self.c.RHOCOMP]
+                v = a_grid.grid[self.c.MVCOMP] / a_grid.grid[self.c.RHOCOMP]
+                kinetic_energy = 0.5 * (u**2 + v**2)
+                mag_pressure = 0.5 * (a_grid.grid[self.c.BXCOMP]**2 + a_grid.grid[self.c.BYCOMP]**2)
+                internal_energy = a_grid.grid[self.c.ECOMP] / a_grid.grid[self.c.RHOCOMP] - kinetic_energy - mag_pressure / a_grid.grid[self.c.RHOCOMP]
+                p = (self.c.gamma - 1) * a_grid.grid[self.c.RHOCOMP] * internal_energy
+                cs = np.sqrt(self.c.gamma * p / a_grid.grid[self.c.RHOCOMP])
+                mag_pressure = (a_grid.grid[self.c.BXCOMP]**2 + a_grid.grid[self.c.BYCOMP]**2) / a_grid.grid[self.c.RHOCOMP]
+                cf = np.sqrt(cs**2 + mag_pressure)  
+                speed = np.sqrt(u**2 + v**2) + cf
+                return np.max(speed)
+            else:
+                print("unsupported")
+                exit()
 
