@@ -58,7 +58,7 @@ class Constants:
             self.gamma = inputs.gammas[0] #gammas
 
 
-            self.variable_names = ["Density", "X-Velocity", "Y-Velocity", "Pressure", "X-Mganetic Field", "Y-Magnetic Field"]
+            self.variable_names = ["Density", "X-Velocity", "Y-Velocity", "Pressure", "X-Magnetic Field", "Y-Magnetic Field"]
 
             self.NS = 1 
 
