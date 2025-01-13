@@ -38,9 +38,8 @@ class Simulation:
             self.bcs.apply_bcs()
             self.grid.assert_variable_type("prim")
             #get density
-            if self.inp.system == "euler2D":
-                density = self.grid.grid[self.c.RHOCOMP]
-            elif self.inp.system == "mhd2d":
+            #get density (this is only different if you have multiple types of fluids)
+            if self.inp.system == "euler2D" or self.inp.system == "mhd2d":
                 density = self.grid.grid[self.c.RHOCOMP]
             else:
                 raise RuntimeError("Density method needs to be implemented.")
