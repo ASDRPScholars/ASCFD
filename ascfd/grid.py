@@ -40,36 +40,39 @@ class Grid2D:
             # we can jsut fill ghost cells too, i don't think it matters we're just going to override anyways
             self.grid[var] = f(self.meshX, self.meshY, var)
 
-    def plot(self):
-        if self.inp.system=="euler2D":
-            # Create a figure with 4 subplots arranged in 2x2
-            fig, axs = plt.subplots(2, 2, figsize=(12, 10))
-            axs = axs.flatten()  # Flatten the 2x2 grid into a 1D array of axes
+    # i don't think we're using this method — we're just using the code in simulation.output()
+    
+    # def plot(self):
+    #     if self.inp.system=="euler2D":
+    #         # Create a figure with 4 subplots arranged in 2x2
+    #         fig, axs = plt.subplots(2, 2, figsize=(12, 10))
+    #         axs = axs.flatten()  # Flatten the 2x2 grid into a 1D array of axes
 
-            # Titles for each subplot corresponding to each variable
-            titles = ["Density", "UVel", "VVel", "Pressure"]
-        elif self.inp.system=="mhd2d":
-            # Create a figure with 6 subplots arranged in 3x2
-            fig, axs = plt.subplots(3, 2, figsize=(12, 10))
-            axs = axs.flatten()  # Flatten the 3x2 grid into a 1D array of axes
+    #         # Titles for each subplot corresponding to each variable
+    #         titles = ["Density", "UVel", "VVel", "Pressure"]
+            
+    #     elif self.inp.system=="mhd2d":
+    #         # Create a figure with 6 subplots arranged in 3x2
+    #         fig, axs = plt.subplots(3, 2, figsize=(12, 10))
+    #         axs = axs.flatten()  # Flatten the 3x2 grid into a 1D array of axes
 
-            # Titles for each subplot corresponding to each variable
-            titles = ["Density", "UVel", "VVel", "Pressure", "X-Magnetic Field", "Y-Magnetic Field"]
+    #         # Titles for each subplot corresponding to each variable
+    #         titles = ["Density", "UVel", "VVel", "Pressure", "X-Magnetic Field", "Y-Magnetic Field"]
 
-        # Loop over the number of variables and plot each one using the 'plasma' colormap
-        for i in range(self.num_vars):
-            pcm = axs[i].pcolormesh(
-                self.meshX, self.meshY, self.grid[i].T, cmap="inferno", shading="auto"
-            )
-            fig.colorbar(
-                pcm, ax=axs[i], orientation="vertical"
-            )  # Add a color bar to each subplot
-            axs[i].set_title(titles[i])
-            axs[i].set_xlabel("X")
-            axs[i].set_ylabel("Y")
+    #     # Loop over the number of variables and plot each one using the 'plasma' colormap
+    #     for i in range(self.num_vars):
+    #         pcm = axs[i].pcolormesh(
+    #             self.meshX, self.meshY, self.grid[i].T, cmap="inferno", shading="auto"
+    #         )
+    #         fig.colorbar(
+    #             pcm, ax=axs[i], orientation="vertical"
+    #         )  # Add a color bar to each subplot
+    #         axs[i].set_title(titles[i])
+    #         axs[i].set_xlabel("X")
+    #         axs[i].set_ylabel("Y")
 
-        plt.tight_layout()  # Adjust layout to prevent overlap
-        plt.show()  # Display the plot
+    #     plt.tight_layout()  # Adjust layout to prevent overlap
+    #     plt.show()  # Display the plot
 
     def apply_periodic_bcs(self):
         for var in range(self.num_vars):

@@ -19,6 +19,8 @@ class Flux:
 
         if self.type == "rusanov":
             self.flux_method = self.rusanov
+        elif self.type == "lax_friedrichs":
+            self.flux_method = self.lax_friedrichs
         else:
             raise RuntimeError(f"Flux method not supported: {self.type}")
 

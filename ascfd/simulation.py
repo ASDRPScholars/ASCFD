@@ -35,6 +35,8 @@ class Simulation:
     def run(self):
         while (self.t < self.inp.t_finish) and self.timestepNum < self.inp.nt:
             print(f"Timestep: {self.timestepNum}, Current time: {self.t}")
+            print(f"Minimum Density: {np.min(self.grid.grid[self.c.RHOCOMP])}")
+            print(f"Minimum Pressure: {np.min(self.grid.grid[self.c.PCOMP])}")
             self.bcs.apply_bcs()
             self.grid.assert_variable_type("prim")
             
@@ -93,7 +95,10 @@ class Simulation:
         print("SUCCESS!")
         return self.grid
  
-    def plot(self):
+    # we have THREE plot functions?? one in simulation.py and one in grid.py AND THE ONE WE'RE USING IS
+    # JUST REGULAR CODE IN simulation.output()????
+    
+    # def plot(self):
         if not os.path.exists(self.inp.output_dir):
             os.makedirs(self.inp.output_dir)
 
@@ -143,10 +148,10 @@ class Simulation:
                 raise RuntimeError("[FLUID] ICS not valid.")
            
         elif self.inp.system == "mhd2d":
-            self.grid.fill_grid(ics.diagonal_advection_2d)
-            print ("hi this is mhd!")
-            #if self.inp.ics == "orszag_tang":
-                #self.grid.fill_grid(ics.orszag_tang_2d)
+            # self.grid.fill_grid(ics.diagonal_advection_2d)
+            # print ("hi this is mhd!")
+            if self.inp.ics == "orszag_tang":
+                self.grid.fill_grid(ics.orszag_tang_2d)
            
         else:
             raise RuntimeError("[FLUID] ICS not valid.")
@@ -177,7 +182,13 @@ class Simulation:
                     components = [self.grid.grid[q, i, j] for q in range(self.c.NUMQ)]
                     f.write(f"{x:.12f}, {y:.12f}, " + ", ".join(f"{comp:.8f}" for comp in components) + "\n")
        
-        fig, axs = plt.subplots(2, 2, figsize=(15, 15))
+        if self.inp.system == "euler2D":
+            fig, axs = plt.subplots(2, 2, figsize=(15, 15))
+        elif self.inp.system == "mhd2d":
+            fig, axs = plt.subplots(3, 2, figsize=(15, 25))
+        else:
+            raise RuntimeError("System not implemented for plotting.")
+        
         axs = axs.ravel()  # Flatten the array to index by i
  
         for i in range(self.c.NUMQ):

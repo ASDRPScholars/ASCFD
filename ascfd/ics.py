@@ -106,7 +106,7 @@ def orszag_tang_2d(a_x, a_y, a_var):
     elif a_var == 2:  # VCOMP
         return np.sin(2 * np.pi * a_x)
     elif a_var == 3:  # PCOMP
-        return 5 / (12 * np.pi)
+        return np.ones_like(a_x)
     elif a_var == 4:  # BX
         return -np.sin(2 * np.pi * a_y)
     elif a_var == 5:  # BY
