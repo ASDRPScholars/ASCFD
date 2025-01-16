@@ -76,8 +76,10 @@ class Flux:
     def lax_friedrichs(self, a_grid):
         a_grid.assert_variable_type("prim")
 
-        if self.inp.system == "euler2D" or self.inp.system == "mhd2d":
-                density = self.grid.grid[self.c.RHOCOMP]
+        if self.c.system == "euler2D":
+            density = a_grid.grid[self.c.RHOCOMP]
+        elif self.c.system == "mhd2d":
+            density = a_grid.grid[self.c.RHOCOMP]
         else:
             raise RuntimeError("Density method needs to be implemented.")
         
