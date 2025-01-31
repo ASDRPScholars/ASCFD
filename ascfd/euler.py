@@ -74,56 +74,6 @@ class Euler:
             raise RuntimeError(f"System not supported: {self.c.system}")
         
         return prim
-    
-    def prim_to_char(self, a_prim):
-        if self.c.system == "euler2D":
-            rho = a_prim[self.c.RHOCOMP]
-            u = a_prim[self.c.UCOMP]
-            v = a_prim[self.c.VCOMP]
-            p = a_prim[self.c.PCOMP]
-
-            c = np.sqrt(self.c.gamma * p / rho)
-
-            A = np.array([[u, rho, 0], [0, u, rho**-1], [0, c**2 * rho, u]])
-
-
-        elif self.c.system == "mhd2d":
-            rho = a_prim[self.c.RHOCOMP]
-            u = a_prim[self.c.UCOMP]
-            v = a_prim[self.c.VCOMP]
-            p = a_prim[self.c.PCOMP]
-            b_x = a_prim[self.c.B_XCOMP]
-            b_y = a_prim[self.c.B_YCOMP]
-
-            c = np.sqrt(self.c.gamma * p / rho)
-
-
-        else:
-            raise RuntimeError(f"System not supported: {self.c.system}")    
-
-        return 0
-
-    def char_to_prim(self, a_char):
-        if self.c.system == "euler2D":
-            rho = a_char[self.c.RHOCOMP]
-            u = a_char[self.c.UCOMP]
-            v = a_char[self.c.VCOMP]
-
-            c = np.sqrt(self.c.gamma * u / rho)
-
-
-        elif self.c.system == "mhd2d":
-            rho = a_char[self.c.RHOCOMP]
-            u = a_char[self.c.UCOMP]
-            v = a_char[self.c.VCOMP]
-            p = a_char[self.c.PCOMP]
-
-            c = np.sqrt(self.c.gamma * p / rho)
-
-        else:
-            raise RuntimeError(f"System not supported: {self.c.system}")    
-
-        return Q
 
 
 
