@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import os
 
 # Constants
-gamma = 1.4  # Ratio of specific heats
+gamma = 1.4  ### specific weight? — weight of a fliud per unit volume
 Nx = 1000     # Number of grid points
 L = 1.0      # Domain length
 dx = L / (Nx - 1)  # Spatial step
@@ -101,14 +101,18 @@ def compute_wavespeeds(rho_L, rho_R, u_L, u_R, p_L, p_R, c_L, c_R):
     """
     Compute wave speeds for HLLC solver
     """
+    ## this is all fancy HLLC math that we just have to believe is true
+    ## HOWEVER, notice that all the speeds are derived from all three of our prim vars: p, u, and rho
+    ## so the wave speeds still kind of encapsulate the total behavior of the fluid
+    
     # Compute pressure-based wave speed estimates
     p_star = max(0, 0.5 * (p_L + p_R - 0.5 * (u_R - u_L) * (rho_L + rho_R) * 0.5 * (c_L + c_R)))
     q_L = 1 if p_star <= p_L else np.sqrt(1 + ((gamma + 1)/(2 * gamma)) * (p_star/p_L - 1))
     q_R = 1 if p_star <= p_R else np.sqrt(1 + ((gamma + 1)/(2 * gamma)) * (p_star/p_R - 1))
     
     # Wave speed estimates
-    S_L = u_L - c_L * q_L
-    S_R = u_R + c_R * q_R
+    S_L = u_L - c_L * q_L ## this should look familiar though: s_R = u - c
+    S_R = u_R + c_R * q_R ## and this: s_L = u + c
     S_star = (p_R - p_L + rho_L * u_L * (S_L - u_L) - rho_R * u_R * (S_R - u_R)) / \
              (rho_L * (S_L - u_L) - rho_R * (S_R - u_R))
     
@@ -129,7 +133,10 @@ def HLLC_flux(rho_L, rho_R, u_L, u_R, p_L, p_R, E_L, E_R):
     U_L = np.array([rho_L, rho_L * u_L, E_L])
     U_R = np.array([rho_R, rho_R * u_R, E_R])
     
-    # Compute physical fluxes
+    ## these look like normal fluxes because they are! in characteristic form, everything in the left and right region (not the middle star region)
+    ## is predictable and has regular fluxes (since there are no shocks/mixing). 
+    
+    ## we will have to do some fancier math to calculate the fluxes in the middle mixing regions (left star and right star), though.
     F_L = np.array([rho_L * u_L, 
                     rho_L * u_L**2 + p_L, 
                     (E_L + p_L) * u_L])
@@ -137,13 +144,21 @@ def HLLC_flux(rho_L, rho_R, u_L, u_R, p_L, p_R, E_L, E_R):
                     rho_R * u_R**2 + p_R, 
                     (E_R + p_R) * u_R])
     
-    # Compute intermediate states
+    ## Compute intermediate states — i think chris is using something called the rankine-hugonoit equations here??
     U_star_L = rho_L * ((S_L - u_L)/(S_L - S_star)) * \
                np.array([1, S_star, E_L/rho_L + (S_star - u_L)*(S_star + p_L/(rho_L*(S_L - u_L)))])
     U_star_R = rho_R * ((S_R - u_R)/(S_R - S_star)) * \
                np.array([1, S_star, E_R/rho_R + (S_star - u_R)*(S_star + p_R/(rho_R*(S_R - u_R)))])
     
-    # Select flux based on wave speeds
+    ## remember that we will call this function for every grid cell, so our goal here is to find which region that cell is in
+    ## and then calculate the flux based on the region it's in
+    ## cool drawing by claude:
+##    Left         │   Left Star   │  Right Star   │    Right
+##   #Region       │    Region     │    Region     │    Region
+## (Original gas)  │  (Mixed gas)  │  (Mixed gas)  │ (Original gas)
+##  ───────────────┼───────────────┼───────────────┼──────────────
+##        F_L      │    F_L*       │     F_R*      │     F_R
+
     if S_L >= 0:
         return F_L
     elif S_L <= 0 and S_star >= 0:
@@ -174,13 +189,16 @@ while t < t_final:
     # Compute HLLC fluxes at each interface
     for i in range(Nx-1):
         # Left and right states
+        
+        ## again, notice that we're iterating over every cell, and finding the left and right U's for each cell
         rho_L, u_L, p_L = rho[i], u[i], p[i]
         rho_R, u_R, p_R = rho[i+1], u[i+1], p[i+1]
         E_L, E_R = E[i], E[i+1]
         
-        # Compute HLLC flux
+        ## and here, as described above, we determine the correct flux for each cell based on what region it's in
         F[:, i] = HLLC_flux(rho_L, rho_R, u_L, u_R, p_L, p_R, E_L, E_R)
     
+    ## and then we plot and do BC stuff (which i dont really understand but i think we got through the bulk of it)
     # Update conservative variables
     rho[1:-1] = rho[1:-1] - dt/dx * (F[0, 1:Nx-1] - F[0, :Nx-2])
     mom[1:-1] = mom[1:-1] - dt/dx * (F[1, 1:Nx-1] - F[1, :Nx-2])
