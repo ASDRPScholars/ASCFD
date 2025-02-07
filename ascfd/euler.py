@@ -1,5 +1,6 @@
 import numpy as np
 from ascfd.constants import Constants
+from sympy import symbols, Matrix
 
 class Euler:
 
@@ -65,6 +66,92 @@ class Euler:
             raise RuntimeError(f"System not supported: {self.c.system}")
         
         return prim
+
+    def prim_to_char(self, a_prim):
+        char = np.zeros_like(a_prim)
+
+        if self.c.system == "euler2D":
+            rho = a_prim[self.c.RHOCOMP]
+            u = a_prim[self.c.UCOMP]
+            v = a_prim[self.c.VCOMP]
+            p = a_prim[self.c.PCOMP]
+            c = np.sqrt(self.c.gamma * p / rho)  
+        
+            l_minus = np.array([0, -rho/(2*c), 1/(2*c**2)])
+            l_0 = np.array([1, 0, -1/c**2])
+            l_plus = np.array([0, rho/(2*c), 1/(2*c**2)])
+            L = np.vstack((l_minus, l_0, l_plus))
+        
+            q = np.array([rho, u, v, p])
+            char[:3] = L @ q[:3]
+            char[3] = q[3]
+    
+        elif self.c.system == "mhd2d":
+            rho = a_prim[self.c.RHOCOMP]
+            u = a_prim[self.c.UCOMP]
+            v = a_prim[self.c.VCOMP]
+            bx = a_prim[self.c.B_XCOMP]
+            by = a_prim[self.c.B_YCOMP]
+            p = a_prim[self.c.PCOMP]
+            c = np.sqrt(self.c.gamma * p / rho) 
+        
+            l_minus = np.array([0, -rho/(2*c), 1/(2*c**2)])
+            l_0 = np.array([1, 0, -1/c**2])
+            l_plus = np.array([0, rho/(2*c), 1/(2*c**2)])
+            L = np.vstack((l_minus, l_0, l_plus))
+        
+            q = np.array([rho, u, v, bx, by, p])
+            char[:3] = L @ q[:3] 
+            char[3:] = q[3:] 
+        
+        else:
+            raise RuntimeError(f"System not supported: {self.c.system}")
+    
+        return char
+
+    def char_to_prim(self, a_char):
+        prim = np.zeros_like(a_char)
+
+        if self.c.system == "euler2D":
+            rho = a_char[self.c.RHOCOMP]
+            u = a_char[self.c.UCOMP]
+            v = a_char[self.c.VCOMP]
+            p = a_char[self.c.PCOMP]
+            c = np.sqrt(self.c.gamma * p / rho)
+        
+            r_minus = np.array([1, -c/rho, c**2])
+            r_0 = np.array([1, 0, 0])
+            r_plus = np.array([1, c/rho, c**2])
+            R = np.vstack((r_minus, r_0, r_plus))
+        
+            q = np.array([rho, u, v, p])
+            prim[:3] = R @ a_char[:3] 
+            prim[3] = a_char[3] 
+    
+    
+        elif self.c.system == "mhd2d":
+            rho = a_char[self.c.RHOCOMP]
+            u = a_char[self.c.UCOMP]
+            v = a_char[self.c.VCOMP]
+            bx = a_char[self.c.B_XCOMP]
+            by = a_char[self.c.B_YCOMP]
+            p = a_char[self.c.PCOMP]
+            c = np.sqrt(self.c.gamma * p / rho)
+        
+            r_minus = np.array([1, -c/rho, c**2])
+            r_0 = np.array([1, 0, 0])
+            r_plus = np.array([1, c/rho, c**2])
+            R = np.vstack((r_minus, r_0, r_plus))
+        
+            q = np.array([rho, u, v, bx, by, p])
+            prim[:3] = R @ a_char[:3] 
+            prim[3:] = a_char[3:] 
+        
+        else:
+            raise RuntimeError(f"System not supported: {self.c.system}")
+    
+        return prim
+
 
 
 
