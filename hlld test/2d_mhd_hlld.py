@@ -41,6 +41,7 @@ v = np.zeros((Ny, Nx))    # Y-Velocity
 w = np.zeros((Ny, Nx))    # Z-Velocity???
 
 # Conservative variables
+### IN ORDER: [ρ, ρu′, ρv′, ρw, e′, B′x, B′y, Bz]
 mu = np.zeros((Ny, Nx))  # X-Momentum
 mv = np.zeros((Ny, Nx))  # Y-Momentum
 mw = np.zeros((Ny, Nx))  # Z-Momentum???
@@ -148,52 +149,99 @@ def compute_flux(rho, pT, u, v, w, Bx, By, Bz, E):
     
     return F
 
-def compute_wavespeeds(rho_L, rho_R, u_L, u_R, p_L, p_R, pT_R, pT_L, c_L, c_R, Bx, rho_star_L, rho_star_R):
+
+def compute_wavespeeds(rho_L, rho_R, u_L, u_R, pT_R, pT_L, Bx, rho_star_L, rho_star_R):
     """
     Compute wave speeds for HLLC solver
     """
     # Compute pressure-based wave speed estimates
     ### ARE THESE CORRECT LOL????
     
-    S_M  = ((S_R - u_R) * rho_R * u_R - (S_L - u_L) * rho_L * u_L - pT_R + pT_L) / \
+    B = np.array([Bx, By, Bz])
+    B_magnitude = np.linalg.norm(B)
+    
+    cf_L = (gamma * p_L + B_magnitude**2 + np.sqrt((gamma * p_L + B_magnitude**2)**2) - 4 * gamma * p_L * np.linalg.norm(Bx)) / (2*rho_L)
+    cf_R = (gamma * p_R + B_magnitude**2 + np.sqrt((gamma * p_R + B_magnitude**2)**2) - 4 * gamma * p_R * np.linalg.norm(Bx)) / (2*rho_L)
+    
+    S_M = ((S_R - u_R) * rho_R * u_R - (S_L - u_L) * rho_L * u_L - pT_R + pT_L) / \
         (rho_R * (S_R - u_R) - rho_L * (S_L - u_L))
     
     S_star_L = S_M - np.linalg.norm(Bx) / np.sqrt(rho_star_L)
     S_star_R = S_M + np.linalg.norm(Bx) / np.sqrt(rho_star_R)
     
-    S_L = np.minimum(u_L, u_R) - np.maximum(c_L, c_R)
-    S_R = np.maximum(u_L, u_R) + np.maximum(c_L, c_R)
+    S_L = np.minimum(u_L, u_R) - np.maximum(cf_L, cf_R)
+    S_R = np.maximum(u_L, u_R) + np.maximum(cf_L, cf_R)
     
     return S_M, S_star_L, S_star_R, S_L, S_R
 
-def HLLC_flux(rho_L, rho_R, u_L, u_R, p_L, p_R, E_L, E_R):
+
+def HLLD_flux(rho_L, rho_R, u_L, u_R, v_L, v_R, w_L, w_R, pT_L, pT_R, pT_star, E_L, E_R, Bx_L, Bx_R, By_L, By_R, Bz_L, Bz_R):
     """
-    Compute HLLC fluxes
+    Compute HLLD fluxes
     """
-    # Compute sound speeds
-    c_L = np.sqrt(gamma * p_L / rho_L)
-    c_R = np.sqrt(gamma * p_R / rho_R)
     
     # Compute wave speeds
-    S_L, S_star, S_R = compute_wavespeeds(rho_L, rho_R, u_L, u_R, p_L, p_R, c_L, c_R)
+    S_M, S_star_L, S_star_R, S_L, S_R = compute_wavespeeds(rho_L, rho_R, u_L, u_R, p_L, p_R)
     
     # Compute conserved variables
     U_L = np.array([rho_L, rho_L * u_L, E_L])
     U_R = np.array([rho_R, rho_R * u_R, E_R])
     
     # Compute physical fluxes
-    F_L = np.array([rho_L * u_L, 
-                    rho_L * u_L**2 + p_L, 
-                    (E_L + p_L) * u_L])
-    F_R = np.array([rho_R * u_R, 
-                    rho_R * u_R**2 + p_R, 
-                    (E_R + p_R) * u_R])
+    F_L = np.array([
+        rho_L * u_L,
+        rho_L * u_L**2 - pT_L + Bx_L**2,
+        rho_L * u_L * v_L - Bx_L * By_L,
+        rho_L * u_L * w_L - Bx_L * Bz_L,
+        (E_L + pT_L) * u_L - Bx_L * (Bx_L * u_L + By_L * v_L + Bz_L * w_L),
+        0,
+        By_L * u_L - Bx_L * v_L,
+        Bz_L * u_L - Bx_L * w_L
+    ])
+
+    F_R = np.array([
+        rho_R * u_R,
+        rho_R * u_R**2 - pT_R + Bx_R**2,
+        rho_R * u_R * v_R - Bx_R * By_R,
+        rho_R * u_R * w_R - Bx_R * Bz_R,
+        (E_R + pT_R) * u_R - Bx_R * (Bx_R * u_R + By_R * v_R + Bz_R * w_R),
+        0,
+        By_R * u_R - Bx_R * v_R,
+        Bz_R * u_R - Bx_R * w_R
+    ])
     
     # Compute intermediate states
-    U_star_L = rho_L * ((S_L - u_L)/(S_L - S_star)) * \
-               np.array([1, S_star, E_L/rho_L + (S_star - u_L)*(S_star + p_L/(rho_L*(S_L - u_L)))])
-    U_star_R = rho_R * ((S_R - u_R)/(S_R - S_star)) * \
-               np.array([1, S_star, E_R/rho_R + (S_star - u_R)*(S_star + p_R/(rho_R*(S_R - u_R)))])
+    # Left state
+    U_prim_star_L = np.array([
+        rho_L * (S_L - u_L)/(S_L - S_M),
+        v_L - Bx * By_L * (S_M - u_L)/(rho_L * (S_L - u_L) * (S_L - S_M) - Bx**2),
+        w_L - Bx * Bz_L * (S_M - u_L)/(rho_L * (S_L - u_L) * (S_L - S_M) - Bx**2),
+        By_L * (rho_L * (S_L - u_L)**2 - Bx**2)/(rho_L * (S_L - u_L) * (S_L - S_M) - Bx**2),
+        Bz_L * (rho_L * (S_L - u_L)**2 - Bx**2)/(rho_L * (S_L - u_L) * (S_L - S_M) - Bx**2),
+        ((S_L - u_L) * E_L - pT_L * u_L + pT_star * S_M + 
+        Bx * (v_L * By_L + w_L * Bz_L - 
+                    (v_L - Bx * By_L * (S_M - u_L)/(rho_L * (S_L - u_L) * (S_L - S_M) - Bx**2)) * 
+                    By_L * (rho_L * (S_L - u_L)**2 - Bx**2)/(rho_L * (S_L - u_L) * (S_L - S_M) - Bx**2) -
+                    (w_L - Bx * Bz_L * (S_M - u_L)/(rho_L * (S_L - u_L) * (S_L - S_M) - Bx**2)) * 
+                    Bz_L * (rho_L * (S_L - u_L)**2 - Bx**2)/(rho_L * (S_L - u_L) * (S_L - S_M) - Bx**2)))
+        /(S_L - S_M)
+    ])
+
+    # Right state
+    U_prim_star_R = np.array([
+        rho_R * (S_R - u_R)/(S_R - S_M),
+        v_R - Bx * By_R * (S_M - u_R)/(rho_R * (S_R - u_R) * (S_R - S_M) - Bx**2),
+        w_R - Bx * Bz_R * (S_M - u_R)/(rho_R * (S_R - u_R) * (S_R - S_M) - Bx**2),
+        By_R * (rho_R * (S_R - u_R)**2 - Bx**2)/(rho_R * (S_R - u_R) * (S_R - S_M) - Bx**2),
+        Bz_R * (rho_R * (S_R - u_R)**2 - Bx**2)/(rho_R * (S_R - u_R) * (S_R - S_M) - Bx**2),
+        ((S_R - u_R) * E_R - pT_R * u_R + pT_star * S_M + 
+        Bx * (v_R * By_R + w_R * Bz_R - 
+                    (v_R - Bx * By_R * (S_M - u_R)/(rho_R * (S_R - u_R) * (S_R - S_M) - Bx**2)) * 
+                    By_R * (rho_R * (S_R - u_R)**2 - Bx**2)/(rho_R * (S_R - u_R) * (S_R - S_M) - Bx**2) -
+                    (w_R - Bx * Bz_R * (S_M - u_R)/(rho_R * (S_R - u_R) * (S_R - S_M) - Bx**2)) * 
+                    Bz_R * (rho_R * (S_R - u_R)**2 - Bx**2)/(rho_R * (S_R - u_R) * (S_R - S_M) - Bx**2)))
+        /(S_R - S_M)
+    ])
     
     # Select flux based on wave speeds
     if S_L >= 0:
@@ -230,8 +278,8 @@ while t < t_final:
         rho_R, u_R, p_R = rho[i+1], u[i+1], p[i+1]
         E_L, E_R = E[i], E[i+1]
         
-        # Compute HLLC flux
-        F[:, i] = HLLC_flux(rho_L, rho_R, u_L, u_R, p_L, p_R, E_L, E_R)
+        # Compute HLLD flux
+        F[:, i] = HLLD_flux(rho_L, rho_R, u_L, u_R, p_L, p_R, E_L, E_R)
     
     # Update conservative variables
     rho[1:-1] = rho[1:-1] - dt/dx * (F[0, 1:Nx-1] - F[0, :Nx-2])
