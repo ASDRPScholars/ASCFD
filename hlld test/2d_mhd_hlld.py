@@ -35,6 +35,7 @@ meshX, meshY = np.meshgrid(x, y)
 # Primitive variables
 rho = np.zeros((Ny, Nx))  # Density
 p = np.zeros((Ny, Nx))    # Pressure
+pT = np.zeros((Nx, Ny))  # Total pressure???
 u = np.zeros((Ny, Nx))    # X-Velocity
 v = np.zeros((Ny, Nx))    # Y-Velocity
 w = np.zeros((Ny, Nx))    # Z-Velocity???
@@ -42,14 +43,14 @@ w = np.zeros((Ny, Nx))    # Z-Velocity???
 # Conservative variables
 mu = np.zeros((Ny, Nx))  # X-Momentum
 mv = np.zeros((Ny, Nx))  # Y-Momentum
-mw = np.zeros((Ny, Nx))  # Z-Momentum??
+mw = np.zeros((Ny, Nx))  # Z-Momentum???
 
 E = np.zeros((Ny, Nx))    # Total energy
 
 # Primitive and conservative variables
 Bx = np.zeros((Ny, Nx))   # X-Magnetic field
 By = np.zeros((Ny, Nx))   # Y-Magnetic field
-Bz = np.zeros((Ny, Nx))   # Z-Magnetic field??
+Bz = np.zeros((Ny, Nx))   # Z-Magnetic field???
 
 # Select initial conditions
 IC_type = "sod"  # Options: "sod", "shu-osher"
@@ -99,7 +100,6 @@ mv = rho * v  # Y-Momentum
 mw = rho * w  # Z-Momentum??
 
 E = p / (gamma - 1) + 0.5 * rho * u**2  # Total energy
-pT = p + 0.5 * (Bx**2 + By**2 + Bz**2)  # Total pressure
 
 
 def cons_to_prim(mu, mv, mw, E):
@@ -111,11 +111,12 @@ def cons_to_prim(mu, mv, mw, E):
     v = mv / rho
     w = mw / rho
     p = (gamma - 1) * (E - 0.5 * rho * (u**2 + v**2 + w**2))
+    pT = p + 0.5 * (Bx**2 + By**2 + Bz**2)  # Total pressure
     
-    return u, v, w, p
+    return u, v, w, p, pT
 
 
-def prim_to_cons(rho, p, u, v, w):
+def prim_to_cons(rho, p, u, v, w, Bx, By, Bz):
     """
     Convert primitive variables to conservative variables
     """
@@ -123,46 +124,47 @@ def prim_to_cons(rho, p, u, v, w):
     mu = rho * u
     mv = rho * v
     mw = rho * w
-    E = p / (gamma - 1) + 0.5 * rho * (u**2 + v**2 + w**2) # rho*v dot v where v = [u, v, w]^T
+    E = p / (gamma - 1) + 0.5 * rho * (u**2 + v**2 + w**2) \
+        + 0.5 * (Bx**2 + By**2 + Bz**2) # should we include the magnetic field energy?
     
     return mu, mv, mw, E
 
 
-def compute_flux(rho, p, u, v, w, Bx, By, Bz, E):
+def compute_flux(rho, pT, u, v, w, Bx, By, Bz, E):
     """
     Compute fluxes for each conserved variable
     """
     
     F = np.zeros((8, Nx))
-    pT = p + 0.5 * (Bx**2 + By**2 + Bz**2)  # Total pressure
     
     F[0, :] = rho * u
     F[1, :] = rho * u**2 - pT + Bx**2
     F[2, :] = rho * u * v - Bx * By
     F[3, :] = rho * u * w - Bx * Bz
-    F[4, :] = (E + p) * u - Bx * (Bx * u + By * v + Bz * w) # v dot B where B = [Bx, By, Bz]^T
+    F[4, :] = (E + pT) * u - Bx * (Bx * u + By * v + Bz * w) # v dot B where B = [Bx, By, Bz]^T
     F[5, :] = 0
     F[6, :] = By * u - Bx * v
     F[7, :] = Bz * u - Bx * w
     
     return F
 
-def compute_wavespeeds(rho_L, rho_R, u_L, u_R, p_L, p_R, c_L, c_R):
+def compute_wavespeeds(rho_L, rho_R, u_L, u_R, p_L, p_R, pT_R, pT_L, c_L, c_R, Bx, rho_star_L, rho_star_R):
     """
     Compute wave speeds for HLLC solver
     """
     # Compute pressure-based wave speed estimates
-    p_star = max(0, 0.5 * (p_L + p_R - 0.5 * (u_R - u_L) * (rho_L + rho_R) * 0.5 * (c_L + c_R)))
-    q_L = 1 if p_star <= p_L else np.sqrt(1 + ((gamma + 1)/(2 * gamma)) * (p_star/p_L - 1))
-    q_R = 1 if p_star <= p_R else np.sqrt(1 + ((gamma + 1)/(2 * gamma)) * (p_star/p_R - 1))
+    ### ARE THESE CORRECT LOL????
     
-    # Wave speed estimates
-    S_L = u_L - c_L * q_L
-    S_R = u_R + c_R * q_R
-    S_star = (p_R - p_L + rho_L * u_L * (S_L - u_L) - rho_R * u_R * (S_R - u_R)) / \
-             (rho_L * (S_L - u_L) - rho_R * (S_R - u_R))
+    S_M  = ((S_R - u_R) * rho_R * u_R - (S_L - u_L) * rho_L * u_L - pT_R + pT_L) / \
+        (rho_R * (S_R - u_R) - rho_L * (S_L - u_L))
     
-    return S_L, S_star, S_R
+    S_star_L = S_M - np.linalg.norm(Bx) / np.sqrt(rho_star_L)
+    S_star_R = S_M + np.linalg.norm(Bx) / np.sqrt(rho_star_R)
+    
+    S_L = np.minimum(u_L, u_R) - np.maximum(c_L, c_R)
+    S_R = np.maximum(u_L, u_R) + np.maximum(c_L, c_R)
+    
+    return S_M, S_star_L, S_star_R, S_L, S_R
 
 def HLLC_flux(rho_L, rho_R, u_L, u_R, p_L, p_R, E_L, E_R):
     """
