@@ -32,7 +32,10 @@ meshX, meshY = np.meshgrid(x, y)
 
 # Initialize all arrays
 
+### WHY ARE THERE Z VARIABLES? -> include them for 3D simulations, just set them to zero in 2d simulations
+
 # Primitive variables
+### IN ORDER: [ρ, p, u, v, w, Bx, By, Bz, pT]
 rho = np.zeros((Ny, Nx))  # Density
 p = np.zeros((Ny, Nx))    # Pressure
 pT = np.zeros((Nx, Ny))  # Total pressure???
@@ -41,7 +44,7 @@ v = np.zeros((Ny, Nx))    # Y-Velocity
 w = np.zeros((Ny, Nx))    # Z-Velocity???
 
 # Conservative variables
-### IN ORDER: [ρ, ρu′, ρv′, ρw, e′, B′x, B′y, Bz]
+### IN ORDER: [ρ, ρu′, ρv′, ρw, B′x, B′y, Bz, e]
 mu = np.zeros((Ny, Nx))  # X-Momentum
 mv = np.zeros((Ny, Nx))  # Y-Momentum
 mw = np.zeros((Ny, Nx))  # Z-Momentum???
@@ -103,32 +106,41 @@ mw = rho * w  # Z-Momentum??
 E = p / (gamma - 1) + 0.5 * rho * u**2  # Total energy
 
 
-def cons_to_prim(mu, mv, mw, E):
+def cons_to_prim(rho, mu, mv, mw, Bx, By, Bz, E):
     """
     Convert conservative variables to primitive variables
     """
-    
+    rho = rho
     u = mu / rho
     v = mv / rho
     w = mw / rho
     p = (gamma - 1) * (E - 0.5 * rho * (u**2 + v**2 + w**2))
+    
+    Bx = Bx
+    By = By
+    Bz = Bz
     pT = p + 0.5 * (Bx**2 + By**2 + Bz**2)  # Total pressure
     
-    return u, v, w, p, pT
+    return rho, p, u, v, w, Bx, By, Bz, pT
 
 
-def prim_to_cons(rho, p, u, v, w, Bx, By, Bz):
+def prim_to_cons(rho, p, u, v, w, Bx, By, Bz, E):
     """
     Convert primitive variables to conservative variables
     """
     
+    rho = rho
     mu = rho * u
     mv = rho * v
     mw = rho * w
-    E = p / (gamma - 1) + 0.5 * rho * (u**2 + v**2 + w**2) \
+    Bx = Bx
+    By = By
+    Bz = Bz
+    E = E if E is not None else p / (gamma - 1) + 0.5 * rho * (u**2 + v**2 + w**2) \
         + 0.5 * (Bx**2 + By**2 + Bz**2) # should we include the magnetic field energy?
+        # ALSO - if E is passed in as an argument, then we don't need to calculate it here
     
-    return mu, mv, mw, E
+    return rho, mu, mv, mw, Bx, By, Bz, E
 
 
 def compute_flux(rho, pT, u, v, w, Bx, By, Bz, E):
@@ -174,8 +186,8 @@ def compute_wavespeeds(rho_L, rho_R, u_L, u_R, pT_R, pT_L, Bx, rho_star_L, rho_s
     
     return S_M, S_star_L, S_star_R, S_L, S_R
 
-
-def HLLD_flux(rho_L, rho_R, u_L, u_R, v_L, v_R, w_L, w_R, pT_L, pT_R, pT_star, E_L, E_R, Bx_L, Bx_R, By_L, By_R, Bz_L, Bz_R):
+## USE TOTAL PRESSURE FOR FLUX CALCULATIONS!! REGULAR PRESSURE IS JUST FOR GRAPHING (??) WHY IS REGULAR P SO IRRELVAENT — ITS NOT IN ANY OF THE FLUX EQUATIONS LOL like
+def HLLD_flux(rho_L, rho_R, p_L, p_R, u_L, u_R, v_L, v_R, w_L, w_R, Bx_L, Bx_R, By_L, By_R, Bz_L, Bz_R, E_L, E_R, pT_L, pT_R, pT_star,):
     """
     Compute HLLD fluxes
     """
@@ -210,45 +222,144 @@ def HLLD_flux(rho_L, rho_R, u_L, u_R, v_L, v_R, w_L, w_R, pT_L, pT_R, pT_star, E
         Bz_R * u_R - Bx_R * w_R
     ])
     
-    # Compute intermediate states
-    # Left state
+    # Primitive variables
+    # rho, p, u, v, w, Bx, By, Bz
+    
+    # Conserved variables
+    # rho, mu, mv, mw, Bx, By, Bz, E
+
+    # PRIMITIVE STAR STATES (cuz the paper gives us formulas in terms of prim for some reason)
     U_prim_star_L = np.array([
         rho_L * (S_L - u_L)/(S_L - S_M),
+        p_L,
+        u_L, # 
         v_L - Bx * By_L * (S_M - u_L)/(rho_L * (S_L - u_L) * (S_L - S_M) - Bx**2),
         w_L - Bx * Bz_L * (S_M - u_L)/(rho_L * (S_L - u_L) * (S_L - S_M) - Bx**2),
+        Bx_L,
         By_L * (rho_L * (S_L - u_L)**2 - Bx**2)/(rho_L * (S_L - u_L) * (S_L - S_M) - Bx**2),
         Bz_L * (rho_L * (S_L - u_L)**2 - Bx**2)/(rho_L * (S_L - u_L) * (S_L - S_M) - Bx**2),
+    ])
+    
+    
+    U_prim_star_R = np.array([
+        rho_R * (S_R - u_R)/(S_R - S_M),
+        p_R, # the paper doesn't tell us p_star, but its ok since prim_to_cons doesn't use p at all (except for energy, but we have another equation for that)
+        u_R,
+        v_R - Bx * By_R * (S_M - u_R)/(rho_R * (S_R - u_R) * (S_R - S_M) - Bx**2),
+        w_R - Bx * Bz_R * (S_M - u_R)/(rho_R * (S_R - u_R) * (S_R - S_M) - Bx**2),
+        Bx_R,
+        By_R * (rho_R * (S_R - u_R)**2 - Bx**2)/(rho_R * (S_R - u_R) * (S_R - S_M) - Bx**2),
+        Bz_R * (rho_R * (S_R - u_R)**2 - Bx**2)/(rho_R * (S_R - u_R) * (S_R - S_M) - Bx**2),
+    ])
+    
+    # CONSERVATIVE STATES — actually use these for flux
+    
+    U_star_L = prim_to_cons(
+        U_prim_star_L[0],
+        U_prim_star_L[1],
+        U_prim_star_L[2],
+        U_prim_star_L[3],
+        U_prim_star_L[4],
+        U_prim_star_L[5],
+        U_prim_star_L[6],
+        U_prim_star_L[7],
         ((S_L - u_L) * E_L - pT_L * u_L + pT_star * S_M + 
         Bx * (v_L * By_L + w_L * Bz_L - 
                     (v_L - Bx * By_L * (S_M - u_L)/(rho_L * (S_L - u_L) * (S_L - S_M) - Bx**2)) * 
                     By_L * (rho_L * (S_L - u_L)**2 - Bx**2)/(rho_L * (S_L - u_L) * (S_L - S_M) - Bx**2) -
                     (w_L - Bx * Bz_L * (S_M - u_L)/(rho_L * (S_L - u_L) * (S_L - S_M) - Bx**2)) * 
                     Bz_L * (rho_L * (S_L - u_L)**2 - Bx**2)/(rho_L * (S_L - u_L) * (S_L - S_M) - Bx**2)))
-        /(S_L - S_M)
-    ])
-
-    # Right state
-    U_prim_star_R = np.array([
-        rho_R * (S_R - u_R)/(S_R - S_M),
-        v_R - Bx * By_R * (S_M - u_R)/(rho_R * (S_R - u_R) * (S_R - S_M) - Bx**2),
-        w_R - Bx * Bz_R * (S_M - u_R)/(rho_R * (S_R - u_R) * (S_R - S_M) - Bx**2),
-        By_R * (rho_R * (S_R - u_R)**2 - Bx**2)/(rho_R * (S_R - u_R) * (S_R - S_M) - Bx**2),
-        Bz_R * (rho_R * (S_R - u_R)**2 - Bx**2)/(rho_R * (S_R - u_R) * (S_R - S_M) - Bx**2),
+        /(S_L - S_M) # E_star
+    )
+    
+    U_star_R = prim_to_cons(
+        U_prim_star_R[0],
+        U_prim_star_R[1],
+        U_prim_star_R[2],
+        U_prim_star_R[3],
+        U_prim_star_R[4],
+        U_prim_star_R[5],
+        U_prim_star_R[6],
+        U_prim_star_R[7],
         ((S_R - u_R) * E_R - pT_R * u_R + pT_star * S_M + 
         Bx * (v_R * By_R + w_R * Bz_R - 
                     (v_R - Bx * By_R * (S_M - u_R)/(rho_R * (S_R - u_R) * (S_R - S_M) - Bx**2)) * 
                     By_R * (rho_R * (S_R - u_R)**2 - Bx**2)/(rho_R * (S_R - u_R) * (S_R - S_M) - Bx**2) -
                     (w_R - Bx * Bz_R * (S_M - u_R)/(rho_R * (S_R - u_R) * (S_R - S_M) - Bx**2)) * 
                     Bz_R * (rho_R * (S_R - u_R)**2 - Bx**2)/(rho_R * (S_R - u_R) * (S_R - S_M) - Bx**2)))
-        /(S_R - S_M)
+        /(S_R - S_M) # E_star
+    )
+    
+    # hjopefully this is right lol
+    # Given values from U_star_L, U_star_R
+    rho_L = U_star_L[0]
+    rho_R = U_star_R[0]
+
+    v_L = U_star_L[2] / rho_L
+    v_R = U_star_R[2] / rho_R
+
+    w_L = U_star_L[3] / rho_L
+    w_R = U_star_R[3] / rho_R
+
+    B_y_L = U_star_L[5]
+    B_y_R = U_star_R[5]
+
+    B_z_L = U_star_L[6]
+    B_z_R = U_star_R[6]
+
+    B_x_prime = U_star_L[4]  # Assuming Bx is the same for both L and R
+
+    sqrt_rho_L = np.sqrt(rho_L)
+    sqrt_rho_R = np.sqrt(rho_R)
+    rho_sum = sqrt_rho_L + sqrt_rho_R
+    sign_Bx = np.sign(B_x_prime)
+
+    # Compute intermediate values
+    v_twostar = (sqrt_rho_L * v_L + sqrt_rho_R * v_R + (B_y_R - B_y_L) * sign_Bx) / rho_sum
+    B_y_twostar = (sqrt_rho_L * B_y_R + sqrt_rho_R * B_y_L + (B_y_R + sqrt_rho_L * sqrt_rho_R * (v_R - v_L)) * sign_Bx) / rho_sum
+    w_twostar = (sqrt_rho_L * w_L + sqrt_rho_R * w_R + (B_z_R - B_z_L) * sign_Bx) / rho_sum
+    B_z_twostar = (sqrt_rho_L * B_z_R + sqrt_rho_R * B_z_L + (B_z_R + sqrt_rho_L * sqrt_rho_R * (w_R - w_L)) * sign_Bx) / rho_sum
+
+    # Compute e**
+    e_twostar_L = U_star_L[7] + sqrt_rho_L * (np.dot([v_L, w_L], [B_y_L, B_z_L]) - np.dot([v_twostar, w_twostar], [B_y_twostar, B_z_twostar])) * sign_Bx
+    e_twostar_R = U_star_R[7] - sqrt_rho_R * (np.dot([v_R, w_R], [B_y_R, B_z_R]) - np.dot([v_twostar, w_twostar], [B_y_twostar, B_z_twostar])) * sign_Bx
+
+    # Construct U_twostar_L and U_twostar_R
+    U_twostar_L = np.array([
+        rho_L,  # rho**
+        U_star_L[1],  # mu** (unchanged)
+        rho_L * v_twostar,  # mv**
+        rho_L * w_twostar,  # mw**
+        B_x_prime,  # Bx (unchanged)
+        B_y_twostar,  # B**_y
+        B_z_twostar,  # B**_z
+        e_twostar_L   # e**_L
     ])
+
+    U_twostar_R = np.array([
+        rho_R,  # rho**
+        U_star_R[1],  # mu** (unchanged)
+        rho_R * v_twostar,  # mv**
+        rho_R * w_twostar,  # mw**
+        B_x_prime,  # Bx (unchanged)
+        B_y_twostar,  # B**_y
+        B_z_twostar,  # B**_z
+        e_twostar_R   # e**_R
+    ])
+    
+    ## end of ai output
+    
     
     # Select flux based on wave speeds
     if S_L >= 0:
         return F_L
-    elif S_L <= 0 and S_star >= 0:
+    elif S_L <= 0 <= S_star_L:
         return F_L + S_L * (U_star_L - U_L)
-    elif S_star <= 0 and S_R >= 0:
+    elif S_star_L <= 0 <= S_M:
+        return F_L + S_L * (U_star_L - U_L) + S_star_L * (U_twostar_L - U_star_L)
+    elif S_M <= 0 <= S_star_R:
+        return F_R + S_R * (U_star_R - U_R) + S_star_R * (U_twostar_R - U_star_R)
+    elif S_star_R <= 0 <= S_R:
         return F_R + S_R * (U_star_R - U_R)
     else:
         return F_R
