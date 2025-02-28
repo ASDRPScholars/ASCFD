@@ -19,6 +19,8 @@ class Flux:
 
         if self.type == "rusanov":
             self.flux_method = self.rusanov
+        elif self.type == "hlld":
+            self.flux_method = self.hlld
         else:
             raise RuntimeError(f"Flux method not supported: {self.type}")
 
@@ -143,8 +145,14 @@ class Flux:
                 U_L = U[:, i, j]
                 U_R = U[:, i+1, j]
                 
-                rho_L, u_L, v_L, w_L, p_L, Bx_L, By_L, Bz_L = U_L
-                rho_R, u_R, v_R, w_R, p_R, Bx_R, By_R, Bz_R = U_R
+                rho_L, u_L, v_L, p_L, Bx_L, By_L = U_L
+                rho_R, u_R, v_R, p_R, Bx_R, By_R = U_R
+                w_L=0
+                w_R=0
+                Bz_L=0
+                Bz_R=0
+                U_L=np.insert(U_L, 3, w_L)
+                U_R=np.insert(U_R, 3, w_R)
                 
                 pT_L = p_L + 0.5 * (Bx**2 + By_L**2 + Bz_L**2)
                 pT_R = p_R + 0.5 * (Bx**2 + By_R**2 + Bz_R**2)
@@ -157,38 +165,55 @@ class Flux:
                 
                 SM = ((S_R * rho_R * u_R - S_L * rho_L * u_L + pT_L - pT_R) /
                       (S_R * rho_R - S_L * rho_L))
-                pT_star = pT_L + rho_L * (S_L - u_L) * (SM - u_L)
+                pT_star = ((S_R * rho_R * pT_L - S_L * rho_L * pT_R + rho_R * rho_L * (S_R - u_R) * (S_L - u_L) * (u_R - u_L)) /
+                           (S_R * rho_R - S_L * rho_L))
                 
                 rho_star_L = rho_L * (S_L - u_L) / (S_L - SM)
-                v_star_L = v_L - Bx * (By_L - By_R) / (rho_star_L * (S_L - SM))
-                w_star_L = w_L - Bx * (Bz_L - Bz_R) / (rho_star_L * (S_L - SM))
-                
                 rho_star_R = rho_R * (S_R - u_R) / (S_R - SM)
-                v_star_R = v_R - Bx * (By_R - By_L) / (rho_star_R * (S_R - SM))
-                w_star_R = w_R - Bx * (Bz_R - Bz_L) / (rho_star_R * (S_R - SM))
+
+                S_star_L = SM - np.linalg.norm(Bx) / np.sqrt(rho_star_L)
+                S_star_R = SM + np.linalg.norm(Bx) / np.sqrt(rho_star_R)
                 
-                S_star_L = SM - abs(Bx) / np.sqrt(rho_star_L)
-                S_star_R = SM + abs(Bx) / np.sqrt(rho_star_R)
                 
-                v_double_star_L = v_star_L + (By_L - By_R) * np.sign(Bx) / np.sqrt(rho_star_L * rho_star_R)
-                w_double_star_L = w_star_L + (Bz_L - Bz_R) * np.sign(Bx) / np.sqrt(rho_star_L * rho_star_R)
+                sqrt_rho_L = np.sqrt(rho_star_L)
+                sqrt_rho_R = np.sqrt(rho_star_R)
+                rho_sum = sqrt_rho_L + sqrt_rho_R
+                sign_Bx = np.sign(Bx)
                 
-                v_double_star_R = v_star_R - (By_L - By_R) * np.sign(Bx) / np.sqrt(rho_star_L * rho_star_R)
-                w_double_star_R = w_star_R - (Bz_L - Bz_R) * np.sign(Bx) / np.sqrt(rho_star_L * rho_star_R)
+                v_double_star = (sqrt_rho_L * v_L + sqrt_rho_R * v_R + (By_R - By_L) * sign_Bx) / rho_sum
+                w_double_star = (sqrt_rho_L * w_L + sqrt_rho_R * w_R + (Bz_R - Bz_L) * sign_Bx) / rho_sum
+                By_double_star = (sqrt_rho_L * By_R + sqrt_rho_R * By_L + sqrt_rho_L * sqrt_rho_R * (v_R - v_L) * sign_Bx) / rho_sum
+                Bz_double_star = (sqrt_rho_L * Bz_R + sqrt_rho_R * Bz_L + sqrt_rho_L * sqrt_rho_R * (w_R - w_L) * sign_Bx) / rho_sum
                 
-                By_double_star_L = By_L * (rho_star_L / (rho_star_L + rho_star_R)) + By_R * (rho_star_R / (rho_star_L + rho_star_R))
-                Bz_double_star_L = Bz_L * (rho_star_L / (rho_star_L + rho_star_R)) + Bz_R * (rho_star_R / (rho_star_L + rho_star_R))
-                By_double_star_R = By_double_star_L
-                Bz_double_star_R = Bz_double_star_L
+                v_star_L = v_L - (Bx * (By_L - By_R)) / (rho_star_L * (S_L - SM))
+                w_star_L = w_L - (Bx * (Bz_L - Bz_R)) / (rho_star_L * (S_L - SM))
+                By_star_L = By_L
+                Bz_star_L = Bz_L
+                
+                v_star_R = v_R - (Bx * (By_R - By_L)) / (rho_star_R * (S_R - SM))
+                w_star_R = w_R - (Bx * (Bz_R - Bz_L)) / (rho_star_R * (S_R - SM))
+                By_star_R = By_R
+                Bz_star_R = Bz_R
+
+                F_L = self.flux(U_L, pT_L, u_L, v_L, w_L, By_L, Bz_L, Bx)
+                F_R = self.flux(U_R, pT_R, u_R, v_R, w_R, By_R, Bz_R, Bx)
+                U_double_star_R = np.array([rho_star_R, SM, v_double_star, w_double_star, pT_star, By_double_star, Bz_double_star])
+                U_double_star_L = np.array([rho_star_L, SM, v_double_star, w_double_star, pT_star, By_double_star, Bz_double_star])
+                U_star_L = np.array([rho_star_L, SM, v_L, w_L, pT_star, By_L, Bz_L])
+                U_star_R = np.array([rho_star_R, SM, v_R, w_R, pT_star, By_R, Bz_R])
                 
                 if S_L > 0:
-                    F_hlld = self.flux(U_L, pT_L, u_L, v_L, w_L, By_L, Bz_L, Bx)
+                    F_hlld = F_L
                 elif S_L <= 0 <= S_star_L:
-                    F_hlld = self.flux([rho_star_L, SM, v_star_L, w_star_L, pT_star, By_L, Bz_L], pT_star, SM, v_star_L, w_star_L, By_L, Bz_L, Bx)
-                elif S_star_L <= 0 <= S_star_R:
-                    F_hlld = self.flux([rho_star_R, SM, v_star_R, w_star_R, pT_star, By_R, Bz_R], pT_star, SM, v_star_R, w_star_R, By_R, Bz_R, Bx)
-                else:
-                    F_hlld = self.flux([rho_star_R, SM, v_double_star_R, w_double_star_R, pT_star, By_double_star_R, Bz_double_star_R], pT_star, SM, v_double_star_R, w_double_star_R, By_double_star_R, Bz_double_star_R, Bx)
+                    F_hlld = F_L + S_L*(U_star_L-U_L) + S_star_L*(U_double_star_L - U_star_L)
+                elif S_star_L <= 0 <= SM:
+                    F_hlld = F_L + S_L*(U_star_L-U_L) + S_star_R*(U_double_star_R - U_star_R)
+                elif SM <= 0 <= S_star_R:
+                    F_hlld = F_R + S_R*(U_star_R - U_R) + S_star_R*(U_double_star_R - U_star_R)
+                elif S_star_R <= 0 <= S_R:
+                    F_hlld = F_R + S_R*(U_star_R - U_R)
+                elif S_R <= 0:
+                    F_hlld = F_R
                 
                 for icomp in range(self.c.NUMQ):
                     numFluxX_plus[icomp, i, j] = F_hlld[icomp]

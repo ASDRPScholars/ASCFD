@@ -143,10 +143,8 @@ class Simulation:
                 raise RuntimeError("[FLUID] ICS not valid.")
            
         elif self.inp.system == "mhd2d":
-            self.grid.fill_grid(ics.diagonal_advection_2d)
-            print ("hi this is mhd!")
-            #if self.inp.ics == "orszag_tang":
-                #self.grid.fill_grid(ics.orszag_tang_2d)
+            if self.inp.ics == "orszag_tang":
+                self.grid.fill_grid(ics.orszag_tang_2d)
            
         else:
             raise RuntimeError("[FLUID] ICS not valid.")
@@ -177,7 +175,10 @@ class Simulation:
                     components = [self.grid.grid[q, i, j] for q in range(self.c.NUMQ)]
                     f.write(f"{x:.12f}, {y:.12f}, " + ", ".join(f"{comp:.8f}" for comp in components) + "\n")
        
-        fig, axs = plt.subplots(2, 2, figsize=(15, 15))
+        if self.inp.system == "euler2D":
+            fig, axs = plt.subplots(2, 2, figsize=(15, 15))
+        elif self.inp.system == "mhd2d":
+            fig, axs = plt.subplots(2, 3, figsize=(18, 12))
         axs = axs.ravel()  # Flatten the array to index by i
  
         for i in range(self.c.NUMQ):
