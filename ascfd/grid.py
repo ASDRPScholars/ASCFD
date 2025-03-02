@@ -41,12 +41,20 @@ class Grid2D:
             self.grid[var] = f(self.meshX, self.meshY, var)
 
     def plot(self):
-        # Create a figure with 4 subplots arranged in 2x2
-        fig, axs = plt.subplots(2, 2, figsize=(12, 10))
-        axs = axs.flatten()  # Flatten the 2x2 grid into a 1D array of axes
+        if self.inp.system=="euler2D":
+            # Create a figure with 4 subplots arranged in 2x2
+            fig, axs = plt.subplots(2, 2, figsize=(12, 10))
+            axs = axs.flatten()  # Flatten the 2x2 grid into a 1D array of axes
 
-        # Titles for each subplot corresponding to each variable
-        titles = ["Density", "UVel", "VVel", "Pressure"]
+            # Titles for each subplot corresponding to each variable
+            titles = ["Density", "UVel", "VVel", "Pressure"]
+        elif self.inp.system=="mhd2d":
+            # Create a figure with 6 subplots arranged in 3x2
+            fig, axs = plt.subplots(3, 2, figsize=(12, 10))
+            axs = axs.flatten()  # Flatten the 3x2 grid into a 1D array of axes
+
+            # Titles for each subplot corresponding to each variable
+            titles = ["Density", "UVel", "VVel", "Pressure", "X-Magnetic Field", "Y-Magnetic Field"]
 
         # Loop over the number of variables and plot each one using the 'plasma' colormap
         for i in range(self.num_vars):
