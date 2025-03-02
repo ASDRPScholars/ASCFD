@@ -24,9 +24,6 @@ class Simulation:
         self.applyICS()
         self.bcs.apply_bcs()
         self.grid.check_grid(self.c)
-        
-        self.bounds = self.find_bounds()
-
         #setup initial time to be the starting time from the inputs file.
         #The starting timestep will always be 0.
         self.t = self.inp.t0
@@ -85,6 +82,7 @@ class Simulation:
             if (self.timestepNum % self.inp.output_freq == 0) or (self.timestepNum == self.inp.nt-1):
                 self.output()
  
+ 
             # DEBUG
             # self.grid.plot()
             self.grid.check_grid(self.c)
@@ -94,7 +92,7 @@ class Simulation:
    
         print("SUCCESS!")
         return self.grid
-
+ 
     def plot(self):
         if not os.path.exists(self.inp.output_dir):
             os.makedirs(self.inp.output_dir)
@@ -129,6 +127,7 @@ class Simulation:
         plt.close()
  
    
+ 
     def applyICS(self):
  
         if self.inp.system == "euler2D":
@@ -188,7 +187,6 @@ class Simulation:
                       self.grid.y[self.grid.Nghost], self.grid.y[-self.grid.Nghost-1]]
            
             im = axs[i].imshow(plot_data, origin='lower', extent=extent)
-            
             plt.colorbar(im, ax=axs[i])
             axs[i].set_title(self.c.variable_names[i])
             axs[i].set_xlabel('x')
@@ -198,16 +196,12 @@ class Simulation:
         plt.tight_layout()
         fig.savefig(output_plotname)
         plt.close()
-        
-    def find_bounds(self):
-        bounds = []  # List to store (vmin, vmax) tuples for each component
-        for i in range(self.c.NUMQ):  # Loop over all components
-            plot_data = self.grid.grid[i, self.grid.Nghost:-self.grid.Nghost, self.grid.Nghost:-self.grid.Nghost].T
-            vmin = plot_data.min() - 0.1  # Compute vmin with padding
-            vmax = plot_data.max() + 0.1  # Compute vmax with padding
-            bounds.append((vmin, vmax))  # Store bounds for this component
-        return bounds
-
+   
+ 
+ 
+ 
+ 
+ 
     def generate_movie(self):
         # Create a directory for the frames if it doesn't exist
         frames_dir = os.path.join(self.inp.output_dir, "frames")
