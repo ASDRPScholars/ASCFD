@@ -64,38 +64,38 @@ output_dir = "results_char"
 os.makedirs(output_dir, exist_ok=True)
 
 # Initial conditions
-# if IC_type == "sod":
-#     # Sod shock tube
-#     rho[:] = 1.0
-#     rho[x >= 0.5] = 0.125  # Right side density
+if IC_type == "sod":
+    # Sod shock tube
+    rho[:] = 1.0
+    rho[x >= 0.5] = 0.125  # Right side density
     
-#     p[:] = 1.0
-#     p[x >= 0.5] = 0.1  # Right side pressure
+    p[:] = 1.0
+    p[x >= 0.5] = 0.1  # Right side pressure
     
-#     u[:] = 0.0  # Velocity (zero everywhere)
+    u[:] = 0.0  # Velocity (zero everywhere)
 
-#     t_final = 0.2  # Final time
+    t_final = 0.2  # Final time
 
 
-# elif IC_type == "shu-osher":
-#     # Shu-Osher problem
-#     # Left state (post-shock)
-#     rho_l = 3.857143
-#     p_l = 10.33333
-#     u_l = 2.629369
+elif IC_type == "shu-osher":
+    # Shu-Osher problem
+    # Left state (post-shock)
+    rho_l = 3.857143
+    p_l = 10.33333
+    u_l = 2.629369
     
-#     # Right state (pre-shock with oscillations)
-#     rho_r = 1.0 + 0.2 * np.sin(5 * np.pi * x)  # Density with sine wave
-#     p_r = np.ones(Nx)
-#     u_r = np.zeros(Nx)
+    # Right state (pre-shock with oscillations)
+    rho_r = 1.0 + 0.2 * np.sin(5 * np.pi * x)  # Density with sine wave
+    p_r = np.ones(Nx)
+    u_r = np.zeros(Nx)
     
-#     # Combine left and right states
-#     shock_pos = 0.1
-#     rho = np.where(x < shock_pos, rho_l, rho_r)
-#     p = np.where(x < shock_pos, p_l, p_r)
-#     u = np.where(x < shock_pos, u_l, u_r)
+    # Combine left and right states
+    shock_pos = 0.1
+    rho = np.where(x < shock_pos, rho_l, rho_r)
+    p = np.where(x < shock_pos, p_l, p_r)
+    u = np.where(x < shock_pos, u_l, u_r)
     
-#     t_final = 0.18 # Final time
+    t_final = 0.18 # Final time
 
 # Convert to conservative variables
 
@@ -187,7 +187,7 @@ def compute_wavespeeds(rho_L, rho_R, u_L, u_R, pT_R, pT_L, Bx, rho_star_L, rho_s
     return S_M, S_star_L, S_star_R, S_L, S_R
 
 ## USE TOTAL PRESSURE FOR FLUX CALCULATIONS!! REGULAR PRESSURE IS JUST FOR GRAPHING (??) WHY IS REGULAR P SO IRRELVAENT — ITS NOT IN ANY OF THE FLUX EQUATIONS LOL like
-def HLLD_flux(rho_L, rho_R, p_L, p_R, u_L, u_R, v_L, v_R, w_L, w_R, Bx_L, Bx_R, By_L, By_R, Bz_L, Bz_R, E_L, E_R, pT_L, pT_R, pT_star,):
+def HLLD_flux(rho_L, rho_R, p_L, p_R, u_L, u_R, v_L, v_R, w_L, w_R, Bx_L, Bx_R, By_L, By_R, Bz_L, Bz_R, E_L, E_R, pT_L, pT_R, pT_star):
     """
     Compute HLLD fluxes
     """
@@ -369,7 +369,7 @@ t = 0.0
 step = 0
 while t < t_final:
     # Convert conservative -> primitive
-    rho, u, p = cons_to_prim(rho, mom, E)
+    rho, mu, mv, mw, Bx, By, Bz, E = cons_to_prim(rho, mu, mv, mw, Bx, By, Bz, E)
 
     # Compute speed of sound
     c = np.sqrt(gamma * p / rho)
@@ -380,17 +380,18 @@ while t < t_final:
     print(f"Time: {t:.6f}, Timestep Num: {step}")
 
     # Initialize flux arrays
-    F = np.zeros((3, Nx))
+    Fx = np.zeros((8, Nx, Ny))
+
     
     # Compute HLLC fluxes at each interface
-    for i in range(Nx-1):
-        # Left and right states
-        rho_L, u_L, p_L = rho[i], u[i], p[i]
-        rho_R, u_R, p_R = rho[i+1], u[i+1], p[i+1]
-        E_L, E_R = E[i], E[i+1]
-        
-        # Compute HLLD flux
-        F[:, i] = HLLD_flux(rho_L, rho_R, u_L, u_R, p_L, p_R, E_L, E_R)
+    for i in range(Nx - 1):
+            # Left and right states
+            rho_L, u_L, v_L, w_L, Bx_L, By_L, Bz_L, pT_L = rho[i], u[i], p[i]
+            rho_R, u_R, p_R = rho[i+1], u[i+1], p[i+1]
+            E_L, E_R = E[i], E[i+1]
+            
+            # Compute HLLD flux
+            Fx[:, i] = HLLD_flux(rho_L, rho_R, u_L, u_R, v_L, v_R, w_L, w_R, Bx_L, Bx_R, By_L, By_R, Bz_L, Bz_R, E_L, E_R, pT_L, pT_R, pT_star)
     
     # Update conservative variables
     rho[1:-1] = rho[1:-1] - dt/dx * (F[0, 1:Nx-1] - F[0, :Nx-2])
