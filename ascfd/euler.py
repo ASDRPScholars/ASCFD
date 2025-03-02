@@ -164,4 +164,3 @@ class Euler:
             else:
                 print("unsupported")
                 exit()
-
