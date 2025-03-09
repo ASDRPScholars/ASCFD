@@ -129,7 +129,7 @@ class Euler:
         else:
             raise RuntimeError(f"System not supported: {self.c.system}")
 
-        return flux_x, flux_y
+        # return flux_x, flux_y
 
 
  

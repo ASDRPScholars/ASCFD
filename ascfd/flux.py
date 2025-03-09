@@ -33,8 +33,6 @@ class Flux:
         #get density 
         if self.c.system == "euler2D":
             density = a_grid.grid[self.c.RHOCOMP]
-        elif self.c.system == "mhd2d":
-            density = a_grid.grid[self.c.RHOCOMP]
         else:
             raise RuntimeError("Density method needs to be implemented.")
             
@@ -77,8 +75,6 @@ class Flux:
         a_grid.assert_variable_type("prim")
 
         if self.c.system == "euler2D":
-            density = a_grid.grid[self.c.RHOCOMP]
-        elif self.c.system == "mhd2d":
             density = a_grid.grid[self.c.RHOCOMP]
         else:
             raise RuntimeError("Density method needs to be implemented.")
