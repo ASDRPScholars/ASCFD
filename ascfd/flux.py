@@ -132,7 +132,8 @@ class Flux:
 
         #get density 
         if self.c.system == "euler2D":
-            density = a_grid.grid[self.c.RHOCOMP]
+            print("HLLD on Euler is not supported!")
+            sys.exit()
         elif self.c.system == "mhd2d":
             density = a_grid.grid[self.c.RHOCOMP]
         else:
@@ -142,6 +143,7 @@ class Flux:
 
 
         U = a_grid.grid
+        print("shape of U:", np.shape(U))
         print(U)
         consU = self.euler.prim_to_cons(U)
         
