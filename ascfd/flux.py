@@ -20,7 +20,7 @@ class Flux:
         if self.type == "rusanov":
             self.flux_method = self.rusanov
         elif self.type == "hlld":
-            self.flux_method = self.hlld
+            self.flux_method = self.actual_hlld
         else:
             raise RuntimeError(f"Flux method not supported: {self.type}")
 
@@ -44,6 +44,7 @@ class Flux:
 
 
         U = a_grid.grid
+        print(U)
         consU = self.euler.prim_to_cons(U)
 
         fx, fy = self.euler.flux(U) #analytical flux
@@ -63,8 +64,6 @@ class Flux:
                     np.abs(a_grid.grid[self.c.VCOMP, i, j]) + a[i, j],
                     np.abs(a_grid.grid[self.c.VCOMP, i, j+1]) + a[i, j+1]
                 )
-
-
 
                 for icomp in range(self.c.NUMQ):
                     numFluxX_plus[icomp, i, j] = 0.5 * (fx[icomp, i+1, j] + fx[icomp, i, j]) - 0.5 * sMaxX * (consU[icomp, i+1, j] - consU[icomp, i, j])
@@ -128,31 +127,47 @@ class Flux:
         
         return F
     
-    def hlld(self, a_grid):
+    def hlld(self, a_grid, direction="x"):
         a_grid.assert_variable_type("prim")
 
-        U = a_grid.grid
-        consU = self.euler.prim_to_cons(U)
+        #get density 
+        if self.c.system == "euler2D":
+            density = a_grid.grid[self.c.RHOCOMP]
+        elif self.c.system == "mhd2d":
+            density = a_grid.grid[self.c.RHOCOMP]
+        else:
+            raise RuntimeError("Density method needs to be implemented.")
+            
+        a = np.sqrt(self.c.gamma * a_grid.grid[self.c.PCOMP] / density)
 
-        numFluxX_plus = np.zeros_like(a_grid.grid)
-        numFluxX_minus = np.zeros_like(a_grid.grid)
-        numFluxY_plus = np.zeros_like(a_grid.grid)
-        numFluxY_minus = np.zeros_like(a_grid.grid)
+
+        U = a_grid.grid
+        print(U)
+        consU = self.euler.prim_to_cons(U)
+        
+        F_hlld_array = np.zeros_like(U)  # Allocate flux array
 
         for i in range(a_grid.Nghost - 1, a_grid.Nx + a_grid.Nghost):
             for j in range(a_grid.Nghost - 1, a_grid.Ny + a_grid.Nghost):
                 Bx = U[self.c.B_XCOMP, i, j]
-                U_L = U[:, i, j]
-                U_R = U[:, i+1, j]
+                if direction == "y":
+                    U_L = U[:, i, j]
+                    U_R = U[:, i, j+1]
+                else:
+                    U_L = U[:, i, j]
+                    U_R = U[:, i+1, j]
                 
                 rho_L, u_L, v_L, p_L, Bx_L, By_L = U_L
                 rho_R, u_R, v_R, p_R, Bx_R, By_R = U_R
-                w_L=0
-                w_R=0
-                Bz_L=0
-                Bz_R=0
-                U_L=np.insert(U_L, 3, w_L)
-                U_R=np.insert(U_R, 3, w_R)
+                w_L = 0
+                w_R = 0
+                Bz_L = 0
+                Bz_R = 0
+                
+                print(U_L, U_R)
+                U_L = np.insert(U_L, 3, w_L)
+                U_R = np.insert(U_R, 3, w_R)
+                print(U_L, U_R)
                 
                 pT_L = p_L + 0.5 * (Bx**2 + By_L**2 + Bz_L**2)
                 pT_R = p_R + 0.5 * (Bx**2 + By_R**2 + Bz_R**2)
@@ -164,16 +179,15 @@ class Flux:
                 S_R = max(u_L + cf_L, u_R + cf_R)
                 
                 SM = ((S_R * rho_R * u_R - S_L * rho_L * u_L + pT_L - pT_R) /
-                      (S_R * rho_R - S_L * rho_L))
+                    (S_R * rho_R - S_L * rho_L))
                 pT_star = ((S_R * rho_R * pT_L - S_L * rho_L * pT_R + rho_R * rho_L * (S_R - u_R) * (S_L - u_L) * (u_R - u_L)) /
-                           (S_R * rho_R - S_L * rho_L))
+                        (S_R * rho_R - S_L * rho_L))
                 
                 rho_star_L = rho_L * (S_L - u_L) / (S_L - SM)
                 rho_star_R = rho_R * (S_R - u_R) / (S_R - SM)
 
                 S_star_L = SM - np.linalg.norm(Bx) / np.sqrt(rho_star_L)
                 S_star_R = SM + np.linalg.norm(Bx) / np.sqrt(rho_star_R)
-                
                 
                 sqrt_rho_L = np.sqrt(rho_star_L)
                 sqrt_rho_R = np.sqrt(rho_star_R)
@@ -185,16 +199,6 @@ class Flux:
                 By_double_star = (sqrt_rho_L * By_R + sqrt_rho_R * By_L + sqrt_rho_L * sqrt_rho_R * (v_R - v_L) * sign_Bx) / rho_sum
                 Bz_double_star = (sqrt_rho_L * Bz_R + sqrt_rho_R * Bz_L + sqrt_rho_L * sqrt_rho_R * (w_R - w_L) * sign_Bx) / rho_sum
                 
-                v_star_L = v_L - (Bx * (By_L - By_R)) / (rho_star_L * (S_L - SM))
-                w_star_L = w_L - (Bx * (Bz_L - Bz_R)) / (rho_star_L * (S_L - SM))
-                By_star_L = By_L
-                Bz_star_L = Bz_L
-                
-                v_star_R = v_R - (Bx * (By_R - By_L)) / (rho_star_R * (S_R - SM))
-                w_star_R = w_R - (Bx * (Bz_R - Bz_L)) / (rho_star_R * (S_R - SM))
-                By_star_R = By_R
-                Bz_star_R = Bz_R
-
                 F_L = self.flux(U_L, pT_L, u_L, v_L, w_L, By_L, Bz_L, Bx)
                 F_R = self.flux(U_R, pT_R, u_R, v_R, w_R, By_R, Bz_R, Bx)
                 U_double_star_R = np.array([rho_star_R, SM, v_double_star, w_double_star, pT_star, By_double_star, Bz_double_star])
@@ -214,9 +218,51 @@ class Flux:
                     F_hlld = F_R + S_R*(U_star_R - U_R)
                 elif S_R <= 0:
                     F_hlld = F_R
-                
-                for icomp in range(self.c.NUMQ):
-                    numFluxX_plus[icomp, i, j] = F_hlld[icomp]
-                    numFluxX_minus[icomp, i, j] = F_hlld[icomp]
+                else:
+                    F_hlld = np.zeros(6)
+                    raise ValueError
+                F_hlld_array[:, i, j] = F_hlld  # Store in flux array
 
+        return consU, F_hlld_array  # Return entire flux array
+    
+    # TODO: understand ai code
+    def actual_hlld(self, a_grid):
+        
+        a_grid.assert_variable_type("prim")
+
+        #get density 
+        if self.c.system == "euler2D":
+            density = a_grid.grid[self.c.RHOCOMP]
+        elif self.c.system == "mhd2d":
+            density = a_grid.grid[self.c.RHOCOMP]
+        else:
+            raise RuntimeError("Density method needs to be implemented.")
+            
+        a = np.sqrt(self.c.gamma * a_grid.grid[self.c.PCOMP] / density)
+
+
+        U = a_grid.grid
+        print(f"actual: {U}")
+        consU = self.euler.prim_to_cons(U)
+        
+        numFluxX_plus = np.zeros_like(a_grid.grid)
+        numFluxX_minus = np.zeros_like(a_grid.grid)
+        numFluxY_plus = np.zeros_like(a_grid.grid)
+        numFluxY_minus = np.zeros_like(a_grid.grid)
+        
+        # Get the conserved variables and x-direction fluxes
+        consU, flux_x = self.hlld(a_grid=a_grid, direction="x")
+        
+        # Get y-direction fluxes
+        _, flux_y = self.hlld(a_grid=a_grid, direction="y")
+        
+        for i in range(a_grid.Nghost - 1, a_grid.Nx + a_grid.Nghost):
+            for j in range(a_grid.Nghost - 1, a_grid.Ny + a_grid.Nghost):
+                for icomp in range(self.c.NUMQ):
+                    numFluxX_plus[icomp, i+1, j] = flux_x[icomp, i+1, j]
+                    numFluxX_minus[icomp, i, j] = flux_x[icomp, i, j]
+                    numFluxY_plus[icomp, i, j+1] = flux_y[icomp, i, j+1]
+                    numFluxY_minus[icomp, i, j] = flux_y[icomp, i, j]
+                    
+        # Return the results as needed
         return consU, numFluxX_plus, numFluxX_minus, numFluxY_plus, numFluxY_minus
