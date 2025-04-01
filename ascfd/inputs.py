@@ -64,6 +64,14 @@ class Inputs:
         self.bcs_lo = self.get_config_value(config, "Method", "bcs_lo", type_func=self.parse_bcs)
         self.bcs_hi = self.get_config_value(config, "Method", "bcs_hi", type_func=self.parse_bcs)
 
+        # Particle
+
+        self.particle_ic = self.get_config_value(config, "Particle", "particle_ic")
+        self.number_of_particles = self.get_config_value(config, "Particle", "number_of_particles", mandatory = False, default = 0, type_func = int)
+        self.seeding_per_timestep = self.get_config_value(config, "Particle", "seeding_per_timestep", mandatory = False, default = 0, type_func = int)
+        self.bounce_back_multiplier = self.get_config_value(config, "Particle", "bounce_back_multiplier", mandatory = False, default = 1.0, type_func = float)
+        self.max_number_of_bounces = self.get_config_value(config, "Particle", "max_number_of_bounces", mandatory = False, default = 3, type_func = int)
+
         # Output
         self.output_freq = self.get_config_value(
             config, "Output", "output_freq", type_func=int, mandatory=False, default=1
