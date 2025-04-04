@@ -1,4 +1,7 @@
-![ascfd logo](https://github.com/user-attachments/assets/3ca911f8-6cb8-489e-93fd-e65bcb236f54)
+
+![ascfd logo](https://github.com/user-attachments/assets/4d73c58c-e9b8-457e-993d-4614eb6b06d3#gh-dark-mode-only)
+![ascfd logo light](https://github.com/user-attachments/assets/8a1f67e1-8cfd-4b2c-8cc8-c01a25c1b6ed#gh-light-mode-only)
+
 ---
 <p align="center">
   <i align="center">A next-generation, hybrid MHD code for Hall-Effect Thruster simulation and design.</i>
@@ -45,8 +48,10 @@ For applied design usage:
 Coupling modules to keep electron and ion loops synchronized.
 
 ## Timeline
-![timeline](https://github.com/user-attachments/assets/1730f596-9a32-4b8d-81d4-9d76f6445a7a)
+![timeline](https://github.com/user-attachments/assets/1730f596-9a32-4b8d-81d4-9d76f6445a7a#gh-dark-mode-only)
+![timeline light](https://github.com/user-attachments/assets/a046df13-5f9d-4b7f-a934-ab6eae685489#gh-light-mode-only)
 
 ---
-![cse](https://github.com/user-attachments/assets/d91a05a4-8a67-4879-8e39-fde85355afc9)
+![cse](https://github.com/user-attachments/assets/d91a05a4-8a67-4879-8e39-fde85355afc9#gh-dark-mode-only)
+![cse light](https://github.com/user-attachments/assets/e3ee81c7-ac71-428e-a380-4190bcb09378#gh-light-mode-only)
 
