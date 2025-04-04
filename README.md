@@ -7,7 +7,9 @@
   <i align="center">A next-generation, hybrid MHD code for Hall-Effect Thruster simulation and design.</i>
 </p>
 
-![ascfd banner 2](https://github.com/user-attachments/assets/f08a45b3-4e36-41eb-a532-98c68c6b8db3)
+![ascfd banner 2](https://github.com/user-attachments/assets/f08a45b3-4e36-41eb-a532-98c68c6b8db3#gh-dark-mode-only)
+![ascfd banner light 2](https://github.com/user-attachments/assets/d4b7a7b0-d71e-4fb5-b672-d16ccdf0519c#gh-light-mode-only)
+
 ---
 
 **Built by the DeGrendele Simulation Lab.**
