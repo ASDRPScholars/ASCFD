@@ -164,15 +164,21 @@ class Simulation:
         else:
             raise RuntimeError("[FLUID] ICS not valid.")
 
+    def applyParticles(self):
+        """Particle Setup"""
+        # I assume this should function similar to apply ics?
+        # check if self.inp.particle_ic = ... 
+        pass
         
 
     def output(self):
         if not os.path.exists(self.inp.output_dir):
             os.makedirs(self.inp.output_dir)
+            os.makedirs(os.path.join(self.inp.output_dir, "frames"))
         
         # File naming convention: output_timestepNum.txt
-        output_filename = os.path.join(self.inp.output_dir, f"output_{str(self.timestepNum).zfill(6)}.txt")
-        output_plotname = os.path.join(self.inp.output_dir, f"output_{str(self.timestepNum).zfill(6)}.png")
+        output_filename = os.path.join(os.path.join(self.inp.output_dir, "frames"), f"output_{str(self.timestepNum).zfill(6)}.txt")
+        output_plotname = os.path.join(os.path.join(self.inp.output_dir, "frames"), f"output_{str(self.timestepNum).zfill(6)}.png")
 
         with open(output_filename, 'w') as f:
             # Write header
@@ -214,8 +220,8 @@ class Simulation:
     def generate_movie(self):
         # Create a directory for the frames if it doesn't exist
         frames_dir = os.path.join(self.inp.output_dir, "frames")
-        if not os.path.exists(frames_dir):
-            os.makedirs(frames_dir)
+        # if not os.path.exists(frames_dir):
+        #     os.makedirs(frames_dir)
 
         # List all the output files and sort them
         #output_files = sorted(glob.glob(os.path.join(self.inp.output_dir, "output_*.png")))
@@ -223,7 +229,7 @@ class Simulation:
         #movie_filename = os.path.join(self.inp.output_dir, "simulation_movie.mp4")
 
 
-        ffmpeg_command = f"ffmpeg -y -framerate 24 -i {self.inp.output_dir}/output_%06d.png -c:v libx264 -pix_fmt yuv420p {self.inp.output_dir}/movie.mp4"
+        ffmpeg_command = f"ffmpeg -y -framerate 24 -i {frames_dir}/output_%06d.png -c:v libx264 -pix_fmt yuv420p {self.inp.output_dir}/movie.mp4"
         os.system(ffmpeg_command)
 
 
