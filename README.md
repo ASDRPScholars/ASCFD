@@ -8,7 +8,7 @@
 </p>
 
 ![ascfd banner 2](https://github.com/user-attachments/assets/f08a45b3-4e36-41eb-a532-98c68c6b8db3#gh-dark-mode-only)
-![ascfd banner light 2](https://github.com/user-attachments/assets/d4b7a7b0-d71e-4fb5-b672-d16ccdf0519c#gh-light-mode-only)
+![ascfd banner light](https://github.com/user-attachments/assets/dad2f09c-c803-4399-add4-1c4e95a7b65b#gh-light-mode-only)
 
 ---
 
