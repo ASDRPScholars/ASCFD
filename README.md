@@ -48,4 +48,5 @@ Coupling modules to keep electron and ion loops synchronized.
 ![timeline](https://github.com/user-attachments/assets/1730f596-9a32-4b8d-81d4-9d76f6445a7a)
 
 ---
-![cse](https://github.com/user-attachments/assets/38eca539-1e03-4236-becc-1bfc139643d3)
+![cse](https://github.com/user-attachments/assets/d91a05a4-8a67-4879-8e39-fde85355afc9)
+
