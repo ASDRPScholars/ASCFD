@@ -94,3 +94,31 @@ def riemann_2d(a_x, a_y, a_var):
         return p
     else:
         raise ValueError(f"Unexpected variable: {a_var}")
+
+def rayleigh_taylor(a_x, a_y, a_var):
+    """
+    Dense liquid on top of less dense liquid, mixed with gravity.
+    """
+    
+    rho = np.select([
+        (a_x > 0.5 + 0.2 * np.cos(np.pi * a_y - 1.5) - 0.05),
+        (a_x <= 0.5 + 0.2 * np.cos(np.pi * a_y - 1.5) - 0.05)
+    ], [2, 1])
+    
+    v = 0
+    u = 0
+    
+    # !!change g and h later to dynamic code!!
+    p = rho * 9.81 * (400 - a_x)
+    
+    if a_var == 0: #RHOCOMP
+        return rho
+    elif a_var == 1: #UCOMP
+        return u
+    elif a_var == 2: #VCOMP
+        return v
+    elif a_var == 3: #PCOMP
+        return p
+    else:
+        raise ValueError(f"Unexpected variable: {a_var}")
+    
