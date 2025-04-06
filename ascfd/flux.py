@@ -15,9 +15,9 @@ class Flux:
         self.type = a_type
         self.c = a_constants
 
-        self.euler = Euler(self.c)
+        self.euler = Euler(self.c) # initialize the euler solver
 
-
+        # select the flux method based on the type
         if self.type == "rusanov":
             self.flux_method = self.rusanov
         elif self.type == "rusanov_vectorized":
@@ -46,7 +46,7 @@ class Flux:
         U = a_grid
         consU = self.euler.prim_to_cons(U)
 
-        fx, fy = self.euler.flux(U) #analytical flux
+        fx, fy = self.euler.flux(U) # analytical flux
 
         numFluxX_plus = np.zeros_like(a_grid)
         numFluxX_minus = np.zeros_like(a_grid)
@@ -64,8 +64,7 @@ class Flux:
                     np.abs(a_grid[self.c.VCOMP, i, j+1]) + a[i, j+1]
                 )
 
-
-
+                # compute flux components for each variable
                 for icomp in range(self.c.NUMQ):
                     numFluxX_plus[icomp, i, j] = 0.5 * (fx[icomp, i+1, j] + fx[icomp, i, j]) - 0.5 * sMaxX * (consU[icomp, i+1, j] - consU[icomp, i, j])
                     numFluxX_minus[icomp, i, j] = 0.5 * (fx[icomp, i, j] + fx[icomp, i-1, j]) - 0.5 * sMaxX * (consU[icomp, i, j] - consU[icomp, i-1, j])
@@ -151,23 +150,23 @@ class Flux:
         a_grid.assert_variable_type("prim")
 
         if self.c.system == "euler2D":
-            density = a_grid.grid[self.c.RHOCOMP]
+            density = a_grid.grid[self.c.RHOCOMP] # extract density
         else:
             raise RuntimeError("Density method needs to be implemented.")
         
-        a = np.sqrt(self.c.gamma * a_grid.grid[self.c.PCOMP] / density)
+        a = np.sqrt(self.c.gamma * a_grid.grid[self.c.PCOMP] / density) # compute sound speed
 
-        U = a_grid.grid
-        consU = self.euler.prim_to_cons(U)
+        U = a_grid.grid  # get primitive variables
+        consU = self.euler.prim_to_cons(U) # convert to conserved variables
 
-        fx, fy = self.euler.flux(U)  # analytical flux
+        fx, fy = self.euler.flux(U) # compute analytical fluxes
 
         numFluxX_plus = np.zeros_like(a_grid.grid)
         numFluxX_minus = np.zeros_like(a_grid.grid)
         numFluxY_plus = np.zeros_like(a_grid.grid)
         numFluxY_minus = np.zeros_like(a_grid.grid)
 
-        # Calculate the maximum wave speed
+        # calculate the maximum wave speed
         max_speed_x = np.max(np.abs(U[self.c.UCOMP]) + a)
         max_speed_y = np.max(np.abs(U[self.c.VCOMP]) + a)
 
