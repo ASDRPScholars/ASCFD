@@ -63,6 +63,14 @@ class Inputs:
         self.flux = self.get_config_value(config, "Method", "flux")
         self.bcs_lo = self.get_config_value(config, "Method", "bcs_lo", type_func=self.parse_bcs)
         self.bcs_hi = self.get_config_value(config, "Method", "bcs_hi", type_func=self.parse_bcs)
+        self.do_gravity = self.get_config_value(
+            config,
+            "Method",
+            "do_gravity",
+            type_func = bool,
+            mandatory = False,
+            default = False
+        )
 
         # Output
         self.output_freq = self.get_config_value(

@@ -4,17 +4,19 @@ from ascfd.constants import Constants
 class Euler:
 
     def __init__(self, a_constants : Constants):
-    
-        self.c = a_constants
+    # Initialize the Euler solver with a Constants 
+        self.c = a_constants # Store the constants
 
     
     def prim_to_cons(self, a_prim):
         cons = np.zeros_like(a_prim)
 
         if self.c.system == "euler2D":
+            # Primitive to conservative
             cons[self.c.RHOCOMP] = a_prim[self.c.RHOCOMP]
             cons[self.c.MUCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.UCOMP]
             cons[self.c.MVCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.VCOMP]
+           # Energy computation
             E = (a_prim[self.c.PCOMP] / ((self.c.gamma - 1) * a_prim[self.c.RHOCOMP]) + 
                  0.5 * (a_prim[self.c.UCOMP]**2 + a_prim[self.c.VCOMP]**2))
             cons[self.c.ECOMP] = E * a_prim[self.c.RHOCOMP]
@@ -33,7 +35,9 @@ class Euler:
             prim[self.c.RHOCOMP] = a_cons[self.c.RHOCOMP]
             prim[self.c.UCOMP] = a_cons[self.c.MUCOMP] / a_cons[self.c.RHOCOMP]
             prim[self.c.VCOMP] = a_cons[self.c.MVCOMP] / a_cons[self.c.RHOCOMP]
+        # Calculate kinetic energy
             kinetic_energy = 0.5 * (prim[self.c.UCOMP]**2 + prim[self.c.VCOMP]**2)
+        # Compute pressure
             prim[self.c.PCOMP] = (self.c.gamma - 1) * (
                 a_cons[self.c.ECOMP] - a_cons[self.c.RHOCOMP] * kinetic_energy
             )
@@ -54,6 +58,7 @@ class Euler:
         flux_y = np.zeros_like(a_prim)
 
         if self.c.system == "euler2D":
+            # Extract primitive variables
             rho = a_prim[self.c.RHOCOMP]
             u = a_prim[self.c.UCOMP]
             v = a_prim[self.c.VCOMP]
@@ -64,7 +69,7 @@ class Euler:
             E = rho * (e + 0.5 * (u**2 + v**2))
             
             # Flux in x-direction
-            flux_x[self.c.RHOCOMP] = rho * u
+            flux_x[self.c.RHOCOMP] = rho * u # Flux of mass
             flux_x[self.c.MUCOMP] = rho * u**2 + p
             flux_x[self.c.MVCOMP] = rho * u * v
             flux_x[self.c.ECOMP] = (E + p) * u
@@ -72,14 +77,19 @@ class Euler:
             # Flux in y-direction
             flux_y[self.c.RHOCOMP] = rho * v
             flux_y[self.c.MUCOMP] = rho * u * v
-            
-            print (self.c.ics)
-            # Add gravity to MVCOMP for rayleigh_taylor only
-            if self.c.ics == "rayleigh_taylor":
-                flux_y[self.c.MVCOMP] = rho * v**2 + p + rho * -9.81
-                # print ("EULER SEES RAYLEIGH")
-            else:
-                flux_y[self.c.MVCOMP] = rho * v**2 + p
+
+#             Matthew's code:
+#             print (self.c.ics)
+#             # Add gravity to MVCOMP for rayleigh_taylor only
+#             if self.c.ics == "rayleigh_taylor":
+#                 flux_y[self.c.MVCOMP] = rho * v**2 + p + rho * -9.81
+#                 # print ("EULER SEES RAYLEIGH")
+#             else:
+#                 flux_y[self.c.MVCOMP] = rho * v**2 + p
+
+            flux_y[self.c.MVCOMP] = rho * v**2 + p
+            if self.c.do_gravity == True:
+                flux_y[self.c.MVCOMP] -= (rho * g)
 
             flux_y[self.c.ECOMP] = (E + p) * v
 
