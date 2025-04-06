@@ -17,7 +17,7 @@ from ascfd.bcs import BoundaryConditions
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-
+from ascfd.flux import rusanov_vectorized_jittesting
 class Simulation:
     def __init__(self, a_inputs):
         self.inp = a_inputs
@@ -63,7 +63,8 @@ class Simulation:
             
             if  self.inp.timeStepper == "RK1":
                 #returns numerical flux and conservative variables at interface
-                consU, numFluxX_plus, numFluxX_minus, numFluxY_plus, numFluxY_minus = self.flux.getFlux(self.grid)
+                self.grid.assert_variable_type("prim")
+                consU, numFluxX_plus, numFluxX_minus, numFluxY_plus, numFluxY_minus = self.flux.getFlux(self.grid.grid, self.grid.Nx, self.grid.Ny, self.grid.Nghost)
 
                 U_new = np.copy(consU)  # Start with the current conservative variables
 
