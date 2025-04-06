@@ -32,7 +32,6 @@ class Simulation:
 
         self.bcs.apply_bcs()
         self.grid.check_grid(self.c)
-
         #setup initial time to be the starting time from the inputs file.
         #The starting timestep will always be 0.
         self.t = self.inp.t0
@@ -95,18 +94,14 @@ class Simulation:
             # assert np.all(np.isfinite(self.grid.grid)), f"Invalid values in grid at timestep {self.timestepNum}"
             # assert np.all(self.grid.grid[self.c.PCOMP] > 0), f"Negative pressure detected at timestep {self.timestepNum}"
 
-
-
-
             self.timestepNum += 1
             self.t += dt
-
+            
             #always output the last timestep.
             if (self.timestepNum % self.inp.output_freq == 0) or (self.timestepNum == self.inp.nt-1):
-                
                 self.output()
-
-
+ 
+ 
             # DEBUG
             # self.grid.plot()
             self.grid.check_grid(self.c)
@@ -116,28 +111,42 @@ class Simulation:
     
         print("SUCCESS!")
         return self.grid
-
+ 
     def plot(self):
         if not os.path.exists(self.inp.output_dir):
             os.makedirs(self.inp.output_dir)
 
-        fig, axs = plt.subplots(3, 1, figsize=(10, 15))
-
-        axs[0].scatter(self.grid.x, self.grid.grid[self.c.RHOCOMP, :], c="black")
-        axs[0].set_ylabel("Density")
-
-        axs[1].scatter(self.grid.x, self.grid.grid[self.c.UCOMP, :],  c="black")
-        axs[1].set_ylabel("Velocity")
-
-        axs[2].scatter(self.grid.x, self.grid.grid[self.c.PCOMP, :],  c="black")
-        axs[2].set_ylabel("Pressure")
-
+        if self.inp.system == "euler2D":
+            fig, axs = plt.subplots(3, 1, figsize=(10, 15))
+            axs[0].scatter(self.grid.x, self.grid.grid[self.c.RHOCOMP, :], c="black")
+            axs[0].set_ylabel("Density")
+ 
+            axs[1].scatter(self.grid.x, self.grid.grid[self.c.UCOMP, :],  c="black")
+            axs[1].set_ylabel("Velocity")
+ 
+            axs[2].scatter(self.grid.x, self.grid.grid[self.c.PCOMP, :],  c="black")
+            axs[2].set_ylabel("Pressure")
+ 
+        elif self.inp.system == "mhd2d":
+            fig, axs = plt.subplots(3, 1, figsize=(10, 15))
+            axs[0].scatter(self.grid.x, self.grid.grid[self.c.RHOCOMP, :], c="black")
+            axs[0].set_ylabel("Density")
+ 
+            axs[1].scatter(self.grid.x, self.grid.grid[self.c.UCOMP, :],  c="black")
+            axs[1].set_ylabel("Velocity")
+ 
+            axs[2].scatter(self.grid.x, self.grid.grid[self.c.PCOMP, :],  c="black")
+            axs[2].set_ylabel("Pressure")
+            
+            axs[3].scatter(self.grid.x, self.grid.grid[self.c.B_XCOMP, :],  c="black")
+            axs[3].set_ylabel("Magnetic Field")
+ 
         axs[0].set_title(f"Time: {self.t:.4f}")
         plt.savefig(f"{self.inp.output_dir}/plot_dt{str(self.timestepNum).zfill(6)}")
         plt.close()
-
-    
-
+ 
+   
+ 
     def applyICS(self):
 
         if self.inp.system == "euler2D":
@@ -155,15 +164,21 @@ class Simulation:
         else:
             raise RuntimeError("[FLUID] ICS not valid.")
 
+    def applyParticles(self):
+        """Particle Setup"""
+        # I assume this should function similar to apply ics?
+        # check if self.inp.particle_ic = ... 
+        pass
         
 
     def output(self):
         if not os.path.exists(self.inp.output_dir):
             os.makedirs(self.inp.output_dir)
+            os.makedirs(os.path.join(self.inp.output_dir, "frames"))
         
         # File naming convention: output_timestepNum.txt
-        output_filename = os.path.join(self.inp.output_dir, f"output_{str(self.timestepNum).zfill(6)}.txt")
-        output_plotname = os.path.join(self.inp.output_dir, f"output_{str(self.timestepNum).zfill(6)}.png")
+        output_filename = os.path.join(os.path.join(self.inp.output_dir, "frames"), f"output_{str(self.timestepNum).zfill(6)}.txt")
+        output_plotname = os.path.join(os.path.join(self.inp.output_dir, "frames"), f"output_{str(self.timestepNum).zfill(6)}.png")
 
         with open(output_filename, 'w') as f:
             # Write header
@@ -185,7 +200,7 @@ class Simulation:
             plot_data = self.grid.grid[i, self.grid.Nghost:-self.grid.Nghost, self.grid.Nghost:-self.grid.Nghost].T
             extent = [self.grid.x[self.grid.Nghost], self.grid.x[-self.grid.Nghost-1],
                       self.grid.y[self.grid.Nghost], self.grid.y[-self.grid.Nghost-1]]
-            
+           
             im = axs[i].imshow(plot_data, origin='lower', extent=extent)
             plt.colorbar(im, ax=axs[i])
             axs[i].set_title(self.c.variable_names[i])
@@ -196,17 +211,17 @@ class Simulation:
         plt.tight_layout()
         fig.savefig(output_plotname)
         plt.close()
-    
-
-
-
-
-
+   
+ 
+ 
+ 
+ 
+ 
     def generate_movie(self):
         # Create a directory for the frames if it doesn't exist
         frames_dir = os.path.join(self.inp.output_dir, "frames")
-        if not os.path.exists(frames_dir):
-            os.makedirs(frames_dir)
+        # if not os.path.exists(frames_dir):
+        #     os.makedirs(frames_dir)
 
         # List all the output files and sort them
         #output_files = sorted(glob.glob(os.path.join(self.inp.output_dir, "output_*.png")))
@@ -214,7 +229,7 @@ class Simulation:
         #movie_filename = os.path.join(self.inp.output_dir, "simulation_movie.mp4")
 
 
-        ffmpeg_command = f"ffmpeg -y -framerate 24 -i {self.inp.output_dir}/output_%06d.png -c:v libx264 -pix_fmt yuv420p {self.inp.output_dir}/movie.mp4"
+        ffmpeg_command = f"ffmpeg -y -framerate 24 -i {frames_dir}/output_%06d.png -c:v libx264 -pix_fmt yuv420p {self.inp.output_dir}/movie.mp4"
         os.system(ffmpeg_command)
 
 
