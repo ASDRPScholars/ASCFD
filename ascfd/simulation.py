@@ -17,7 +17,6 @@ from ascfd.bcs import BoundaryConditions
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from ascfd.flux import rusanov_vectorized_jittesting
 class Simulation:
     def __init__(self, a_inputs):
         self.inp = a_inputs
