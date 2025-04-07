@@ -94,3 +94,22 @@ def riemann_2d(a_x, a_y, a_var):
         return p
     else:
         raise ValueError(f"Unexpected variable: {a_var}")
+    
+def orszag_tang_2d(a_x, a_y, a_var):
+    """
+    Orszag-Tang vortex test case for 2D MHD.
+    """ 
+    if a_var == 0:  # RHOCOMP
+        return np.ones_like(a_x)
+    elif a_var == 1:  # UCOMP
+        return -np.sin(2 * np.pi * a_y)
+    elif a_var == 2:  # VCOMP
+        return np.sin(2 * np.pi * a_x)
+    elif a_var == 3:  # PCOMP
+        return 5/(12*np.pi)
+    elif a_var == 4:  # BX
+        return -np.sin(2 * np.pi * a_y)
+    elif a_var == 5:  # BY
+        return np.sin(4 * np.pi * a_x)
+    else:
+        raise ValueError(f"Unexpected variable: {a_var}")

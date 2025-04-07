@@ -24,10 +24,10 @@ class Euler:
             cons[self.c.RHOCOMP] = a_prim[self.c.RHOCOMP]
             cons[self.c.MUCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.UCOMP]
             cons[self.c.MVCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.VCOMP]
-            cons[self.c.BXCOMP] = a_prim[self.c.B_XCOMP]
-            cons[self.c.BYCOMP] = a_prim[self.c.B_YCOMP]
+            cons[self.c.BXCOMP] = a_prim[self.c.BXCOMP]
+            cons[self.c.BYCOMP] = a_prim[self.c.BYCOMP]
             E = (a_prim[self.c.PCOMP] / ((self.c.gamma - 1) * a_prim[self.c.RHOCOMP]) + 
-                 0.5 * (a_prim[self.c.UCOMP]**2 + a_prim[self.c.VCOMP]**2)) + 0.5 * (a_prim[self.c.B_XCOMP]**2 + a_prim[self.c.B_YCOMP]**2)
+                 0.5 * (a_prim[self.c.UCOMP]**2 + a_prim[self.c.VCOMP]**2)) + 0.5 * (a_prim[self.c.BXCOMP]**2 + a_prim[self.c.BYCOMP]**2)
             cons[self.c.ECOMP] = E * a_prim[self.c.RHOCOMP]
             
 
@@ -58,10 +58,10 @@ class Euler:
             prim[self.c.RHOCOMP] = a_cons[self.c.RHOCOMP]
             prim[self.c.UCOMP] = a_cons[self.c.MUCOMP] / a_cons[self.c.RHOCOMP]
             prim[self.c.VCOMP] = a_cons[self.c.MVCOMP] / a_cons[self.c.RHOCOMP]
-            prim[self.c.B_XCOMP] = a_cons[self.c.BXCOMP]
-            prim[self.c.B_YCOMP] = a_cons[self.c.BYCOMP]
+            prim[self.c.BXCOMP] = a_cons[self.c.BXCOMP]
+            prim[self.c.BYCOMP] = a_cons[self.c.BYCOMP]
             kinetic_energy = 0.5 * (prim[self.c.UCOMP]**2 + prim[self.c.VCOMP]**2)
-            magnetic_energy = 0.5 * (prim[self.c.B_XCOMP]**2 + prim[self.c.B_YCOMP]**2)
+            magnetic_energy = 0.5 * (prim[self.c.BXCOMP]**2 + prim[self.c.BYCOMP]**2)
             prim[self.c.PCOMP] = (self.c.gamma - 1) * (
                 a_cons[self.c.ECOMP] - a_cons[self.c.RHOCOMP] * kinetic_energy - magnetic_energy
             )
@@ -109,8 +109,8 @@ class Euler:
             u = a_prim[self.c.UCOMP]
             v = a_prim[self.c.VCOMP]
             p = a_prim[self.c.PCOMP]
-            b_x = a_prim[self.c.B_XCOMP]
-            b_y = a_prim[self.c.B_YCOMP]
+            b_x = a_prim[self.c.BXCOMP]
+            b_y = a_prim[self.c.BYCOMP]
             
             # Compute total energy 
             e = p / ((self.c.gamma - 1) * rho)

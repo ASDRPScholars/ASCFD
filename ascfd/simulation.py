@@ -17,7 +17,6 @@ from ascfd.bcs import BoundaryConditions
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-
 class Simulation:
     def __init__(self, a_inputs):
         self.inp = a_inputs
@@ -50,23 +49,69 @@ class Simulation:
 
             self.grid.assert_variable_type("prim")
             
-            #get density 
+            # Determine timestep dt based on CFL condition
             if self.inp.system == "euler2D":
                 density = self.grid.grid[self.c.RHOCOMP]
+                pressure = self.grid.grid[self.c.PCOMP]
+                u = self.grid.grid[self.c.UCOMP]
+                v = self.grid.grid[self.c.VCOMP]
+                # Ensure pressure and density are positive before sqrt
+                pressure = np.maximum(pressure, 1e-12)
+                density = np.maximum(density, 1e-12)
+                a = np.sqrt(self.c.gamma * pressure / density) # Sound speed
+                max_speed_x = np.max(np.abs(u) + a)
+                max_speed_y = np.max(np.abs(v) + a)
+                max_speed = max(max_speed_x, max_speed_y) # More robust estimate
+            
+            elif self.inp.system == "mhd2d":
+                density = self.grid.grid[self.c.RHOCOMP]
+                pressure = self.grid.grid[self.c.PCOMP]
+                u = self.grid.grid[self.c.UCOMP]
+                v = self.grid.grid[self.c.VCOMP]
+                Bx = self.grid.grid[self.c.BXCOMP]
+                By = self.grid.grid[self.c.BYCOMP]
+                
+                # Ensure pressure and density are positive
+                pressure = np.maximum(pressure, 1e-12)
+                density = np.maximum(density, 1e-12)
+                
+                a = np.sqrt(self.c.gamma * pressure / density) # Sound speed
+                # Alfven speed squared components
+                ca_sq_x = Bx**2 / density
+                ca_sq_y = By**2 / density
+                ca_sq_tot = ca_sq_x + ca_sq_y
+                
+                # Fast magnetosonic speed squared (cf^2)
+                # cf^2 = 0.5 * ( (a^2 + ca_tot^2) + sqrt( max( (a^2 + ca_tot^2)^2 - 4*a^2*ca_x^2 , 0.0 ) ) )
+                term_under_sqrt = (a**2 + ca_sq_tot)**2 - 4 * a**2 * ca_sq_x
+                cf_sq_x = 0.5 * ( (a**2 + ca_sq_tot) + np.sqrt(np.maximum(term_under_sqrt, 0.0)) )
+                cf_x = np.sqrt(cf_sq_x)
+                
+                term_under_sqrt = (a**2 + ca_sq_tot)**2 - 4 * a**2 * ca_sq_y # Use ca_sq_y for y-direction cf
+                cf_sq_y = 0.5 * ( (a**2 + ca_sq_tot) + np.sqrt(np.maximum(term_under_sqrt, 0.0)) )
+                cf_y = np.sqrt(cf_sq_y)
+                
+                # Max signal speed is max(|u|+cf_x, |v|+cf_y)
+                max_signal_x = np.max(np.abs(u) + cf_x)
+                max_signal_y = np.max(np.abs(v) + cf_y)
+                max_speed = max(max_signal_x, max_signal_y)
             
             else:
-                raise RuntimeError("Density method needs to be implemented.")
+                raise RuntimeError(f"System {self.inp.system} not supported for dt calculation.")
 
-            a = np.sqrt(self.c.gamma * self.grid.grid[self.c.PCOMP] / density)
-            max_speed = np.max(np.abs(self.grid.grid[self.c.UCOMP]) + np.abs(self.grid.grid[self.c.VCOMP]) + a)
+            # Calculate dt, ensuring it doesn't overshoot t_finish
             dt = min(self.inp.cfl * min(self.grid.dx, self.grid.dy) / max_speed, self.inp.t_finish - self.t)
-            
+            if dt <= 0: 
+                 raise ValueError(f"Calculated dt is zero or negative ({dt}). Check simulation parameters or state.")
+
             if  self.inp.timeStepper == "RK1":
                 #returns numerical flux and conservative variables at interface
-                consU, numFluxX_plus, numFluxX_minus, numFluxY_plus, numFluxY_minus = self.flux.getFlux(self.grid)
+                self.grid.assert_variable_type("prim")
+                consU, numFluxX_plus, numFluxX_minus, numFluxY_plus, numFluxY_minus = self.flux.getFlux(self.grid.grid, self.grid.Nx, self.grid.Ny, self.grid.Nghost)
 
                 U_new = np.copy(consU)  # Start with the current conservative variables
 
+                #FLUID UPDATE
                 for i in range(self.grid.Nghost, self.grid.Nx + self.grid.Nghost):
                     for j in range(self.grid.Nghost, self.grid.Ny + self.grid.Nghost):
                         for icomp in range(self.c.NUMQ):
@@ -74,6 +119,12 @@ class Simulation:
                                 (dt / self.grid.dx) * (numFluxX_plus[icomp, i, j] - numFluxX_minus[icomp, i, j]) +
                                 (dt / self.grid.dy) * (numFluxY_plus[icomp, i, j] - numFluxY_minus[icomp, i, j])
                             )
+
+                #Then, update flow field based on the embedded boundary.
+                
+                #take a step in particles
+                
+
 
                             
             else:
@@ -160,7 +211,11 @@ class Simulation:
                 self.grid.fill_grid(ics.riemann_2d)
             else:
                 raise RuntimeError("[FLUID] ICS not valid.")
-            
+           
+        elif self.inp.system == "mhd2d":
+            if self.inp.ics == "orszag_tang":
+                self.grid.fill_grid(ics.orszag_tang_2d)
+           
         else:
             raise RuntimeError("[FLUID] ICS not valid.")
 
@@ -172,13 +227,16 @@ class Simulation:
         
 
     def output(self):
-        if not os.path.exists(self.inp.output_dir):
-            os.makedirs(self.inp.output_dir)
-            os.makedirs(os.path.join(self.inp.output_dir, "frames"))
+        # Ensure the base output directory exists
+        os.makedirs(self.inp.output_dir, exist_ok=True)
+        
+        # Ensure the frames subdirectory exists
+        frames_dir = os.path.join(self.inp.output_dir, "frames")
+        os.makedirs(frames_dir, exist_ok=True)
         
         # File naming convention: output_timestepNum.txt
-        output_filename = os.path.join(os.path.join(self.inp.output_dir, "frames"), f"output_{str(self.timestepNum).zfill(6)}.txt")
-        output_plotname = os.path.join(os.path.join(self.inp.output_dir, "frames"), f"output_{str(self.timestepNum).zfill(6)}.png")
+        output_filename = os.path.join(frames_dir, f"output_{str(self.timestepNum).zfill(6)}.txt")
+        output_plotname = os.path.join(frames_dir, f"output_{str(self.timestepNum).zfill(6)}.png")
 
         with open(output_filename, 'w') as f:
             # Write header
@@ -191,8 +249,11 @@ class Simulation:
                     y = self.grid.y[j]
                     components = [self.grid.grid[q, i, j] for q in range(self.c.NUMQ)]
                     f.write(f"{x:.12f}, {y:.12f}, " + ", ".join(f"{comp:.8f}" for comp in components) + "\n")
-        
-        fig, axs = plt.subplots(2, 2, figsize=(15, 15))
+       
+        if self.inp.system == "euler2D":
+            fig, axs = plt.subplots(2, 2, figsize=(15, 15))
+        elif self.inp.system == "mhd2d":
+            fig, axs = plt.subplots(2, 3, figsize=(18, 12))
         axs = axs.ravel()  # Flatten the array to index by i
 
         for i in range(self.c.NUMQ):
