@@ -111,6 +111,7 @@ class Simulation:
 
                 U_new = np.copy(consU)  # Start with the current conservative variables
 
+                #FLUID UPDATE
                 for i in range(self.grid.Nghost, self.grid.Nx + self.grid.Nghost):
                     for j in range(self.grid.Nghost, self.grid.Ny + self.grid.Nghost):
                         for icomp in range(self.c.NUMQ):
@@ -118,6 +119,12 @@ class Simulation:
                                 (dt / self.grid.dx) * (numFluxX_plus[icomp, i, j] - numFluxX_minus[icomp, i, j]) +
                                 (dt / self.grid.dy) * (numFluxY_plus[icomp, i, j] - numFluxY_minus[icomp, i, j])
                             )
+
+                #Then, update flow field based on the embedded boundary.
+                
+                #take a step in particles
+                
+
 
                             
             else:
