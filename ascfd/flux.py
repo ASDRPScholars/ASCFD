@@ -26,6 +26,8 @@ class Flux:
             self.flux_method = self.hllc
         elif self.type == "hlld":
             self.flux_method = self.actual_hlld
+        elif self.type == "hlld_new":
+            self.flux_method = self.hlld_new
         else:
             raise RuntimeError(f"Flux method not supported: {self.type}")
 
@@ -554,3 +556,282 @@ class Flux:
                     
         # Return the results as needed
         return consU, numFluxX_plus, numFluxX_minus, numFluxY_plus, numFluxY_minus
+
+    def hlld_new(self, a_grid, a_Nx, a_Ny, a_Nghost):
+        """
+        Calculates the numerical flux using the HLLD approximate Riemann solver for MHD.
+        Based on the formulation by Miyoshi & Kusano (2005).
+        """
+        if self.c.system != "mhd2d":
+            raise NotImplementedError("HLLD flux is currently only implemented for mhd2d system.")
+        if self.c.NUMQ != 6:
+             raise ValueError("HLLD requires 6 variables (rho, u, v, p, Bx, By) in primitive state.")
+
+        rho = a_grid[self.c.RHOCOMP]; u = a_grid[self.c.UCOMP]; v = a_grid[self.c.VCOMP]
+        p = a_grid[self.c.PCOMP]; Bx = a_grid[self.c.BXCOMP]; By = a_grid[self.c.BYCOMP]
+        gamma = self.c.gamma
+        E = p / (gamma - 1.0) + 0.5 * rho * (u**2 + v**2) + 0.5 * (Bx**2 + By**2)
+        
+        consU = np.zeros_like(a_grid)
+        consU[self.c.RHOCOMP] = rho; consU[self.c.MUCOMP] = rho * u 
+        consU[self.c.MVCOMP] = rho * v; consU[self.c.ECOMP] = E
+        consU[self.c.BXCOMP] = Bx; consU[self.c.BYCOMP] = By
+        
+        fx, fy = self._calculate_mhd_fluxes(rho, u, v, p, E, Bx, By, gamma)
+        numFluxX = np.zeros_like(a_grid); numFluxY = np.zeros_like(a_grid)
+
+        for i in range(a_Nghost - 1, a_Nx + a_Nghost):
+            for j in range(a_Nghost, a_Ny + a_Nghost):
+                stateL = {'rho': rho[i, j], 'u': u[i, j], 'v': v[i, j], 'p': p[i, j], 'Bx': Bx[i, j], 'By': By[i, j], 'E': E[i, j]}
+                stateR = {'rho': rho[i+1, j], 'u': u[i+1, j], 'v': v[i+1, j], 'p': p[i+1, j], 'Bx': Bx[i+1, j], 'By': By[i+1, j], 'E': E[i+1, j]}
+                numFluxX[:, i, j] = self._hlld_1d_flux(stateL, stateR, consU[:, i, j], consU[:, i+1, j], fx[:, i, j], fx[:, i+1, j], gamma, direction='x')
+
+        for i in range(a_Nghost, a_Nx + a_Nghost):
+            for j in range(a_Nghost - 1, a_Ny + a_Nghost):
+                stateL = {'rho': rho[i, j], 'u': u[i, j], 'v': v[i, j], 'p': p[i, j], 'Bx': Bx[i, j], 'By': By[i, j], 'E': E[i, j]}
+                stateR = {'rho': rho[i, j+1], 'u': u[i, j+1], 'v': v[i, j+1], 'p': p[i, j+1], 'Bx': Bx[i, j+1], 'By': By[i, j+1], 'E': E[i, j+1]}
+                numFluxY[:, i, j] = self._hlld_1d_flux(stateL, stateR, consU[:, i, j], consU[:, i, j+1], fy[:, i, j], fy[:, i, j+1], gamma, direction='y')
+
+        numFluxX_plus = np.zeros_like(a_grid); numFluxX_minus = np.zeros_like(a_grid)
+        numFluxY_plus = np.zeros_like(a_grid); numFluxY_minus = np.zeros_like(a_grid)
+        i_int_slice = slice(a_Nghost, a_Nx + a_Nghost); j_int_slice = slice(a_Nghost, a_Ny + a_Nghost)
+        numFluxX_plus[:, i_int_slice, j_int_slice] = numFluxX[:, a_Nghost:a_Nx + a_Nghost, j_int_slice]
+        numFluxX_minus[:, i_int_slice, j_int_slice] = numFluxX[:, a_Nghost-1:a_Nx + a_Nghost-1, j_int_slice]
+        numFluxY_plus[:, i_int_slice, j_int_slice] = numFluxY[:, i_int_slice, a_Nghost:a_Ny + a_Nghost]
+        numFluxY_minus[:, i_int_slice, j_int_slice] = numFluxY[:, i_int_slice, a_Nghost-1:a_Ny + a_Nghost-1]
+        return consU, numFluxX_plus, numFluxX_minus, numFluxY_plus, numFluxY_minus
+
+    def _calculate_mhd_fluxes(self, rho, u, v, p, E, Bx, By, gamma):
+        p_tot = p + 0.5 * (Bx**2 + By**2)
+        fx = np.zeros((self.c.NUMQ,) + rho.shape); fy = np.zeros((self.c.NUMQ,) + rho.shape)
+        fx[0] = rho * u; fx[1] = rho * u**2 + p_tot - Bx**2; fx[2] = rho * u * v - Bx * By
+        fx[3] = (E + p_tot) * u - Bx * (u*Bx + v*By); fx[4] = 0.0; fx[5] = u * By - v * Bx
+        fy[0] = rho * v; fy[1] = rho * v * u - By * Bx; fy[2] = rho * v**2 + p_tot - By**2
+        fy[3] = (E + p_tot) * v - By * (u*Bx + v*By); fy[4] = v * Bx - u * By; fy[5] = 0.0
+        return fx, fy
+
+    def _hlld_1d_flux(self, stateL, stateR, UL, UR, FL, FR, gamma, direction='x'):
+        """
+        Computes the 1D HLLD flux for a given interface (L/R states).
+        Based on Miyoshi & Kusano (2005), Journal of Computational Physics 208, 315-334.
+        Handles rotation for y-direction.
+        """
+        NUMQ = UL.shape[0]
+        flux_hlld = np.zeros(NUMQ)
+        small_rho = 1e-12 # Avoid division by zero for density
+        small_p = 1e-12   # Avoid negative pressure/sound speed issues
+        small_num = 1e-14 # General small number for denominators
+
+        # --- Rotate states for y-direction --- 
+        if direction == 'y':
+            # Swap normal (u, Bx) and tangential (v, By) components
+            stateL['u'], stateL['v'] = stateL['v'], stateL['u']
+            stateL['Bx'], stateL['By'] = stateL['By'], stateL['Bx']
+            stateR['u'], stateR['v'] = stateR['v'], stateR['u']
+            stateR['Bx'], stateR['By'] = stateR['By'], stateR['Bx']
+            # Rotate conservative state vectors [rho, rhou, rhov, E, Bx, By]
+            UL_rot = UL.copy(); UR_rot = UR.copy()
+            UL_rot[1], UL_rot[2] = UL[2], UL[1]; UR_rot[1], UR_rot[2] = UR[2], UR[1] # Swap momenta
+            UL_rot[4], UL_rot[5] = UL[5], UL[4]; UR_rot[4], UR_rot[5] = UR[5], UR[4] # Swap B fields
+            # Rotate analytical flux vectors (G becomes F in rotated frame)
+            FL_rot = FL.copy(); FR_rot = FR.copy()
+            FL_rot[1], FL_rot[2] = FL[2], FL[1]; FR_rot[1], FR_rot[2] = FR[2], FR[1] # Swap momentum fluxes
+            FL_rot[4], FL_rot[5] = FL[5], FL[4]; FR_rot[4], FR_rot[5] = FR[5], FR[4] # Swap B field fluxes
+            UL, UR, FL, FR = UL_rot, UR_rot, FL_rot, FR_rot # Use rotated states
+            
+        # --- Extract states (normal direction is 'u', 'Bx') ---
+        # Left state
+        rho_L = max(stateL['rho'], small_rho)
+        u_L = stateL['u'] # Normal velocity
+        v_L = stateL['v'] # Tangential velocity 1
+        w_L = 0.0          # Tangential velocity 2 (Placeholder for 3D)
+        p_L = max(stateL['p'], small_p)
+        Bx_L = stateL['Bx'] # Normal B-field
+        By_L = stateL['By'] # Tangential B-field 1
+        Bz_L = 0.0          # Tangential B-field 2 (Placeholder for 3D)
+        # Right state
+        rho_R = max(stateR['rho'], small_rho)
+        u_R = stateR['u']
+        v_R = stateR['v']
+        w_R = 0.0
+        p_R = max(stateR['p'], small_p)
+        Bx_R = stateR['Bx']
+        By_R = stateR['By']
+        Bz_R = 0.0
+
+        # Enforce Bx=const across the interface (fundamental to 1D Riemann problem)
+        Bx = 0.5 * (Bx_L + Bx_R)
+        # if abs(Bx_L - Bx_R) > 1e-9 * (abs(Bx_L) + abs(Bx_R)): # Allow small tolerance
+        #      print(f"Warning: Bx_L ({Bx_L}) != Bx_R ({Bx_R}) at interface. Averaging.")
+        Bx_L = Bx_R = Bx 
+
+        # Other useful quantities
+        ptot_L = p_L + 0.5 * (Bx_L**2 + By_L**2 + Bz_L**2)
+        ptot_R = p_R + 0.5 * (Bx_R**2 + By_R**2 + Bz_R**2)
+        rho_sqrt_L = np.sqrt(rho_L)
+        rho_sqrt_R = np.sqrt(rho_R)
+        
+        # --- Calculate wave speeds --- 
+        # Sound speeds
+        a_L = np.sqrt(gamma * p_L / rho_L)
+        a_R = np.sqrt(gamma * p_R / rho_R)
+        # Fast magnetosonic speeds (Eq. 21 in M&K 2005)
+        B_perp_sq_L = By_L**2 + Bz_L**2
+        B_perp_sq_R = By_R**2 + Bz_R**2
+        cf_L_sq = 0.5 * (a_L**2 + (Bx**2 + B_perp_sq_L)/rho_L + np.sqrt(max( (a_L**2 + (Bx**2 + B_perp_sq_L)/rho_L)**2 - 4*a_L**2*Bx**2/rho_L, 0.0)) )
+        cf_L = np.sqrt(cf_L_sq)
+        cf_R_sq = 0.5 * (a_R**2 + (Bx**2 + B_perp_sq_R)/rho_R + np.sqrt(max( (a_R**2 + (Bx**2 + B_perp_sq_R)/rho_R)**2 - 4*a_R**2*Bx**2/rho_R, 0.0)) )
+        cf_R = np.sqrt(cf_R_sq)
+        
+        # Estimate signal speeds SL and SR (outermost fast waves)
+        SL = min(u_L - cf_L, u_R - cf_R)
+        SR = max(u_L + cf_L, u_R + cf_R)
+
+        # --- Determine Flux --- 
+        # Check if flow is super-fast magnetosonic
+        if SL >= 0:
+            flux_hlld = FL
+        elif SR <= 0:
+            flux_hlld = FR
+        else: # Subsonic/Transonic case
+            # --- Calculate HLL state (Eq. 30) --- 
+            inv_SR_minus_SL = 1.0 / (SR - SL)
+            rho_HLL = inv_SR_minus_SL * (SR * UR[0] - SL * UL[0] + FL[0] - FR[0])
+            rho_HLL = max(rho_HLL, small_rho) # Ensure positivity
+            rhou_HLL = inv_SR_minus_SL * (SR * UR[1] - SL * UL[1] + FL[1] - FR[1])
+            rhov_HLL = inv_SR_minus_SL * (SR * UR[2] - SL * UL[2] + FL[2] - FR[2])
+            #rhow_HLL = inv_SR_minus_SL * (SR * UR[3] - SL * UL[3] + FL[3] - FR[3]) # If 3D
+            E_HLL = inv_SR_minus_SL * (SR * UR[3] - SL * UL[3] + FL[3] - FR[3]) # Adjusted index for 2D MHD E
+            # Bx is constant UL[4]
+            By_HLL = inv_SR_minus_SL * (SR * UR[5] - SL * UL[5] + FL[5] - FR[5]) # Adjusted index for 2D MHD By
+            # Bz_HLL = inv_SR_minus_SL * (SR * UR[6] - SL * UL[6] + FL[6] - FR[6]) # If 3D
+            
+            # Middle wave speed (contact) S_M = u* (Eq. 31)
+            S_M = rhou_HLL / rho_HLL
+            
+            # Total pressure in star regions p* (Eq. 35)
+            ptot_star = inv_SR_minus_SL * ( (SR - u_R)*rho_R*u_L - (SL - u_L)*rho_L*u_R + SR*ptot_R - SL*ptot_L ) # Simplified form from M&K notes
+            # ptot_star = inv_SR_minus_SL * (SR*ptot_R - SL*ptot_L + rho_L*u_L*(SL-u_L) - rho_R*u_R*(SR-u_R)) # Original form
+            ptot_star = max(ptot_star, small_p) # Ensure positivity
+
+            # --- Calculate Star (*) States --- 
+            # Avoid division by zero/negative density by checking speeds vs S_M
+            # Left Star State (*L)
+            if abs(SL - S_M) < small_num * max(abs(SL), abs(S_M)): # Handle degenerate case SL = SM
+                 rho_star_L = rho_HLL # Or some average, density becomes multi-valued
+                 # Simplified states or alternative handling needed here. Using HLL state as fallback.
+                 UstarL = np.array([rho_HLL, rhou_HLL, rhov_HLL, E_HLL, Bx, By_HLL]) 
+            else: 
+                rho_star_L = rho_L * (SL - u_L) / (SL - S_M) # Eq. 37
+                rho_star_L = max(rho_star_L, small_rho)
+                # Denominator for v*, By*, E* (Eq. 41)
+                den_L = rho_L * (SL - u_L) * (SL - S_M) - Bx**2
+                if abs(den_L) < small_num: den_L = small_num * np.sign(den_L) if den_L != 0 else small_num
+
+                u_star_L = S_M # Normal velocity is S_M
+                v_star_L = v_L - Bx * By_L * (S_M - u_L) / den_L # Eq. 38
+                w_star_L = w_L #- Bx * Bz_L * (S_M - u_L) / den_L # 3D
+                By_star_L = By_L * (rho_L * (SL - u_L)**2 - Bx**2) / den_L # Eq. 39
+                # Bz_star_L = Bz_L * (rho_L * (SL - u_L)**2 - Bx**2) / den_L # 3D
+                
+                # Energy E* (Eq. 40, using dot product form)
+                v_dot_B_L = u_L*Bx + v_L*By_L + w_L*Bz_L
+                v_star_dot_B_star_L = S_M*Bx + v_star_L*By_star_L #+ w_star_L*Bz_star_L
+                E_star_L = ((SL - u_L) * UL[3] - ptot_L * u_L + ptot_star * S_M + Bx * (v_dot_B_L - v_star_dot_B_star_L)) / (SL - S_M)
+
+                UstarL = np.array([rho_star_L, rho_star_L * S_M, rho_star_L * v_star_L, E_star_L, Bx, By_star_L])
+            
+            # Right Star State (*R)
+            if abs(SR - S_M) < small_num * max(abs(SR), abs(S_M)): # Handle degenerate case SR = SM
+                rho_star_R = rho_HLL # Fallback
+                UstarR = np.array([rho_HLL, rhou_HLL, rhov_HLL, E_HLL, Bx, By_HLL])
+            else:
+                rho_star_R = rho_R * (SR - u_R) / (SR - S_M) # Eq. 37
+                rho_star_R = max(rho_star_R, small_rho)
+                # Denominator for v*, By*, E* (Eq. 41)
+                den_R = rho_R * (SR - u_R) * (SR - S_M) - Bx**2
+                if abs(den_R) < small_num: den_R = small_num * np.sign(den_R) if den_R != 0 else small_num
+
+                u_star_R = S_M # Normal velocity is S_M
+                v_star_R = v_R - Bx * By_R * (S_M - u_R) / den_R # Eq. 38
+                w_star_R = w_R #- Bx * Bz_R * (S_M - u_R) / den_R # 3D
+                By_star_R = By_R * (rho_R * (SR - u_R)**2 - Bx**2) / den_R # Eq. 39
+                # Bz_star_R = Bz_R * (rho_R * (SR - u_R)**2 - Bx**2) / den_R # 3D
+                
+                # Energy E* (Eq. 40)
+                v_dot_B_R = u_R*Bx + v_R*By_R + w_R*Bz_R
+                v_star_dot_B_star_R = S_M*Bx + v_star_R*By_star_R #+ w_star_R*Bz_star_R
+                E_star_R = ((SR - u_R) * UR[3] - ptot_R * u_R + ptot_star * S_M + Bx * (v_dot_B_R - v_star_dot_B_star_R)) / (SR - S_M)
+                
+                UstarL = np.array([rho_star_L, rho_star_L * S_M, rho_star_L * v_star_L, E_star_L, Bx, By_star_L])
+                UstarR = np.array([rho_star_R, rho_star_R * S_M, rho_star_R * v_star_R, E_star_R, Bx, By_star_R])
+
+            # --- Calculate Alfven wave speeds in Star region --- (Eq. 42)
+            # S*_L = S_M - |Bx| / sqrt(rho*_L)
+            # S*_R = S_M + |Bx| / sqrt(rho*_R)
+            sqrt_rho_star_L = np.sqrt(rho_star_L)
+            sqrt_rho_star_R = np.sqrt(rho_star_R)
+            # Handle Bx = 0 explicitly for Alfven speeds
+            if abs(Bx) < small_num:
+                S_star_L = S_M
+                S_star_R = S_M
+            else:
+                S_star_L = S_M - abs(Bx) / sqrt_rho_star_L
+                S_star_R = S_M + abs(Bx) / sqrt_rho_star_R
+            
+            # --- Calculate Double-Star (**) State Variables --- 
+            # Note: u** = u* = S_M, rho** = rho*, Bx** = Bx
+            # Need v**, By**, E** (Eq. 43, 44)
+            sign_Bx = np.sign(Bx) if abs(Bx) > small_num else 0.0
+            inv_sqrt_rho_sum = 1.0 / (sqrt_rho_star_L + sqrt_rho_star_R)
+            
+            v_dstar = inv_sqrt_rho_sum * (sqrt_rho_star_L * v_star_L + sqrt_rho_star_R * v_star_R + sign_Bx * (By_star_R - By_star_L))
+            # w_dstar = inv_sqrt_rho_sum * (sqrt_rho_star_L * w_star_L + sqrt_rho_star_R * w_star_R + sign_Bx * (Bz_star_R - Bz_star_L)) # 3D
+            By_dstar = inv_sqrt_rho_sum * (sqrt_rho_star_L * By_star_R + sqrt_rho_star_R * By_star_L + sign_Bx * sqrt_rho_star_L * sqrt_rho_star_R * (v_star_R - v_star_L))
+            # Bz_dstar = inv_sqrt_rho_sum * (sqrt_rho_star_L * Bz_star_R + sqrt_rho_star_R * Bz_star_L + sign_Bx * sqrt_rho_star_L * sqrt_rho_star_R * (w_star_R - w_star_L)) # 3D
+
+            # Energy E** (Eq. 45)
+            # E** = E* - sqrt(rho*) sgn(Bx) [ (v* - v**)By* + (w* - w**)Bz* ]
+            E_dstar_L = E_star_L - sqrt_rho_star_L * sign_Bx * ((v_star_L - v_dstar) * By_star_L) # + (w_star_L - w_dstar)*Bz_star_L
+            E_dstar_R = E_star_R + sqrt_rho_star_R * sign_Bx * ((v_star_R - v_dstar) * By_star_R) # + (w_star_R - w_dstar)*Bz_star_R
+            
+            # Construct U**_L and U**_R vectors [rho*, rho*u*, rho*v**, E**, Bx, By**]
+            # Note: rho, u, Bx are same as U* state, v, By, E are different
+            UdstarL = UstarL.copy(); UdstarR = UstarR.copy()
+            UdstarL[2] = rho_star_L * v_dstar # rho* v**
+            UdstarR[2] = rho_star_R * v_dstar # rho* v**
+            UdstarL[3] = E_dstar_L           # E**_L
+            UdstarR[3] = E_dstar_R           # E**_R
+            UdstarL[5] = By_dstar            # By**
+            UdstarR[5] = By_dstar            # By**
+            
+            # --- Determine flux based on region (Eq. 36 from Miyoshi & Kusano 2005) ---
+            if 0 <= SL: # Region L
+                flux_hlld = FL
+            elif SL < 0 <= S_star_L: # Region *L
+                flux_hlld = FL + SL * (UstarL - UL)
+            elif S_star_L < 0 <= S_M: # Region **L
+                # F**_L = F*_L + S*_L(U**_L - U*_L)
+                # F**_L = FL + SL(U*L - UL) + S*_L(U**_L - U*_L)
+                flux_hlld = FL + SL * (UstarL - UL) + S_star_L * (UdstarL - UstarL)
+            elif S_M < 0 <= S_star_R: # Region **R
+                # F**_R = F*_R + S*_R(U**_R - U*_R)
+                # F**_R = FR + SR(U*R - UR) + S*_R(U**_R - U*_R)
+                flux_hlld = FR + SR * (UstarR - UR) + S_star_R * (UdstarR - UstarR)
+            elif S_star_R < 0 <= SR: # Region *R
+                flux_hlld = FR + SR * (UstarR - UR)
+            elif SR < 0: # Region R
+                flux_hlld = FR
+            else: # Should not happen
+                 # Fallback or raise error
+                 print(f"Warning: HLLD flux logic error. Speeds: SL={SL:.2e}, S*L={S_star_L:.2e}, SM={S_M:.2e}, S*R={S_star_R:.2e}, SR={SR:.2e}")
+                 raise ValueError("HLLD flux somethign is going wrong :o")
+
+        # --- Rotate flux back for y-direction --- 
+        if direction == 'y':
+            flux_hlld_rot = flux_hlld.copy()
+            flux_hlld_rot[1], flux_hlld_rot[2] = flux_hlld[2], flux_hlld[1] # Swap F_rhou <-> F_rhov
+            flux_hlld_rot[4], flux_hlld_rot[5] = flux_hlld[5], flux_hlld[4] # Swap F_Bx <-> F_By
+            return flux_hlld_rot
+        else:
+            return flux_hlld
