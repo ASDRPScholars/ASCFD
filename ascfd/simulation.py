@@ -238,10 +238,12 @@ class Simulation:
         
         # Ensure the frames subdirectory exists
         frames_dir = os.path.join(self.inp.output_dir, "frames")
+        frames_data_dir = os.path.join(self.inp.output_dir, "frames_data")
         os.makedirs(frames_dir, exist_ok=True)
+        os.makedirs(frames_data_dir, exist_ok=True)
         
         # File naming convention: output_timestepNum.txt
-        output_filename = os.path.join(frames_dir, f"output_{str(self.timestepNum).zfill(6)}.txt")
+        output_filename = os.path.join(frames_data_dir, f"output_{str(self.timestepNum).zfill(6)}.txt")
         output_plotname = os.path.join(frames_dir, f"output_{str(self.timestepNum).zfill(6)}.png")
 
         with open(output_filename, 'w') as f:
