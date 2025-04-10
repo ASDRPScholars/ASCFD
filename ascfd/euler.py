@@ -100,7 +100,7 @@ class Euler:
             
             # flux in y-direction
             flux_y[self.c.RHOCOMP] = rho * v # mass flux
-            flux_y[self.c.MUCOMP] = rho * u * v - g # momentum flux in x 
+            flux_y[self.c.MUCOMP] = rho * u * v - rho * self.c.g # momentum flux in x 
             flux_y[self.c.MVCOMP] = rho * v**2 + p # momentum flux in y 
             flux_y[self.c.ECOMP] = (E + p) * v # energy flux
 
@@ -173,6 +173,6 @@ class Euler:
                 print("unsupported")
                 exit()
 
-def g():
-    # definiton of gravity
-    g = rho * 9.81
+# def g(rho):
+#     # definiton of gravity
+#     return rho * 9.81
