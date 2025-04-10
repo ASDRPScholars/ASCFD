@@ -28,6 +28,7 @@ class Simulation:
         self.flux = Flux(self.c, self.inp.flux)
 
         self.applyICS()
+        print("RAN ICS???")
 
         self.bcs.apply_bcs()
         self.grid.check_grid(self.c)
@@ -150,6 +151,7 @@ class Simulation:
             
             #always output the last timestep.
             if (self.timestepNum % self.inp.output_freq == 0) or (self.timestepNum == self.inp.nt-1):
+                print("output called from run")
                 self.output()
  
  
@@ -215,6 +217,10 @@ class Simulation:
         elif self.inp.system == "mhd2d":
             if self.inp.ics == "orszag_tang":
                 self.grid.fill_grid(ics.orszag_tang_2d)
+            elif self.inp.ics == "field_loop":
+                print("before filling grid")
+                self.grid.fill_grid(ics.field_loop_2d)
+                print("after filling grid")
            
         else:
             raise RuntimeError("[FLUID] ICS not valid.")
@@ -271,6 +277,7 @@ class Simulation:
         fig.suptitle(f"Time: {self.t:.4f}, Timestep: {self.timestepNum}")
         plt.tight_layout()
         fig.savefig(output_plotname)
+        print ("figure saved")
         plt.close()
    
  
