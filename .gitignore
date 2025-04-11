@@ -2,7 +2,6 @@ output/
 __pycache__
 myEnv/
 *.txt
-*.png
 *.mp4
 *.gif
 *.pdf
