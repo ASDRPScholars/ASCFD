@@ -269,6 +269,11 @@ class Simulation:
             plot_data = self.grid.grid[i, self.grid.Nghost:-self.grid.Nghost, self.grid.Nghost:-self.grid.Nghost].T
             extent = [self.grid.x[self.grid.Nghost], self.grid.x[-self.grid.Nghost-1],
                       self.grid.y[self.grid.Nghost], self.grid.y[-self.grid.Nghost-1]]
+            
+            # Include ghost cells for debugging
+            plot_data = self.grid.grid[i, :, :].T
+            extent = [self.grid.x[0], self.grid.x[-1],
+                      self.grid.y[0], self.grid.y[-1]]
            
             im = axs[i].imshow(plot_data, origin='lower', extent=extent)
             plt.colorbar(im, ax=axs[i])
