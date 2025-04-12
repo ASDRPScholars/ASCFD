@@ -120,7 +120,7 @@ def field_loop_2d(a_x, a_y, a_var):
     Field loop problem for 2D MHD. Based on Lee & Deane (2009), Section 5.1
     """ 
     u_0 = np.sqrt(5)
-    theta = np.arctan(0.5)
+    theta = 1
     
     print("running field")
     
@@ -128,10 +128,12 @@ def field_loop_2d(a_x, a_y, a_var):
         return np.ones_like(a_x)
     elif a_var == 1:  # UCOMP
         print(f"u: {u_0 * np.cos(theta)}")
-        return u_0 * np.cos(theta * a_x)
+        return u_0 * np.cos(theta * a_x * 2 * np.pi)
+        return 1
     elif a_var == 2:  # VCOMP
         print(f"v: {u_0 * np.sin(theta)}")
-        return u_0 * np.sin(theta * a_y)
+        return u_0 * np.sin(theta * a_y * 2 * np.pi)
+        # return 1
     elif a_var == 3:  # PCOMP
         return np.ones_like(a_x)
     elif a_var == 4:  # BX
