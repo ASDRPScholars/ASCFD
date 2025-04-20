@@ -221,6 +221,10 @@ class Simulation:
                 print("before filling grid")
                 self.grid.fill_grid(ics.field_loop_2d)
                 print("after filling grid")
+            elif self.inp.ics == "rotor":
+                print("before filling grid")
+                self.grid.fill_grid(ics.rotor_2d)
+                print("after filling grid")
            
         else:
             raise RuntimeError("[FLUID] ICS not valid.")

@@ -115,6 +115,7 @@ def orszag_tang_2d(a_x, a_y, a_var):
     else:
         raise ValueError(f"Unexpected variable: {a_var}")
     
+    
 def field_loop_2d(a_x, a_y, a_var):
     """
     Field loop problem for 2D MHD. Based on Lee & Deane (2009), Section 5.1
@@ -148,5 +149,114 @@ def field_loop_2d(a_x, a_y, a_var):
         By = np.zeros_like(a_x)
         By[mask] = A0 * (a_x[mask] - x0) / r[mask]
         return By
+    else:
+        raise ValueError(f"Unexpected variable: {a_var}")
+    
+    
+def rotor_2d(a_x, a_y, a_var):
+    """
+    Rotor problem for 2D MHD.
+    """ 
+    u_0 = 2.0  # Angular velocity
+    r_0 = 0.1  # Radius of rigid rotation
+    r_1 = 0.115  # Outer radius of transition region
+    
+    # Distance from center point
+    r = np.sqrt((a_x - 0.5)**2 + (a_y - 0.5)**2)
+    
+    # Corrected taper function
+    f = np.zeros_like(r)
+    mask_ring = (r > r_0) & (r < r_1)
+    f[mask_ring] = (r_1 - r[mask_ring])/(r_1 - r_0)
+    
+    mask_core = r <= r_0
+    
+    if a_var == 0:  # RHOCOMP
+        rho = np.ones_like(a_x)  # default to 1 everywhere
+        rho[mask_core] = 10.0  # Higher density in the core
+        rho[mask_ring] = 1.0 + 9.0 * f[mask_ring]  # Smooth transition
+        
+        return rho
+        
+    elif a_var == 1:  # UCOMP - x-velocity
+        u = np.zeros_like(a_x)
+        
+        # Core region: rigid rotation
+        u[mask_core] = -u_0 * (a_y[mask_core] - 0.5)
+        
+        # Transition region: tapered rotation
+        u[mask_ring] = -u_0 * (a_y[mask_ring] - 0.5) * f[mask_ring]
+        
+        return u
+        
+    elif a_var == 2:  # VCOMP - y-velocity
+        v = np.zeros_like(a_y)
+        
+        # Core region: rigid rotation
+        v[mask_core] = u_0 * (a_x[mask_core] - 0.5)
+        
+        # Transition region: tapered rotation
+        v[mask_ring] = u_0 * (a_x[mask_ring] - 0.5) * f[mask_ring]
+        
+        return v
+        
+    elif a_var == 3:  # PCOMP - pressure
+        return np.ones_like(a_x)  # Uniform pressure
+        
+    elif a_var == 4:  # BX - x-component of magnetic field
+        # Uniform magnetic field in x-direction
+        return 5.0/np.sqrt(4.0 * np.pi) * np.ones_like(a_x)
+        
+    elif a_var == 5:  # BY - y-component of magnetic field
+        # Initially zero magnetic field in y-direction
+        return np.zeros_like(a_y)
+        
+    else:
+        raise ValueError(f"Unexpected variable: {a_var}")
+    
+#def rotor_2d(a_x, a_y, a_var):
+    
+    """
+    Rotor problem for 2D MHD.
+    """ 
+    u_0 = 2.0
+    r_0 = 0.1
+    r_1 = 0.115
+    r = np.sqrt((a_x - 0.5)**2 + (a_y - 0.5)**2)
+    f = (r_1 - r)/(r - r_0)
+    
+    mask_core = r <= r_0
+    mask_ring = (r > r_0) & (r < r_1)
+    
+    if a_var == 0:  # RHOCOMP
+        rho = np.ones_like(a_x)  # default to 1 everywhere
+
+        rho[mask_core] = 10
+        rho[mask_ring] = 1 + 9 * f[mask_ring]
+        
+        return rho
+        
+    elif a_var == 1:  # UCOMP
+        u = np.zeros_like(a_x)
+        
+        u[mask_core] = -(f[mask_core] * u_0 * (a_y[mask_core] - 0.5))/r_0
+        u[mask_ring] = -(f[mask_ring] * u_0 * (a_y[mask_ring] - 0.5))/r[mask_ring]
+
+        return u
+        
+    elif a_var == 2:  # VCOMP
+        v = np.zeros_like(a_y)
+        
+        v[mask_core] = (f[mask_core] * u_0 * (a_x[mask_core] - 0.5))/r_0
+        v[mask_ring] = (f[mask_ring] * u_0 * (a_x[mask_ring] - 0.5))/r[mask_ring]
+        
+        return v
+        
+    elif a_var == 3:  # PCOMP
+        return 1
+    elif a_var == 4:  # BX
+        return 5/(np.sqrt(4 * np.pi))
+    elif a_var == 5:  # BY
+        return 0
     else:
         raise ValueError(f"Unexpected variable: {a_var}")
