@@ -17,7 +17,6 @@ from ascfd.bcs import BoundaryConditions
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-
 class Simulation:
     def __init__(self, a_inputs):
         self.inp = a_inputs
@@ -32,7 +31,6 @@ class Simulation:
 
         self.bcs.apply_bcs()
         self.grid.check_grid(self.c)
-
         #setup initial time to be the starting time from the inputs file.
         #The starting timestep will always be 0.
         self.t = self.inp.t0
@@ -51,23 +49,69 @@ class Simulation:
 
             self.grid.assert_variable_type("prim")
             
-            #get density 
+            # Determine timestep dt based on CFL condition
             if self.inp.system == "euler2D":
                 density = self.grid.grid[self.c.RHOCOMP]
+                pressure = self.grid.grid[self.c.PCOMP]
+                u = self.grid.grid[self.c.UCOMP]
+                v = self.grid.grid[self.c.VCOMP]
+                # Ensure pressure and density are positive before sqrt
+                pressure = np.maximum(pressure, 1e-12)
+                density = np.maximum(density, 1e-12)
+                a = np.sqrt(self.c.gamma * pressure / density) # Sound speed
+                max_speed_x = np.max(np.abs(u) + a)
+                max_speed_y = np.max(np.abs(v) + a)
+                max_speed = max(max_speed_x, max_speed_y) # More robust estimate
+            
+            elif self.inp.system == "mhd2d":
+                density = self.grid.grid[self.c.RHOCOMP]
+                pressure = self.grid.grid[self.c.PCOMP]
+                u = self.grid.grid[self.c.UCOMP]
+                v = self.grid.grid[self.c.VCOMP]
+                Bx = self.grid.grid[self.c.BXCOMP]
+                By = self.grid.grid[self.c.BYCOMP]
+                
+                # Ensure pressure and density are positive
+                pressure = np.maximum(pressure, 1e-12)
+                density = np.maximum(density, 1e-12)
+                
+                a = np.sqrt(self.c.gamma * pressure / density) # Sound speed
+                # Alfven speed squared components
+                ca_sq_x = Bx**2 / density
+                ca_sq_y = By**2 / density
+                ca_sq_tot = ca_sq_x + ca_sq_y
+                
+                # Fast magnetosonic speed squared (cf^2)
+                # cf^2 = 0.5 * ( (a^2 + ca_tot^2) + sqrt( max( (a^2 + ca_tot^2)^2 - 4*a^2*ca_x^2 , 0.0 ) ) )
+                term_under_sqrt = (a**2 + ca_sq_tot)**2 - 4 * a**2 * ca_sq_x
+                cf_sq_x = 0.5 * ( (a**2 + ca_sq_tot) + np.sqrt(np.maximum(term_under_sqrt, 0.0)) )
+                cf_x = np.sqrt(cf_sq_x)
+                
+                term_under_sqrt = (a**2 + ca_sq_tot)**2 - 4 * a**2 * ca_sq_y # Use ca_sq_y for y-direction cf
+                cf_sq_y = 0.5 * ( (a**2 + ca_sq_tot) + np.sqrt(np.maximum(term_under_sqrt, 0.0)) )
+                cf_y = np.sqrt(cf_sq_y)
+                
+                # Max signal speed is max(|u|+cf_x, |v|+cf_y)
+                max_signal_x = np.max(np.abs(u) + cf_x)
+                max_signal_y = np.max(np.abs(v) + cf_y)
+                max_speed = max(max_signal_x, max_signal_y)
             
             else:
-                raise RuntimeError("Density method needs to be implemented.")
+                raise RuntimeError(f"System {self.inp.system} not supported for dt calculation.")
 
-            a = np.sqrt(self.c.gamma * self.grid.grid[self.c.PCOMP] / density)
-            max_speed = np.max(np.abs(self.grid.grid[self.c.UCOMP]) + np.abs(self.grid.grid[self.c.VCOMP]) + a)
+            # Calculate dt, ensuring it doesn't overshoot t_finish
             dt = min(self.inp.cfl * min(self.grid.dx, self.grid.dy) / max_speed, self.inp.t_finish - self.t)
-            
+            if dt <= 0: 
+                 raise ValueError(f"Calculated dt is zero or negative ({dt}). Check simulation parameters or state.")
+
             if  self.inp.timeStepper == "RK1":
                 #returns numerical flux and conservative variables at interface
-                consU, numFluxX_plus, numFluxX_minus, numFluxY_plus, numFluxY_minus = self.flux.getFlux(self.grid)
+                self.grid.assert_variable_type("prim")
+                consU, numFluxX_plus, numFluxX_minus, numFluxY_plus, numFluxY_minus = self.flux.getFlux(self.grid.grid, self.grid.Nx, self.grid.Ny, self.grid.Nghost)
 
                 U_new = np.copy(consU)  # Start with the current conservative variables
 
+                #FLUID UPDATE
                 for i in range(self.grid.Nghost, self.grid.Nx + self.grid.Nghost):
                     for j in range(self.grid.Nghost, self.grid.Ny + self.grid.Nghost):
                         for icomp in range(self.c.NUMQ):
@@ -75,6 +119,12 @@ class Simulation:
                                 (dt / self.grid.dx) * (numFluxX_plus[icomp, i, j] - numFluxX_minus[icomp, i, j]) +
                                 (dt / self.grid.dy) * (numFluxY_plus[icomp, i, j] - numFluxY_minus[icomp, i, j])
                             )
+
+                #Then, update flow field based on the embedded boundary.
+                
+                #take a step in particles
+                
+
 
                             
             else:
@@ -95,18 +145,14 @@ class Simulation:
             # assert np.all(np.isfinite(self.grid.grid)), f"Invalid values in grid at timestep {self.timestepNum}"
             # assert np.all(self.grid.grid[self.c.PCOMP] > 0), f"Negative pressure detected at timestep {self.timestepNum}"
 
-
-
-
             self.timestepNum += 1
             self.t += dt
-
+            
             #always output the last timestep.
             if (self.timestepNum % self.inp.output_freq == 0) or (self.timestepNum == self.inp.nt-1):
-                
                 self.output()
-
-
+ 
+ 
             # DEBUG
             # self.grid.plot()
             self.grid.check_grid(self.c)
@@ -116,28 +162,42 @@ class Simulation:
     
         print("SUCCESS!")
         return self.grid
-
+ 
     def plot(self):
         if not os.path.exists(self.inp.output_dir):
             os.makedirs(self.inp.output_dir)
 
-        fig, axs = plt.subplots(3, 1, figsize=(10, 15))
-
-        axs[0].scatter(self.grid.x, self.grid.grid[self.c.RHOCOMP, :], c="black")
-        axs[0].set_ylabel("Density")
-
-        axs[1].scatter(self.grid.x, self.grid.grid[self.c.UCOMP, :],  c="black")
-        axs[1].set_ylabel("Velocity")
-
-        axs[2].scatter(self.grid.x, self.grid.grid[self.c.PCOMP, :],  c="black")
-        axs[2].set_ylabel("Pressure")
-
+        if self.inp.system == "euler2D":
+            fig, axs = plt.subplots(3, 1, figsize=(10, 15))
+            axs[0].scatter(self.grid.x, self.grid.grid[self.c.RHOCOMP, :], c="black")
+            axs[0].set_ylabel("Density")
+ 
+            axs[1].scatter(self.grid.x, self.grid.grid[self.c.UCOMP, :],  c="black")
+            axs[1].set_ylabel("Velocity")
+ 
+            axs[2].scatter(self.grid.x, self.grid.grid[self.c.PCOMP, :],  c="black")
+            axs[2].set_ylabel("Pressure")
+ 
+        elif self.inp.system == "mhd2d":
+            fig, axs = plt.subplots(3, 1, figsize=(10, 15))
+            axs[0].scatter(self.grid.x, self.grid.grid[self.c.RHOCOMP, :], c="black")
+            axs[0].set_ylabel("Density")
+ 
+            axs[1].scatter(self.grid.x, self.grid.grid[self.c.UCOMP, :],  c="black")
+            axs[1].set_ylabel("Velocity")
+ 
+            axs[2].scatter(self.grid.x, self.grid.grid[self.c.PCOMP, :],  c="black")
+            axs[2].set_ylabel("Pressure")
+            
+            axs[3].scatter(self.grid.x, self.grid.grid[self.c.B_XCOMP, :],  c="black")
+            axs[3].set_ylabel("Magnetic Field")
+ 
         axs[0].set_title(f"Time: {self.t:.4f}")
         plt.savefig(f"{self.inp.output_dir}/plot_dt{str(self.timestepNum).zfill(6)}")
         plt.close()
-
-    
-
+ 
+   
+ 
     def applyICS(self):
 
         if self.inp.system == "euler2D":
@@ -151,19 +211,32 @@ class Simulation:
                 self.grid.fill_grid(ics.riemann_2d)
             else:
                 raise RuntimeError("[FLUID] ICS not valid.")
-            
+           
+        elif self.inp.system == "mhd2d":
+            if self.inp.ics == "orszag_tang":
+                self.grid.fill_grid(ics.orszag_tang_2d)
+           
         else:
             raise RuntimeError("[FLUID] ICS not valid.")
 
+    def applyParticles(self):
+        """Particle Setup"""
+        # I assume this should function similar to apply ics?
+        # check if self.inp.particle_ic = ... 
+        pass
         
 
     def output(self):
-        if not os.path.exists(self.inp.output_dir):
-            os.makedirs(self.inp.output_dir)
+        # Ensure the base output directory exists
+        os.makedirs(self.inp.output_dir, exist_ok=True)
+        
+        # Ensure the frames subdirectory exists
+        frames_dir = os.path.join(self.inp.output_dir, "frames")
+        os.makedirs(frames_dir, exist_ok=True)
         
         # File naming convention: output_timestepNum.txt
-        output_filename = os.path.join(self.inp.output_dir, f"output_{str(self.timestepNum).zfill(6)}.txt")
-        output_plotname = os.path.join(self.inp.output_dir, f"output_{str(self.timestepNum).zfill(6)}.png")
+        output_filename = os.path.join(frames_dir, f"output_{str(self.timestepNum).zfill(6)}.txt")
+        output_plotname = os.path.join(frames_dir, f"output_{str(self.timestepNum).zfill(6)}.png")
 
         with open(output_filename, 'w') as f:
             # Write header
@@ -176,8 +249,11 @@ class Simulation:
                     y = self.grid.y[j]
                     components = [self.grid.grid[q, i, j] for q in range(self.c.NUMQ)]
                     f.write(f"{x:.12f}, {y:.12f}, " + ", ".join(f"{comp:.8f}" for comp in components) + "\n")
-        
-        fig, axs = plt.subplots(2, 2, figsize=(15, 15))
+       
+        if self.inp.system == "euler2D":
+            fig, axs = plt.subplots(2, 2, figsize=(15, 15))
+        elif self.inp.system == "mhd2d":
+            fig, axs = plt.subplots(2, 3, figsize=(18, 12))
         axs = axs.ravel()  # Flatten the array to index by i
 
         for i in range(self.c.NUMQ):
@@ -185,7 +261,7 @@ class Simulation:
             plot_data = self.grid.grid[i, self.grid.Nghost:-self.grid.Nghost, self.grid.Nghost:-self.grid.Nghost].T
             extent = [self.grid.x[self.grid.Nghost], self.grid.x[-self.grid.Nghost-1],
                       self.grid.y[self.grid.Nghost], self.grid.y[-self.grid.Nghost-1]]
-            
+           
             im = axs[i].imshow(plot_data, origin='lower', extent=extent)
             plt.colorbar(im, ax=axs[i])
             axs[i].set_title(self.c.variable_names[i])
@@ -196,17 +272,17 @@ class Simulation:
         plt.tight_layout()
         fig.savefig(output_plotname)
         plt.close()
-    
-
-
-
-
-
+   
+ 
+ 
+ 
+ 
+ 
     def generate_movie(self):
         # Create a directory for the frames if it doesn't exist
         frames_dir = os.path.join(self.inp.output_dir, "frames")
-        if not os.path.exists(frames_dir):
-            os.makedirs(frames_dir)
+        # if not os.path.exists(frames_dir):
+        #     os.makedirs(frames_dir)
 
         # List all the output files and sort them
         #output_files = sorted(glob.glob(os.path.join(self.inp.output_dir, "output_*.png")))
@@ -214,7 +290,7 @@ class Simulation:
         #movie_filename = os.path.join(self.inp.output_dir, "simulation_movie.mp4")
 
 
-        ffmpeg_command = f"ffmpeg -y -framerate 24 -i {self.inp.output_dir}/output_%06d.png -c:v libx264 -pix_fmt yuv420p {self.inp.output_dir}/movie.mp4"
+        ffmpeg_command = f"ffmpeg -y -framerate 24 -i {frames_dir}/output_%06d.png -c:v libx264 -pix_fmt yuv420p {self.inp.output_dir}/movie.mp4"
         os.system(ffmpeg_command)
 
 
