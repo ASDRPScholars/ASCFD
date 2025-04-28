@@ -49,6 +49,9 @@ class Simulation:
 
             self.grid.assert_variable_type("prim")
             
+            # Store primitive variables at the start of the step for Powell terms
+            primU_n = np.copy(self.grid.grid) 
+            
             # Determine timestep dt based on CFL condition
             if self.inp.system == "euler2D":
                 density = self.grid.grid[self.c.RHOCOMP]
@@ -107,18 +110,48 @@ class Simulation:
             if  self.inp.timeStepper == "RK1":
                 #returns numerical flux and conservative variables at interface
                 self.grid.assert_variable_type("prim")
-                consU, numFluxX_plus, numFluxX_minus, numFluxY_plus, numFluxY_minus = self.flux.getFlux(self.grid.grid, self.grid.Nx, self.grid.Ny, self.grid.Nghost)
+                # Use primU_n to calculate flux, get consU_n
+                consU_n, numFluxX_plus, numFluxX_minus, numFluxY_plus, numFluxY_minus = self.flux.getFlux(primU_n, self.grid.Nx, self.grid.Ny, self.grid.Nghost) 
 
-                U_new = np.copy(consU)  # Start with the current conservative variables
+                U_new = np.copy(consU_n)  # Start with the current conservative variables
 
-                #FLUID UPDATE
-                for i in range(self.grid.Nghost, self.grid.Nx + self.grid.Nghost):
-                    for j in range(self.grid.Nghost, self.grid.Ny + self.grid.Nghost):
+                #FLUID UPDATE using finite volume method
+                # Interior domain indices for update
+                i_start, i_end = self.grid.Nghost, self.grid.Nx + self.grid.Nghost
+                j_start, j_end = self.grid.Nghost, self.grid.Ny + self.grid.Nghost
+                
+                for i in range(i_start, i_end):
+                    for j in range(j_start, j_end):
                         for icomp in range(self.c.NUMQ):
-                            U_new[icomp, i, j] = consU[icomp, i, j] - (
+                            U_new[icomp, i, j] = consU_n[icomp, i, j] - (
                                 (dt / self.grid.dx) * (numFluxX_plus[icomp, i, j] - numFluxX_minus[icomp, i, j]) +
                                 (dt / self.grid.dy) * (numFluxY_plus[icomp, i, j] - numFluxY_minus[icomp, i, j])
                             )
+
+                # Powell divergence cleaning for MHD
+                if self.inp.system == "mhd2d":
+                    # Calculate div(B) using central differences on consU_n
+                    divB = np.zeros_like(consU_n[0]) 
+                    # Need to calculate divB over the domain where U_new is updated + 1 layer for central diff
+                    # However, we only apply the source term within the main update loop domain.
+                    # Note: Using consU_n which contains Bx, By directly.
+                    for i in range(i_start, i_end): 
+                        for j in range(j_start, j_end):
+                            # Central difference requires i-1, i+1, j-1, j+1
+                            # Ensure indices are within the bounds where consU_n is valid (including ghosts)
+                            divB_x = (consU_n[self.c.BXCOMP, i + 1, j] - consU_n[self.c.BXCOMP, i - 1, j]) / (2.0 * self.grid.dx)
+                            divB_y = (consU_n[self.c.BYCOMP, i, j + 1] - consU_n[self.c.BYCOMP, i, j - 1]) / (2.0 * self.grid.dy)
+                            divB[i, j] = divB_x + divB_y
+
+                    # Calculate Powell source terms using primU_n and consU_n
+                    powell_source = calculate_powell_source(consU_n, primU_n, divB, self.c)
+
+                    # Apply Powell source terms to U_new
+                    for i in range(i_start, i_end):
+                        for j in range(j_start, j_end):
+                            for icomp in range(self.c.NUMQ):
+                                U_new[icomp, i, j] += dt * powell_source[icomp, i, j]
+
 
                 #Then, update flow field based on the embedded boundary.
                 
@@ -215,6 +248,8 @@ class Simulation:
         elif self.inp.system == "mhd2d":
             if self.inp.ics == "orszag_tang":
                 self.grid.fill_grid(ics.orszag_tang_2d)
+            elif self.inp.ics == "field_loop":
+                self.grid.fill_grid(ics.field_loop_2d)
            
         else:
             raise RuntimeError("[FLUID] ICS not valid.")
@@ -341,3 +376,22 @@ class Simulation:
         # ani.save(movie_filename, writer='ffmpeg', fps=10)
 
         # print(f"Movie saved as {movie_filename}")
+
+# Define a helper function to calculate the Powell source term outside the main loop for clarity
+def calculate_powell_source(consU, primU, divB, c):
+    """Calculates the Powell et al. (1999) source terms."""
+    Bx = consU[c.BXCOMP]
+    By = consU[c.BYCOMP]
+    u = primU[c.UCOMP]
+    v = primU[c.VCOMP]
+
+    powell_source = np.zeros_like(consU)
+    # S_rho = 0
+    powell_source[c.MUCOMP] = -Bx * divB
+    powell_source[c.MVCOMP] = -By * divB
+    # S_MWCOMP = 0 in 2D
+    powell_source[c.ECOMP] = -(u * Bx + v * By) * divB
+    powell_source[c.BXCOMP] = -u * divB
+    powell_source[c.BYCOMP] = -v * divB
+    # S_BZCOMP = 0 in 2D
+    return powell_source
