@@ -1,6 +1,6 @@
 from ascfd.inputs import Inputs
 from ascfd.simulation import Simulation
 
-inp = Inputs("problems/diag_advection.ini")
+inp = Inputs("problems/orszag_tang.ini")
 s = Simulation(inp)
 s.run()
