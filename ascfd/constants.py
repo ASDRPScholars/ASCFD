@@ -5,8 +5,14 @@ from ascfd.inputs import Inputs
 class Constants:
 
     def __init__(self, inputs: Inputs):
-
-        # Default ratio of specific heats (gamma)
+        
+        if self.do_gravity:
+            self.gravity = 9.81  # Define gravity
+            self.gravity_vector = [0.0, -self.gravity]  # Gravity acts downward
+        else:
+            self.gravity = 0.0  # No gravity
+            self.gravity_vector = [0.0, 0.0]  # Gravity is zero 
+      
         self.gamma = 1.4
         self.system = inputs.system
 
@@ -29,9 +35,10 @@ class Constants:
 
             self.system = "euler2D"
 
-            self.gamma = inputs.gammas[0] #gammas
+            # Set the gamma value from the `inputs.gammas`
+            self.gamma = inputs.gammas[0]
 
-
+            # Define the names of the variables
             self.variable_names = ["Density", "X-Velocity", "Y-Velocity", "Pressure"]
 
             self.NS = 1 
@@ -62,6 +69,7 @@ class Constants:
             # Number of species? (Assuming 1 for now for MHD)
             self.NS = 1
 
+            #Raise an error for invalid inputs
         else:
             #error for unsupported systems
             raise RuntimeError(f"system in inputs file is not supported: {inputs.system}")

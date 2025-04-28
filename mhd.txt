@@ -1,0 +1,38 @@
+These are some general guidelines discussed on 11/24/2024 for implementing
+mhd into ASCFD.
+
+In constants.py
+- We define Constants.system which is used in basically every other part of the code
+- We also define the indexing for variables. Add support for system == "2dmhd" + variables.
+
+
+Implmenet all the physics stuff in euler.py for MHD
+- This includes: prim_to_cons, cons_to_prim, flux, max_speed
+- This will require a good understanding of conservative variables and fluxes for MHD equations.
+- As a general rule, try to use self.c.system == "mhd"... So we don't mess with the euler2D code.
+
+
+flux.py
+- numerical method should be good to go. It's already looping over NUMQ which should be 5 in constants.py for MHD now.
+
+grid.py
+- should be good (assuming proper setup of constants module...)
+
+
+ics.py
+- These are all initializing euler problems (so they don't touch magnetic field).
+- you'll need to Initialize mhd problems.
+
+
+bcs.py
+- should be fine for now. There are fancier BCs for MHD, but lets come back to this.
+
+
+simulation.py
+- output() function. Will need support for 5 variables now instead of 4.
+
+
+- Really anywhere with system == "euler2D": we'll need system == 'mhd'
+
+inputs.py
+- I think this should be fine unless you want any specific MHD inputs...

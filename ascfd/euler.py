@@ -1,13 +1,12 @@
 import numpy as np
 from ascfd.constants import Constants
 
-class Euler:
 
+class Euler:
     def __init__(self, a_constants : Constants):
         # store constants and system parameters
         self.c = a_constants
 
-    
     def prim_to_cons(self, a_prim):
         cons = np.zeros_like(a_prim)
 
@@ -34,10 +33,8 @@ class Euler:
         else:
             # Raise error for unsupported systems
             raise RuntimeError(f"System not supported: {self.c.system}")    
-        
+
         return cons
-
-
 
     def cons_to_prim(self, a_cons):
         prim = np.zeros_like(a_cons)
@@ -68,10 +65,8 @@ class Euler:
 
         else:
             raise RuntimeError(f"System not supported: {self.c.system}")
-        
+
         return prim
-
-
 
     def flux(self, a_prim):
         """
@@ -115,22 +110,22 @@ class Euler:
             # Compute total energy 
             e = p / ((self.c.gamma - 1) * rho)
             E = rho * (e + 0.5 * (u**2 + v**2))
-            
+
             # Flux in x-direction
-            flux_x[self.c.RHOCOMP] = rho * u
-            flux_x[self.c.MUCOMP] = rho * u**2 + p + 0.5 * (b_x**2 + b_y**2) - b_x**2
-            flux_x[self.c.MVCOMP] = rho * u * v - b_x * b_y
-            flux_x[self.c.ECOMP] = (E + p + 0.5 * (b_x**2 + b_y**2)) * u - b_x * (u * b_x + v * b_y)
-            flux_x[self.c.BXCOMP] = 0
-            flux_x[self.c.BYCOMP] = u * b_y - v * b_x
+            flux_x[self.c.RHOCOMP] = rho * u  # Flux of mass
+            flux_x[self.c.MUCOMP] = rho * u**2 + p
+            flux_x[self.c.MVCOMP] = rho * u * v
+            flux_x[self.c.ECOMP] = (E + p) * u
 
             # Flux in y-direction
             flux_y[self.c.RHOCOMP] = rho * v
-            flux_y[self.c.MUCOMP] = rho * u * v - b_x * b_y
-            flux_y[self.c.MVCOMP] = rho * v**2 + p + 0.5 * (b_x**2 + b_y**2) - b_y**2
-            flux_y[self.c.ECOMP] = (E + p + 0.5 * (b_x**2 + b_y**2)) * v - b_y * (u * b_x + v * b_y)
-            flux_y[self.c.BXCOMP] = v * b_x - u * b_y
-            flux_y[self.c.BYCOMP] = 0
+            flux_y[self.c.MUCOMP] = rho * u * v
+
+            flux_y[self.c.MVCOMP] = rho * v**2 + p
+            if self.c.do_gravity == True:
+                flux_y[self.c.MVCOMP] -= (rho * 9.81)
+
+            flux_y[self.c.ECOMP] = (E + p) * v
 
         else:
             # raise error for unsupported systems
@@ -138,10 +133,7 @@ class Euler:
 
         return flux_x, flux_y
 
-
- 
     def get_max_speed(self, a_grid):
-
         if self.c.system == "euler2D":
             if a_grid.variables == "prim":
                 return np.max(a_grid.grid[self.c.UCOMP])
@@ -176,3 +168,4 @@ class Euler:
 def g():
     # definiton of gravity
     g = rho * 9.81
+

@@ -209,6 +209,8 @@ class Simulation:
                 self.grid.fill_grid(ics.double_mach_reflection_2d)
             elif self.inp.ics == "riemann_problem":
                 self.grid.fill_grid(ics.riemann_2d)
+            elif self.inp.ics == "rayleigh_taylor":
+                self.grid.fill_grid(ics.rayleigh_taylor)
             else:
                 raise RuntimeError("[FLUID] ICS not valid.")
            

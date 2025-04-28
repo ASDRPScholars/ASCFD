@@ -12,22 +12,24 @@ Notes:
 class BoundaryConditions:
     
     def __init__(self, grid: Grid2D, types_lo: tuple[str, str], types_hi: tuple[str, str]) -> None:
-        # store boundary condition types and associate grid object
-        self.types_lo = types_lo
-        self.types_hi = types_hi
-        self.grid = grid
+        # Initialize the boundary conditions for the low and high sides of the grid
+        self.types_lo = types_lo # Boundary condition types for the low side
+        self.types_hi = types_hi # Boundary condition types for the high side
+        self.grid = grid # Grid object containing the simulation data
 
-        # boundary condition function mappings
-        self.f_lo = [self.null_bcs, self.null_bcs]
-        self.f_hi = [self.null_bcs, self.null_bcs]
-
-        # dirichlet & neumann for low boundary conditions
+         # Default boundary condition functions
+        self.f_lo = [self.null_bcs, self.null_bcs] # Boundary functions for low side
+        self.f_hi = [self.null_bcs, self.null_bcs] # Boundary functions for high side
+        
+        # Loop over the x and y
         for idim in range(2):  # two dimensions
+
+            # Set boundary conditions for low
             if self.types_lo[idim] == "dirichlet":
-                self.f_lo[idim] = self.dirichlet_lo
-            elif self.types_lo[idim] == "neumann":
-                self.f_lo[idim] = self.neumann_lo
-            elif self.types_lo[idim] == "periodic":
+                self.f_lo[idim] = self.dirichlet_lo # Dirichlet boundary on low side
+            elif self.types_lo[idim] == "neumann": 
+                self.f_lo[idim] = self.neumann_lo # Neumann boundary on low side
+            elif self.types_lo[idim] == "periodic": # Periodic boundary on low side
                 self.f_lo[idim] = self.periodic_lo
             else:
                 # error if unsupported boundary condition type is provided
@@ -35,11 +37,11 @@ class BoundaryConditions:
 
             # dirichlet & neumann for high boundary conditions
             if self.types_hi[idim] == "dirichlet":
-                self.f_hi[idim] = self.dirichlet_hi
+                self.f_hi[idim] = self.dirichlet_hi # Dirichlet boundary on high side
             elif self.types_hi[idim] == "neumann":
-                self.f_hi[idim] = self.neumann_hi
+                self.f_hi[idim] = self.neumann_hi # Neumann boundary on high side
             elif self.types_hi[idim] == "periodic":
-                self.f_hi[idim] = self.periodic_hi
+                self.f_hi[idim] = self.periodic_hi  # Periodic boundary on high side
             else:
                 # error if unsupported boundary condition type is provided
                 raise RuntimeError(f"BC Hi Type not supported: {self.types_hi[idim]}")
