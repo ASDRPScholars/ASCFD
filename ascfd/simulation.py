@@ -44,7 +44,6 @@ class Simulation:
     def run(self):
         while (self.t < self.inp.t_finish) and self.timestepNum < self.inp.nt:
             print(f"Timestep: {self.timestepNum}, Current time: {self.t}")
-
             self.bcs.apply_bcs()
 
             self.grid.assert_variable_type("prim")
@@ -163,7 +162,10 @@ class Simulation:
         print("SUCCESS!")
         return self.grid
  
-    def plot(self):
+    # we have THREE plot functions?? one in simulation.py and one in grid.py AND THE ONE WE'RE USING IS
+    # JUST REGULAR CODE IN simulation.output()????
+    
+    # def plot(self):
         if not os.path.exists(self.inp.output_dir):
             os.makedirs(self.inp.output_dir)
 

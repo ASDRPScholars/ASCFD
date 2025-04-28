@@ -50,9 +50,11 @@ class Euler:
             prim[self.c.VCOMP] = a_cons[self.c.MVCOMP] / a_cons[self.c.RHOCOMP]
             # compute pressure using kinetic energy
             kinetic_energy = 0.5 * (prim[self.c.UCOMP]**2 + prim[self.c.VCOMP]**2)
-            prim[self.c.PCOMP] = (self.c.gamma - 1) * (
+            
+            prim[self.c.PCOMP] = ((self.c.gamma - 1) * (
                 a_cons[self.c.ECOMP] - a_cons[self.c.RHOCOMP] * kinetic_energy
-            )
+            ))
+
 
         elif self.c.system == "mhd2d":
             prim[self.c.RHOCOMP] = a_cons[self.c.RHOCOMP]
@@ -64,7 +66,13 @@ class Euler:
             magnetic_energy = 0.5 * (prim[self.c.BXCOMP]**2 + prim[self.c.BYCOMP]**2)
             prim[self.c.PCOMP] = (self.c.gamma - 1) * (
                 a_cons[self.c.ECOMP] - a_cons[self.c.RHOCOMP] * kinetic_energy - magnetic_energy
-            )
+            ))
+
+            negative_pressure_mask = prim[self.c.PCOMP] < 1e-6
+            prim[self.c.PCOMP][negative_pressure_mask] = 1e-6
+            
+            negative_density_mask = prim[self.c.RHOCOMP] < 1e-6
+            prim[self.c.RHOCOMP][negative_density_mask] = 1e-6
 
         else:
             raise RuntimeError(f"System not supported: {self.c.system}")

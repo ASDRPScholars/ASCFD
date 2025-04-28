@@ -20,6 +20,8 @@ class Flux:
         # select the flux method based on the type
         if self.type == "rusanov":
             self.flux_method = self.rusanov
+        elif self.type == "lax_friedrichs":
+            self.flux_method = self.lax_friedrichs
         elif self.type == "rusanov_vectorized":
             self.flux_method = self.rusanov_vectorized
         elif self.type == "hllc":
