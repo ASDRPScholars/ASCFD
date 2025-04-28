@@ -72,6 +72,14 @@ class Inputs:
             default = False
         )
 
+        # Particle
+
+        self.particle_ic = self.get_config_value(config, "Particle", "particle_ic", mandatory = False, default=None)
+        self.number_of_particles = self.get_config_value(config, "Particle", "number_of_particles", mandatory = False, default = 0, type_func = int)
+        self.seeding_per_timestep = self.get_config_value(config, "Particle", "seeding_per_timestep", mandatory = False, default = 0, type_func = int)
+        self.bounce_back_multiplier = self.get_config_value(config, "Particle", "bounce_back_multiplier", mandatory = False, default = 1.0, type_func = float)
+        self.max_number_of_bounces = self.get_config_value(config, "Particle", "max_number_of_bounces", mandatory = False, default = 3, type_func = int)
+
         # Output
         self.output_freq = self.get_config_value(
             config, "Output", "output_freq", type_func=int, mandatory=False, default=1
@@ -83,7 +91,7 @@ class Inputs:
             config,
             "Output",
             "make_movie",
-            type_func=bool,
+            type_func=lambda x: x.lower() == 'true',
             mandatory=False,
             default=True,
         )
