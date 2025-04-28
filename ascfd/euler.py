@@ -141,15 +141,13 @@ class Euler:
 
  
     def get_max_speed(self, a_grid):
-
         if self.c.system == "euler2D":
             if a_grid.variables == "prim":
                 return np.max(a_grid.grid[self.c.UCOMP])
             elif a_grid.variables == "cons":
                 return np.max(a_grid.grid[self.c.MUCOMP] / a_grid.grid[self.c.RHOCOMP])
             else:
-                print("unsupported")
-                exit()
+                raise ValueError("Unsupported variable type in grid")
         elif self.c.system == "mhd2d":
             if a_grid.variables == "prim":
                 cs = np.sqrt(self.c.gamma * a_grid.grid[self.c.PCOMP] / a_grid.grid[self.c.RHOCOMP])
@@ -170,8 +168,7 @@ class Euler:
                 speed = np.sqrt(u**2 + v**2) + cf
                 return np.max(speed)
             else:
-                print("unsupported")
-                exit()
+                raise ValueError("Unsupported variable type in grid")
 
 def g():
     # definiton of gravity
