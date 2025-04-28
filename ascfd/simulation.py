@@ -28,7 +28,7 @@ class Simulation:
         self.grid = Grid2D(self.inp.xlim, self.inp.ylim, self.inp.nx,
                            self.inp.ny, self.inp.numghosts, self.c.NUMQ)
         self.bcs = BoundaryConditions(
-            self.grid, self.inp.bcs_lo, self.inp.bcs_hi)
+            self.grid, self.inp.bcs_lo, self.inp.bcs_hi, self.c)
         self.flux = Flux(self.c, self.inp.flux)
 
         self.applyICS()
