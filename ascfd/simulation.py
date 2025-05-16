@@ -31,7 +31,7 @@ class Simulation:
             self.grid, self.inp.bcs_lo, self.inp.bcs_hi, self.c)
         self.flux = Flux(self.c, self.inp.flux)
 
-        self.applyICS()
+        self.apply_ics()
 
         self.bcs.apply_bcs()
         self.grid.check_grid(self.c)
@@ -262,10 +262,11 @@ class Simulation:
             f"{self.inp.output_dir}/plot_dt{str(self.timestepNum).zfill(6)}")
         plt.close()
 
-    def applyICS(self):
+    def apply_ics(self):
 
         if self.inp.system == "euler2D":
             if self.inp.ics == "diagonal_advection":
+                print("diagt??")
                 self.grid.fill_grid(ics.diagonal_advection_2d)
             elif self.inp.ics == "kelvin_helmholtz":
                 self.grid.fill_grid(ics.kelvin_helmholtz_2d)
@@ -273,6 +274,9 @@ class Simulation:
                 self.grid.fill_grid(ics.double_mach_reflection_2d)
             elif self.inp.ics == "riemann_problem":
                 self.grid.fill_grid(ics.riemann_2d)
+            elif self.inp.ics == "static":
+                print("static!")
+                self.grid.fill_grid(ics.static_2d)
             else:
                 raise RuntimeError("[FLUID] ICS not valid.")
 
@@ -281,6 +285,10 @@ class Simulation:
                 self.grid.fill_grid(ics.orszag_tang_2d)
             elif self.inp.ics == "field_loop":
                 self.grid.fill_grid(ics.field_loop_2d)
+            elif self.inp.ics == "rotor":
+                print("before filling grid")
+                self.grid.fill_grid(ics.rotor_2d)
+                print("after filling grid")
 
         else:
             raise RuntimeError("[FLUID] ICS not valid.")

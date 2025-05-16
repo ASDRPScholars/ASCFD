@@ -2,36 +2,37 @@ from ascfd.constants import *
 import numpy as np
 
 
-
 def diagonal_advection_2d(a_x, a_y, a_var, t=0):
     """
     Diagonal advection test case for 2D Euler equations.
     """
-    if a_var == 0: #RHOCOMP
+    if a_var == 0:  # RHOCOMP
         return 1.0 + 0.2 * np.sin(2 * np.pi * (a_x + a_y - t))
-    elif a_var == 1: #UCOMP
+    elif a_var == 1:  # UCOMP
         return np.ones_like(a_x)
-    elif a_var == 2: #VCOMP
+    elif a_var == 2:  # VCOMP
         return np.ones_like(a_x)
-    elif a_var == 3: #PCOMP
+    elif a_var == 3:  # PCOMP
         return np.ones_like(a_x)
     else:
         raise ValueError(f"Unexpected variable: {a_var}")
+
 
 def kelvin_helmholtz_2d(a_x, a_y, a_var):
     """
     Kelvin-Helmholtz instability test case for 2D Euler equations.
     """
-    if a_var == 0: #RHOCOMP
+    if a_var == 0:  # RHOCOMP
         return np.ones_like(a_x)
-    elif a_var == 1: #UCOMP
+    elif a_var == 1:  # UCOMP
         return 0.5 * (np.tanh(20 * a_y) - 1)
-    elif a_var == 2: #VCOMP
+    elif a_var == 2:  # VCOMP
         return 0.1 * np.sin(2 * np.pi * a_x)
-    elif a_var == 3: #PCOMP
+    elif a_var == 3:  # PCOMP
         return 2.5 * np.ones_like(a_x)
     else:
         raise ValueError(f"Unexpected variable: {a_var}")
+
 
 def double_mach_reflection_2d(a_x, a_y, a_var):
     """
@@ -39,17 +40,18 @@ def double_mach_reflection_2d(a_x, a_y, a_var):
     """
     x0 = 1/6
     mask = a_x < x0 + a_y / np.sqrt(3)
-    
-    if a_var == 0: #RHOCOMP
+
+    if a_var == 0:  # RHOCOMP
         return np.where(mask, 8.0, 1.4)
-    elif a_var == 1: #UCOMP
+    elif a_var == 1:  # UCOMP
         return np.where(mask, 8.25 * np.cos(np.pi/6), 0.0)
-    elif a_var == 2: #VCOMP
+    elif a_var == 2:  # VCOMP
         return np.where(mask, -8.25 * np.sin(np.pi/6), 0.0)
-    elif a_var == 3: #PCOMP
+    elif a_var == 3:  # PCOMP
         return np.where(mask, 116.5, 1.0)
     else:
         raise ValueError(f"Unexpected variable: {a_var}")
+
 
 def riemann_2d(a_x, a_y, a_var):
     """
@@ -62,21 +64,21 @@ def riemann_2d(a_x, a_y, a_var):
         (a_x < 0.5) & (a_y < 0.5),
         (a_x >= 0.5) & (a_y < 0.5)
     ], [1.5, 0.5323, 0.138, 0.5323])
-    
+
     u = np.select([
         (a_x >= 0.5) & (a_y >= 0.5),
         (a_x < 0.5) & (a_y >= 0.5),
         (a_x < 0.5) & (a_y < 0.5),
         (a_x >= 0.5) & (a_y < 0.5)
     ], [0.0, 1.206, 1.206, 0.0])
-    
+
     v = np.select([
         (a_x >= 0.5) & (a_y >= 0.5),
         (a_x < 0.5) & (a_y >= 0.5),
         (a_x < 0.5) & (a_y < 0.5),
         (a_x >= 0.5) & (a_y < 0.5)
     ], [0.0, 0.0, 1.206, 1.206])
-    
+
     p = np.select([
         (a_x >= 0.5) & (a_y >= 0.5),
         (a_x < 0.5) & (a_y >= 0.5),
@@ -84,21 +86,22 @@ def riemann_2d(a_x, a_y, a_var):
         (a_x >= 0.5) & (a_y < 0.5)
     ], [1.5, 0.3, 0.029, 0.3])
 
-    if a_var == 0: #RHOCOMP
+    if a_var == 0:  # RHOCOMP
         return rho
-    elif a_var == 1: #UCOMP
+    elif a_var == 1:  # UCOMP
         return u
-    elif a_var == 2: #VCOMP
+    elif a_var == 2:  # VCOMP
         return v
-    elif a_var == 3: #PCOMP
+    elif a_var == 3:  # PCOMP
         return p
     else:
         raise ValueError(f"Unexpected variable: {a_var}")
-    
+
+
 def orszag_tang_2d(a_x, a_y, a_var):
     """
     Orszag-Tang vortex test case for 2D MHD.
-    """ 
+    """
     print("running orszag")
     if a_var == 0:  # RHOCOMP
         return np.ones_like(a_x)
@@ -114,15 +117,15 @@ def orszag_tang_2d(a_x, a_y, a_var):
         return np.sin(4 * np.pi * a_x)
     else:
         raise ValueError(f"Unexpected variable: {a_var}")
-    
-    
+
+
 def field_loop_2d(a_x, a_y, a_var):
     """
     Field loop problem for 2D MHD. Based on Lee & Deane (2009), Section 5.1
-    """ 
-    
+    """
+
     print("running field")
-    
+
     if a_var == 0:  # RHOCOMP
         return np.ones_like(a_x)
     elif a_var == 1:  # UCOMP
@@ -151,112 +154,72 @@ def field_loop_2d(a_x, a_y, a_var):
         return By
     else:
         raise ValueError(f"Unexpected variable: {a_var}")
-    
-    
+
+
 def rotor_2d(a_x, a_y, a_var):
     """
     Rotor problem for 2D MHD.
-    """ 
+    """
     u_0 = 2.0  # Angular velocity
     r_0 = 0.1  # Radius of rigid rotation
     r_1 = 0.115  # Outer radius of transition region
-    
+
     # Distance from center point
     r = np.sqrt((a_x - 0.5)**2 + (a_y - 0.5)**2)
-    
+
     # Corrected taper function
     f = np.zeros_like(r)
     mask_ring = (r > r_0) & (r < r_1)
     f[mask_ring] = (r_1 - r[mask_ring])/(r_1 - r_0)
-    
+
     mask_core = r <= r_0
-    
+
     if a_var == 0:  # RHOCOMP
         rho = np.ones_like(a_x)  # default to 1 everywhere
         rho[mask_core] = 10.0  # Higher density in the core
         rho[mask_ring] = 1.0 + 9.0 * f[mask_ring]  # Smooth transition
-        
+
         return rho
-        
+
     elif a_var == 1:  # UCOMP - x-velocity
         u = np.zeros_like(a_x)
-        
+
         # Core region: rigid rotation
         u[mask_core] = -u_0 * (a_y[mask_core] - 0.5)
-        
+
         # Transition region: tapered rotation
         u[mask_ring] = -u_0 * (a_y[mask_ring] - 0.5) * f[mask_ring]
-        
+
         return u
-        
+
     elif a_var == 2:  # VCOMP - y-velocity
         v = np.zeros_like(a_y)
-        
+
         # Core region: rigid rotation
         v[mask_core] = u_0 * (a_x[mask_core] - 0.5)
-        
+
         # Transition region: tapered rotation
         v[mask_ring] = u_0 * (a_x[mask_ring] - 0.5) * f[mask_ring]
-        
+
         return v
-        
+
     elif a_var == 3:  # PCOMP - pressure
         return np.ones_like(a_x)  # Uniform pressure
-        
+
     elif a_var == 4:  # BX - x-component of magnetic field
         # Uniform magnetic field in x-direction
         return 5.0/np.sqrt(4.0 * np.pi) * np.ones_like(a_x)
-        
+
     elif a_var == 5:  # BY - y-component of magnetic field
         # Initially zero magnetic field in y-direction
         return np.zeros_like(a_y)
-        
+
     else:
         raise ValueError(f"Unexpected variable: {a_var}")
-    
-#def rotor_2d(a_x, a_y, a_var):
-    
-    """
-    Rotor problem for 2D MHD.
-    """ 
-    u_0 = 2.0
-    r_0 = 0.1
-    r_1 = 0.115
-    r = np.sqrt((a_x - 0.5)**2 + (a_y - 0.5)**2)
-    f = (r_1 - r)/(r - r_0)
-    
-    mask_core = r <= r_0
-    mask_ring = (r > r_0) & (r < r_1)
-    
-    if a_var == 0:  # RHOCOMP
-        rho = np.ones_like(a_x)  # default to 1 everywhere
 
-        rho[mask_core] = 10
-        rho[mask_ring] = 1 + 9 * f[mask_ring]
-        
-        return rho
-        
-    elif a_var == 1:  # UCOMP
-        u = np.zeros_like(a_x)
-        
-        u[mask_core] = -(f[mask_core] * u_0 * (a_y[mask_core] - 0.5))/r_0
-        u[mask_ring] = -(f[mask_ring] * u_0 * (a_y[mask_ring] - 0.5))/r[mask_ring]
 
-        return u
-        
-    elif a_var == 2:  # VCOMP
-        v = np.zeros_like(a_y)
-        
-        v[mask_core] = (f[mask_core] * u_0 * (a_x[mask_core] - 0.5))/r_0
-        v[mask_ring] = (f[mask_ring] * u_0 * (a_x[mask_ring] - 0.5))/r[mask_ring]
-        
-        return v
-        
-    elif a_var == 3:  # PCOMP
-        return 1
-    elif a_var == 4:  # BX
-        return 5/(np.sqrt(4 * np.pi))
-    elif a_var == 5:  # BY
-        return 0
-    else:
-        raise ValueError(f"Unexpected variable: {a_var}")
+def static_2d(a_x, a_y, a_var):
+    if a_var in [0, 3]:
+        return np.ones_like(a_x)
+    elif a_var in [1, 2]:
+        return np.zeros_like(a_x)

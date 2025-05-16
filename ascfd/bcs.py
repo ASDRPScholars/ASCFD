@@ -33,6 +33,8 @@ class BoundaryConditions:
                 self.f_lo[idim] = self.neumann_lo
             elif self.types_lo[idim] == "periodic":
                 self.f_lo[idim] = self.periodic_lo
+            elif self.types_lo[idim] == "inflow":
+                self.f_lo[idim] = self.inflow_lo
             else:
                 # error if unsupported boundary condition type is provided
                 raise RuntimeError(
@@ -104,17 +106,28 @@ class BoundaryConditions:
                 for i in range(grid.Nghost):  # ghost cells on the left
                     for j in range(grid.Nghost, grid.Ny + grid.Nghost):
                         # Set inflow values here. Example:
-                        if var == self.c.RHOCOMP:  # density
+                        if var == 0:
                             grid.grid[var, i, j] = 1.0
-                        elif var == 1:  # u (vx)
-                            grid.grid[var, i, j] = 0.1
-                        elif var == 2:  # v (vy)
+                        elif var == 1:  # mu
+                            grid.grid[var, i, j] = 1.0
+                        elif var == 2:  # mv
                             grid.grid[var, i, j] = 0.0
                         elif var == 3:  # pressure
-                            grid.grid[var, i, j] = 0.1
-                        else:  # other variables (Bx, By, etc.)
-                            grid.grid[var, i, j] = grid.grid[var,
-                                                             grid.Nghost, j]  # copy from edge
+                            grid.grid[var, i, j] = 3.0
+                        # else:  # other variables (Bx, By, etc.)
+                        #     grid.grid[var, i, j] = grid.grid[var,
+                        #                                      grid.Nghost, j]  # copy from edge
+            # Y STUFF IS BROKEN DON'T USE
+            else:
+                for i in range(grid.Nghost):  # ghost cells on the left
+                    for j in range(grid.Nghost, grid.Ny + grid.Nghost):
+                        # Set inflow values here. Example:
+                        if var == 0:  # density
+                            grid.grid[var, i, j] = 1.0
+                        elif var == 1:  # u (vx)
+                            grid.grid[var, i, j] = 0.0
+                        elif var == 2:  # v (vy)
+                            grid.grid[var, i, j] = 0.0
 
     @staticmethod
     def neumann_lo(grid: Grid2D, dim: int) -> None:
