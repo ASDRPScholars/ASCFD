@@ -35,6 +35,8 @@ class BoundaryConditions:
                 self.f_lo[idim] = self.periodic_lo
             elif self.types_lo[idim] == "inflow":
                 self.f_lo[idim] = self.inflow_lo
+            elif self.types_lo[idim] == "double_inflow":
+                self.f_lo[idim] = self.double_inflow_lo
             else:
                 # error if unsupported boundary condition type is provided
                 raise RuntimeError(
@@ -128,6 +130,38 @@ class BoundaryConditions:
                             grid.grid[var, i, j] = 0.0
                         elif var == 2:  # v (vy)
                             grid.grid[var, i, j] = 0.0
+
+    def double_inflow_lo(self, grid: Grid2D, dim: int):
+        for var in range(grid.num_vars):
+            if dim == 0:  # inflow at low x boundary
+                for i in range(grid.Nghost):  # ghost cells on the left
+                    for j in range(grid.Nghost, grid.Ny + grid.Nghost):
+                        # Set inflow values here. Example:
+                        upper_bound = grid.Ny * (4/5)
+                        lower_bound = grid.Ny * (1/5)
+
+                        pole_top = grid.Ny * (3/5)
+                        pole_bottom = grid.Ny * (2/5)
+
+                        # set inflow to only come out of the 2 hall thruster channels (top and bottom of the donut)
+                        if (pole_top < j < upper_bound) or (lower_bound < j < pole_bottom):
+                            if var == 0:
+                                grid.grid[var, i, j] = 10
+                            elif var == 1:  # mu
+                                grid.grid[var, i, j] = 10
+                            elif var == 2:  # mv
+                                grid.grid[var, i, j] = 0.0
+                            elif var == 3:  # energy
+                                grid.grid[var, i, j] = 525
+                        else:
+                            if var == 0:
+                                grid.grid[var, i, j] = 1.0
+                            elif var == 1:  # mu
+                                grid.grid[var, i, j] = 0.0
+                            elif var == 2:  # mv
+                                grid.grid[var, i, j] = 0.0
+                            elif var == 3:  # energy
+                                grid.grid[var, i, j] = 2.5
 
     @staticmethod
     def neumann_lo(grid: Grid2D, dim: int) -> None:
