@@ -28,10 +28,11 @@ class Simulation:
         self.grid = Grid2D(self.inp.xlim, self.inp.ylim, self.inp.nx,
                            self.inp.ny, self.inp.numghosts, self.c.NUMQ)
         self.bcs = BoundaryConditions(
+            self.grid, self.inp.bcs_lo, self.inp.bcs_hi, self.c)
             self.grid, self.inp.bcs_lo, self.inp.bcs_hi)
         self.flux = Flux(self.c, self.inp.flux)
 
-        self.applyICS()
+        self.apply_ics()
 
         self.bcs.apply_bcs()
         self.grid.check_grid(self.c)
@@ -51,6 +52,9 @@ class Simulation:
             self.bcs.apply_bcs()
 
             self.grid.assert_variable_type("prim")
+
+            # Store primitive variables at the start of the step for Powell terms
+            primU_n = np.copy(self.grid.grid)
 
             # Determine timestep dt based on CFL condition
             if self.inp.system == "euler2D":
@@ -113,7 +117,7 @@ class Simulation:
             if dt <= 0:
                 raise ValueError(
                     f"Calculated dt is zero or negative ({dt}). Check simulation parameters or state.")
-
+                
             # EMBEDDED BOUNDARIES — MODULARIZE LATER
 
             lower_bound = 0
@@ -265,6 +269,47 @@ class Simulation:
                                     (numFluxY_plus[icomp, i, j] -
                                      numFluxY_minus[icomp, i, j])
                                 )
+                           # Set a floor for density (1) and pressure (3) only
+                            
+                            floor_values = {1: 0.01, 3: 0.01}
+                            # .get() defaults to None if key doesn't exist
+                            floor_value = floor_values.get(icomp, None)
+
+                            updated_value = consU_n[icomp, i, j] - delta
+
+                            if floor_value is not None:
+                                U_new[icomp, i, j] = max(
+                                    updated_value, floor_value)
+                            else:
+                                U_new[icomp, i, j] = updated_value
+
+                # Powell divergence cleaning for MHD
+                if self.inp.system == "mhd2d":
+                    # Calculate div(B) using central differences on consU_n
+                    divB = np.zeros_like(consU_n[0])
+                    # Need to calculate divB over the domain where U_new is updated + 1 layer for central diff
+                    # However, we only apply the source term within the main update loop domain.
+                    # Note: Using consU_n which contains Bx, By directly.
+                    for i in range(i_start, i_end):
+                        for j in range(j_start, j_end):
+                            # Central difference requires i-1, i+1, j-1, j+1
+                            # Ensure indices are within the bounds where consU_n is valid (including ghosts)
+                            divB_x = (
+                                consU_n[self.c.BXCOMP, i + 1, j] - consU_n[self.c.BXCOMP, i - 1, j]) / (2.0 * self.grid.dx)
+                            divB_y = (
+                                consU_n[self.c.BYCOMP, i, j + 1] - consU_n[self.c.BYCOMP, i, j - 1]) / (2.0 * self.grid.dy)
+                            divB[i, j] = divB_x + divB_y
+
+                    # Calculate Powell source terms using primU_n and consU_n
+                    powell_source = calculate_powell_source(
+                        consU_n, primU_n, divB, self.c)
+
+                    # Apply Powell source terms to U_new
+                    for i in range(i_start, i_end):
+                        for j in range(j_start, j_end):
+                            for icomp in range(self.c.NUMQ):
+                                U_new[icomp, i, j] += dt * \
+                                    powell_source[icomp, i, j]
 
                 # Then, update flow field based on the embedded boundary.
 
@@ -345,10 +390,10 @@ class Simulation:
             f"{self.inp.output_dir}/plot_dt{str(self.timestepNum).zfill(6)}")
         plt.close()
 
-    def applyICS(self):
-
+    def apply_ics(self):
         if self.inp.system == "euler2D":
             if self.inp.ics == "diagonal_advection":
+                print("diagt??")
                 self.grid.fill_grid(ics.diagonal_advection_2d)
             elif self.inp.ics == "kelvin_helmholtz":
                 self.grid.fill_grid(ics.kelvin_helmholtz_2d)
@@ -356,12 +401,21 @@ class Simulation:
                 self.grid.fill_grid(ics.double_mach_reflection_2d)
             elif self.inp.ics == "riemann_problem":
                 self.grid.fill_grid(ics.riemann_2d)
+            elif self.inp.ics == "static":
+                print("static!")
+                self.grid.fill_grid(ics.static_2d)
             else:
                 raise RuntimeError("[FLUID] ICS not valid.")
 
         elif self.inp.system == "mhd2d":
             if self.inp.ics == "orszag_tang":
                 self.grid.fill_grid(ics.orszag_tang_2d)
+            elif self.inp.ics == "field_loop":
+                self.grid.fill_grid(ics.field_loop_2d)
+            elif self.inp.ics == "rotor":
+                print("before filling grid")
+                self.grid.fill_grid(ics.rotor_2d)
+                print("after filling grid")
 
         else:
             raise RuntimeError("[FLUID] ICS not valid.")
@@ -413,7 +467,8 @@ class Simulation:
             extent = [self.grid.x[self.grid.Nghost], self.grid.x[-self.grid.Nghost-1],
                       self.grid.y[self.grid.Nghost], self.grid.y[-self.grid.Nghost-1]]
 
-            im = axs[i].imshow(plot_data, origin='lower', extent=extent)
+            im = axs[i].imshow(plot_data, origin='lower',
+                               extent=extent, cmap='magma')
             plt.colorbar(im, ax=axs[i])
             axs[i].set_title(self.c.variable_names[i])
             axs[i].set_xlabel('x')
@@ -478,3 +533,24 @@ class Simulation:
         # ani.save(movie_filename, writer='ffmpeg', fps=10)
 
         # print(f"Movie saved as {movie_filename}")
+
+# Define a helper function to calculate the Powell source term outside the main loop for clarity
+
+
+def calculate_powell_source(consU, primU, divB, c):
+    """Calculates the Powell et al. (1999) source terms."""
+    Bx = consU[c.BXCOMP]
+    By = consU[c.BYCOMP]
+    u = primU[c.UCOMP]
+    v = primU[c.VCOMP]
+
+    powell_source = np.zeros_like(consU)
+    # S_rho = 0
+    powell_source[c.MUCOMP] = -Bx * divB
+    powell_source[c.MVCOMP] = -By * divB
+    # S_MWCOMP = 0 in 2D
+    powell_source[c.ECOMP] = -(u * Bx + v * By) * divB
+    powell_source[c.BXCOMP] = -u * divB
+    powell_source[c.BYCOMP] = -v * divB
+    # S_BZCOMP = 0 in 2D
+    return powell_source
