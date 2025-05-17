@@ -1,6 +1,6 @@
 
 ![ascfd logo](https://github.com/user-attachments/assets/4d73c58c-e9b8-457e-993d-4614eb6b06d3#gh-dark-mode-only)
-![ascfd logo light](https://github.com/user-attachments/assets/8a1f67e1-8cfd-4b2c-8cc8-c01a25c1b6ed#gh-light-mode-only)
+![ascfd logo light](https://github.com/user-attachments/assets/c0e90a31-abcf-47ce-b9cb-ff35a7b556ba#gh-light-mode-only)
 
 ---
 <p align="center">
@@ -50,8 +50,8 @@ For applied design usage:
 Coupling modules to keep electron and ion loops synchronized.
 
 ## Timeline
-![timeline](https://github.com/user-attachments/assets/1730f596-9a32-4b8d-81d4-9d76f6445a7a#gh-dark-mode-only)
-![timeline light](https://github.com/user-attachments/assets/a046df13-5f9d-4b7f-a934-ab6eae685489#gh-light-mode-only)
+![revised timeline dark](https://github.com/user-attachments/assets/fc83833b-0fd2-4baa-a20e-aad88cd6f444#gh-dark-mode-only)
+![revised timeline light](https://github.com/user-attachments/assets/cd92f100-2744-440f-a921-2ea560c8b7b4#gh-light-mode-only)
 
 ---
 ![cse](https://github.com/user-attachments/assets/d91a05a4-8a67-4879-8e39-fde85355afc9#gh-dark-mode-only)
