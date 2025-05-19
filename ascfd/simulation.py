@@ -134,7 +134,8 @@ class Simulation:
             # vertices = [(0.75, 0.5), (0.7487510413195064, 0.524958354161707), (0.7450166444603104, 0.5496673326987653), (0.7388341222814014, 0.5738800516653348), (0.7302652485007213, 0.5973545855771626), (0.7193956404725932, 0.6198563846510508), (0.7063339037274196, 0.6411606183487588), (0.6912105468211222, 0.6610544218094228), (0.6741766773367914, 0.6793390227248807), (0.6554024920676661, 0.6958317274068708), (0.6350755764670349, 0.7103677462019741), (0.6133990303563943, 0.7228018400153589), (0.5905894386191683, 0.7330097714918066), (0.5668747071561469, 0.7408895463542983), (0.5424917857250602, 0.7463624324971151), (0.5176843004169257, 0.7493737466510136), (0.49270011942467773, 0.7498934007603762), (0.4677888764261187, 0.7479162026131172), (0.4431994763267281, 0.7434619077195488), (0.419177608284124, 0.7365750219218535), (0.3959632908632143, 0.7273243567064204), (0.37378847385003555, 0.7158023416622183), (0.35287472068616343, 0.7021241009548974), (0.3334309946800438, 0.68642630304418), (0.3156515711146885, 0.6688657951377877), (0.29971409611326644, 0.6496180360259889), (0.28577781165776306, 0.6288753429553658), (0.27398196449573464, 0.6068449700584573), (0.2644444148328354, 0.5837470375389759), (0.2572604587126023, 0.5598123323034953), (0.2525018758498886, 0.5352800020149665), (0.25021621243168013, 0.5103951656083223), (
             #     0.2504263060513118, 0.4854064641431046), (0.25313005752278384, 0.4605635764641875), (0.25830045185513484, 0.43611472449329175), (0.2658858281773011, 0.41230419307759464), (0.27581039591646345, 0.38936988917628645), (0.2879749920723982, 0.3675409647728763), (0.30225807202139615, 0.34703552726431985), (0.31851692394996534, 0.3280584602040062), (0.3365890947840974, 0.31079937617301767), (0.3562940133666831, 0.29543072223389716), (0.3774347946648253, 0.28210605689660284), (0.39980020698000635, 0.2709585158126362), (0.4231667825053952, 0.26209948152762097), (0.4473010501423051, 0.25561747058372575), (0.47196186826623626, 0.2515772490916339), (0.49690283413427716, 0.2500191856089748), (0.5218747458598614, 0.25095884779103983), (0.5466280923556435, 0.25438684684391677), (0.5709155463658061, 0.26026893133421525), (0.5944944356782447, 0.2685463294180667), (0.6171291678250936, 0.27913633606996135), (0.6385935840447896, 0.2919331394440243), (0.658673218985658, 0.30680887811100266), (0.6771674435728143, 0.3236149186074014), (0.6938914696275619, 0.3421833405319189), (0.7086781962097893, 0.36232861435058966), (0.7213798792353292, 0.38384945514655966), (0.7318696076860085, 0.40653083379243976), (0.7400425716625911, 0.43014612545026726), (0.7458171096106458, 0.4544593739319747), (0.7491355242558042, 0.47922764929562434)]
 
-            vertices = [(0.4, 0.4), (0.4, 0.6), (0.6, 0.6), (0.6, 0.4)]
+            vertices = [(0.55, 0.5), (0.5487510413195065, 0.524958354161707), (0.5450166444603104, 0.5496673326987653), (0.5388341222814015, 0.5738800516653348), (0.5302652485007213, 0.5973545855771626), (0.5193956404725932, 0.6198563846510508), (0.5063339037274196, 0.6411606183487588), (0.4912105468211221, 0.6610544218094228), (0.47417667733679136, 0.6793390227248807), (0.45540249206766614, 0.6958317274068708), (0.43507557646703493, 0.7103677462019741), (0.41339903035639436, 0.7228018400153589), (0.3905894386191684, 0.7330097714918066), (0.36687470715614684, 0.7408895463542983), (0.34249178572506017, 0.7463624324971151), (0.31768430041692564, 0.7493737466510136), (0.2927001194246777, 0.7498934007603762), (0.2677888764261187, 0.7479162026131172), (0.24319947632672811, 0.7434619077195488), (0.219177608284124, 0.7365750219218535), (0.1959632908632143, 0.7273243567064204), (0.1737884738500355, 0.7158023416622183), (0.15287472068616342, 0.7021241009548974), (0.1334309946800438, 0.68642630304418), (0.11565157111468849, 0.6688657951377877), (0.09971409611326643, 0.6496180360259889), (0.08577781165776305, 0.6288753429553658), (0.0739819644957346, 0.6068449700584573), (0.06444441483283536, 0.5837470375389759), (0.0572604587126023, 0.5598123323034953), (0.05250187584988858, 0.5352800020149665), (0.05021621243168012, 0.5103951656083223), (0.05042630605131174, 0.4854064641431046), (0.053130057522783825, 0.4605635764641875), (0.058300451855134855, 0.43611472449329175), (0.06588582817730107, 0.41230419307759464), (0.07581039591646344, 0.38936988917628645), (0.0879749920723982, 0.3675409647728763), (0.10225807202139614, 0.34703552726431985), (0.11851692394996532, 0.3280584602040062), (0.13658909478409734, 0.31079937617301767), (0.15629401336668305, 0.29543072223389716), (0.1774347946648253, 0.28210605689660284), (0.19980020698000633, 0.2709585158126362), (0.22316678250539515, 0.26209948152762097), (0.24730105014230508, 0.25561747058372575), (0.27196186826623625, 0.2515772490916339), (0.29690283413427715, 0.2500191856089748), (0.32187474585986137, 0.25095884779103983), (0.3466280923556435, 0.25438684684391677), (0.37091554636580615, 0.26026893133421525), (0.3944944356782446, 0.2685463294180667), (0.4171291678250937, 0.27913633606996135), (0.43859358404478965, 0.2919331394440243), (0.45867321898565794, 0.30680887811100266), (0.4771674435728144, 0.3236149186074014), (0.4938914696275618, 0.3421833405319189), (0.5086781962097893, 0.36232861435058966), (0.5213798792353292, 0.38384945514655966), (0.5318696076860084, 0.40653083379243976), (0.5400425716625912, 0.43014612545026726), (0.5458171096106459, 0.4544593739319747), (0.5491355242558043, 0.47922764929562434)]
+            # vertices = [(0.4, 0.4), (0.4, 0.6), (0.6, 0.6), (0.6, 0.4)]
 
             # for vertex in old_vertices:
             #     x = (vertex[0] * 0.5) + 0.5
@@ -160,9 +161,8 @@ class Simulation:
                 inside = False
 
                 px, py = point
-                inside = False
                 n = len(polygon_points)
-
+                
                 for i in range(n):
                     # we'll use these two points to draw a line/edge of the polygon
                     p1x, p1y = polygon_points[i]
@@ -177,75 +177,71 @@ class Simulation:
 
                 return inside
             
+            def is_near_polygon(polygon_points, point):
+                n = len(polygon_points)
+                inside = False
 
-            def fluid_vector_through_time(embedded_boundary_vector, velocity_vector, vertices, lower_bound, upper_bound, step):
-                # Calculate normal and parallel velocity vectors
-                V_normal, V_parallel = transform_vector(
-                    embedded_boundary_vector, velocity_vector)
-                # Update the velocity vector and dot product using the previously transformed vectors
-                velocity_vector_next = V_parallel
-                for t in np.arange(lower_bound, upper_bound, step):
-                    point = (velocity_vector[0]*t, velocity_vector[1]*t)
-                    # Need to switch to test for outside
-                    if not is_inside_polygon(vertices, point):
-                        # Calculate normal and parallel velocity vectors
-                        velocity_vector_next, V_parallel = transform_vector(
-                            embedded_boundary_vector, velocity_vector)
-                        # Update velocity_vector_next to encorporate previous point
-                        # Update the velocity vector
-                        velocity_vector_next = V_parallel
-                        V_normal = 0
-                return velocity_vector_next
+                px, py = point
+                n = len(polygon_points)
+                
+                for (px, py) in [(px+0.01, py), (px-0.01, py), (px, py+0.01), (px, py-0.01)]:
+                    for i in range(n):
+                        # we'll use these two points to draw a line/edge of the polygon
+                        p1x, p1y = polygon_points[i]
+                        p2x, p2y = polygon_points[(i + 1) % n]
 
-            def transform_vector(embedded_boundary_vector, velocity_vector):
-                # Squares embedded boundary
-                embedded_boundary_squared = embedded_boundary_vector[0] ** 2 + \
-                    embedded_boundary_vector[1] ** 2
-                # Calculates the dot product of velocity and embedded boundary vevtor
-                dot_product = velocity_vector[0] * embedded_boundary_vector[0] + \
-                    velocity_vector[1] * embedded_boundary_vector[1]
-                V_parallel = (embedded_boundary_vector[0] * dot_product / embedded_boundary_squared,
-                              embedded_boundary_vector[1] * dot_product / embedded_boundary_squared)      # Calculates normal vector
-                V_normal = (velocity_vector[0] - V_parallel[0],
-                            velocity_vector[1] - V_parallel[1])
+                        # check if the point's y-level crosses this edge
+                        if (p1y > py) != (p2y > py) and p1y != p2y:
+                            # find the x where this edge intersects y = py
+                            xint = (py - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
+                            if px < xint:
+                                inside = not inside
+                                
+                    if inside:
+                        return inside
+                    
+                return inside
+                
+            
+            # TODO: find the negative sign
+            def fluid_vector_through_time(embedded_boundary_vector, velocity_vector, vertices, dt):
+                # TODO: no logic necessary to double-check if its going to head into the embedded boundary?
+                
+                _, V_parallel = decompose_vector(embedded_boundary_vector, velocity_vector)
+                return V_parallel
+
+
+            def decompose_vector(embedded_boundary_vector, velocity_vector):
+                norm_squared = np.dot(embedded_boundary_vector, embedded_boundary_vector)
+                if norm_squared == 0:
+                    return velocity_vector, (0, 0)  # or return velocity unchanged
+                dot_product = np.dot(velocity_vector, embedded_boundary_vector)
+                V_parallel = (embedded_boundary_vector * dot_product / norm_squared)
+                V_normal = velocity_vector - V_parallel
                 return V_normal, V_parallel
 
             def find_embedded_boundary_vector(vertices, lower_bound, upper_bound, step):
                 grid_size = 100
                 x_vals = np.linspace(lower_bound, upper_bound, grid_size)
                 y_vals = np.linspace(lower_bound, upper_bound, grid_size)
-                # create a grid in which each cell contains the embedded boundary vector for that cell
                 vector_map = np.zeros((grid_size, grid_size, 2))
+
                 for i, x in enumerate(x_vals):
                     for j, y in enumerate(y_vals):
-                        # finds the point that is the center of the cell
-                        cell_center = np.array([x + step/2, y + step/2])
-                        # distance to the outside point on the right
-                        min_distance1 = float('inf')
-                        # distance to the outside point on the left
-                        min_distance2 = float('inf')
-                        # nearest point outside to the right
-                        nearest_point1 = (0, 0)
-                        # nearest point outside to the left
-                        nearest_point2 = (0, 0)
-                        for v in vertices:
-                            # find mag. of distance from the vertex to the center of the cell
-                            distance = np.linalg.norm(
-                                np.array(v) - cell_center)
-                            # split into v[0]>x and v[0]<x
-                            if (v[0] > x):
-                                # check is it's outside the cell and less than previous distance
-                                if distance > step / 2 and distance < min_distance1:
-                                    min_distance1 = distance
-                                    nearest_point1 = np.array(v)
-                            if (v[0] < x):
-                                # check is it's outside the cell and less than previous distance
-                                if distance > step / 2 and distance < min_distance2:
-                                    min_distance2 = distance
-                                    nearest_point2 = np.array(v)
-                        # vector from center of cell to nearest point
-                        embedded_boundary_vector = nearest_point1 - nearest_point2
-                        vector_map[i, j] = embedded_boundary_vector
+                        cell_center = np.array([x + step / 2, y + step / 2])
+                        min_dist = float('inf')
+                        tangent = np.array([1, 0])  # default
+
+                        for k in range(len(vertices)):
+                            v1 = np.array(vertices[k])
+                            v2 = np.array(vertices[(k + 1) % len(vertices)])
+                            edge_center = 0.5 * (v1 + v2)
+                            dist = np.linalg.norm(cell_center - edge_center)
+                            if dist < min_dist:
+                                min_dist = dist
+                                tangent = v2 - v1
+
+                        vector_map[i, j] = tangent
                 return vector_map
 
             vector_map = find_embedded_boundary_vector(
@@ -267,48 +263,64 @@ class Simulation:
                 # FLUID UPDATE
                 for i in range(i_start, i_end):
                     for j in range(j_start, j_end):
-                        # TODO: change hard coded
-                        point = np.array([0.01*i, 0.01*j])
+                        point = np.array([0.01 * i, 0.01 * j])
+                        
+                        velocity_vector = np.array([
+                                    primU[self.c.UCOMP, i, j],
+                                    primU[self.c.VCOMP, i, j]
+                                ])
+                        
+                        # future_point = point + velocity_vector * dt
+                        
                         inside_polygon = is_inside_polygon(vertices, point)
+                        
+                        #TODO: optimize by bringing all of this logic into inside_polygon — 1 all-in-one call > 5 separate calls
+                        near_polygon = is_near_polygon(vertices, point)
+
                         for icomp in range(self.c.NUMQ):
                             if inside_polygon:
-                                velocity_vector = np.array(
-                                    [primU[1, i, j], primU[2, i, j]])
-                                if icomp == 1:
-                                    print("map", vector_map)
-                                    print("i j", vector_map[i][j])
-                                    print(fluid_vector_through_time(
-                                        vector_map[i][j], velocity_vector, vertices, lower_bound, upper_bound, step))
-                                    print(fluid_vector_through_time(
-                                        vector_map[i][j], velocity_vector, vertices, lower_bound, upper_bound, step)[0])
-                                    U_new[1, i, j] = U_new[0, i, j] * fluid_vector_through_time(
-                                        vector_map[i][j], velocity_vector, vertices, lower_bound, upper_bound, step)[0]
-
-                                if icomp == 2:
-                                    U_new[2, i, j] = U_new[0, i, j] * fluid_vector_through_time(
-                                        vector_map[i][j], velocity_vector, vertices, lower_bound, upper_bound, step)[1]
-                                else:
-                                    U_new[icomp, i, j] = 1
+                                break
+                            elif near_polygon:
+                                fluid_vec = fluid_vector_through_time(
+                                    vector_map[i][j],
+                                    velocity_vector,
+                                    vertices,
+                                    dt
+                                )
+                                
+                                # please_be_nonzero = [fluid_vec[0], fluid_vec[1], consU[self.c.MUCOMP, i, j], consU[self.c.MVCOMP, i, j]]
+                                
+                                # for i in range(len(please_be_nonzero)):
+                                #     if please_be_nonzero[i] != 0:
+                                #         assert(f"index {i} is not zero!!!!")
+                                        
+                                # print(("UPPER HALF:" if j >= (j_end/2) else "LOWER HALF:"), fluid_vec[0], fluid_vec[1])
+                                # print(("UPPER HALF:" if j >= (j_end/2) else "LOWER HALF:"), consU[self.c.MUCOMP, i, j], consU[self.c.MVCOMP, i, j])
+                                
+                                if icomp == self.c.MUCOMP:
+                                    U_new[icomp, i, j] = U_new[self.c.RHOCOMP, i, j] * fluid_vec[0]
+                                elif icomp == self.c.MVCOMP:
+                                    U_new[icomp, i, j] = U_new[self.c.RHOCOMP, i, j] * fluid_vec[1]
+                                elif icomp == self.c.RHOCOMP:
+                                    # TODO: try doing an average instead of no-update
+                                    U_new[icomp, i, j] = consU[icomp, i, j]
+                                elif icomp == self.c.ECOMP:
+                                    U_new[icomp, i, j] = consU[icomp, i, j]  # constant fill or marker
                             else:
-                                delta = (consU[icomp, i, j] - (
+                                delta = (
                                     (dt / self.grid.dx) * (numFluxX_plus[icomp, i, j] - numFluxX_minus[icomp, i, j]) +
-                                    (dt / self.grid.dy) *
-                                    (numFluxY_plus[icomp, i, j] -
-                                     numFluxY_minus[icomp, i, j])
-                                ))
-                                # Set a floor for density (1) and pressure (3) only
+                                    (dt / self.grid.dy) * (numFluxY_plus[icomp, i, j] - numFluxY_minus[icomp, i, j])
+                                )
+                                updated_value = consU[icomp, i, j] - delta
 
-                            floor_values = {1: 0.01, 3: 0.01}
-                            # .get() defaults to None if key doesn't exist
-                            floor_value = floor_values.get(icomp, None)
+                                # Apply floors where appropriate
+                                floor_values = {1: 0.01, 3: 0.01}
+                                floor_value = floor_values.get(icomp, None)
 
-                            updated_value = consU[icomp, i, j] - delta
-
-                            if floor_value is not None:
-                                U_new[icomp, i, j] = max(
-                                    updated_value, floor_value)
-                            else:
-                                U_new[icomp, i, j] = updated_value
+                                if floor_value is not None:
+                                    U_new[icomp, i, j] = max(updated_value, floor_value)
+                                else:
+                                    U_new[icomp, i, j] = updated_value
 
                 # Powell divergence cleaning for MHD
                 if self.inp.system == "mhd2d":
@@ -338,9 +350,9 @@ class Simulation:
                                 U_new[icomp, i, j] += dt * \
                                     powell_source[icomp, i, j]
 
-                # Then, update flow field based on the embedded boundary.
+                # TODO: embedded boundaries
 
-                # take a step in particles
+                # TODO: particle step
 
             else:
                 raise RuntimeError("Timestepping method not supported.")
