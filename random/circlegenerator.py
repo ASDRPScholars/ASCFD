@@ -1,6 +1,6 @@
 import math
 
-a = 0.5
+a = 0.3
 b = 0.5
 r = 0.25
 
