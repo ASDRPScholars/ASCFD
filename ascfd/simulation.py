@@ -276,8 +276,12 @@ class Simulation:
                         
                         #TODO: optimize by bringing all of this logic into inside_polygon — 1 all-in-one call > 5 separate calls
                         near_polygon = is_near_polygon(vertices, point)
+                        please_be_nonzero = [consU[self.c.MUCOMP, i, j], consU[self.c.MVCOMP, i, j]]
 
                         for icomp in range(self.c.NUMQ):
+                            near_is_zero = False
+                            outside_is_zero = False
+                            
                             if inside_polygon:
                                 break
                             elif near_polygon:
@@ -288,14 +292,15 @@ class Simulation:
                                     dt
                                 )
                                 
-                                # please_be_nonzero = [fluid_vec[0], fluid_vec[1], consU[self.c.MUCOMP, i, j], consU[self.c.MVCOMP, i, j]]
+                                please_be_nonzero = [fluid_vec[0], fluid_vec[1], consU[self.c.MUCOMP, i, j], consU[self.c.MVCOMP, i, j]]
                                 
-                                # for i in range(len(please_be_nonzero)):
-                                #     if please_be_nonzero[i] != 0:
-                                #         assert(f"index {i} is not zero!!!!")
+                                for i in range(len(please_be_nonzero)):
+                                    if please_be_nonzero[i] != 0:
+                                        near_is_zero = True
+                                        print("**NEAR**", i, please_be_nonzero[i])
                                         
-                                # print(("UPPER HALF:" if j >= (j_end/2) else "LOWER HALF:"), fluid_vec[0], fluid_vec[1])
-                                # print(("UPPER HALF:" if j >= (j_end/2) else "LOWER HALF:"), consU[self.c.MUCOMP, i, j], consU[self.c.MVCOMP, i, j])
+                                # print("**NEAR**", ("UPPER HALF:" if j >= (j_end/2) else "LOWER HALF:"), fluid_vec[0], fluid_vec[1])
+                                # print("**NEAR**", ("UPPER HALF:" if j >= (j_end/2) else "LOWER HALF:"), consU[self.c.MUCOMP, i, j], consU[self.c.MVCOMP, i, j])
                                 
                                 if icomp == self.c.MUCOMP:
                                     U_new[icomp, i, j] = U_new[self.c.RHOCOMP, i, j] * fluid_vec[0]
@@ -307,6 +312,11 @@ class Simulation:
                                 elif icomp == self.c.ECOMP:
                                     U_new[icomp, i, j] = consU[icomp, i, j]  # constant fill or marker
                             else:
+                                
+                                for i in range(len(please_be_nonzero)):
+                                    if please_be_nonzero[i] != 0:
+                                        print("*OUTSIDE*", i, please_be_nonzero[i])
+                                        
                                 delta = (
                                     (dt / self.grid.dx) * (numFluxX_plus[icomp, i, j] - numFluxX_minus[icomp, i, j]) +
                                     (dt / self.grid.dy) * (numFluxY_plus[icomp, i, j] - numFluxY_minus[icomp, i, j])
@@ -321,6 +331,11 @@ class Simulation:
                                     U_new[icomp, i, j] = max(updated_value, floor_value)
                                 else:
                                     U_new[icomp, i, j] = updated_value
+                    
+                if not near_is_zero:
+                    print("**NEAR** HAS ALL ZERO VELOCITIES")
+                if not outside_is_zero:
+                    print("**OUTSIDE** HAS ALL ZERO VELOCITIES")
 
                 # Powell divergence cleaning for MHD
                 if self.inp.system == "mhd2d":
@@ -388,46 +403,48 @@ class Simulation:
         print("SUCCESS!")
         return self.grid
 
-    def plot(self):
-        if not os.path.exists(self.inp.output_dir):
-            os.makedirs(self.inp.output_dir)
+    # TODO: why does this unused plot function exist?
+    
+    # def plot(self):
+    #     if not os.path.exists(self.inp.output_dir):
+    #         os.makedirs(self.inp.output_dir)
 
-        if self.inp.system == "euler2D":
-            fig, axs = plt.subplots(3, 1, figsize=(10, 15))
-            axs[0].scatter(
-                self.grid.x, self.grid.grid[self.c.RHOCOMP, :], c="black")
-            axs[0].set_ylabel("Density")
+    #     if self.inp.system == "euler2D":
+    #         fig, axs = plt.subplots(3, 1, figsize=(10, 15))
+    #         axs[0].scatter(
+    #             self.grid.x, self.grid.grid[self.c.RHOCOMP, :], c="black")
+    #         axs[0].set_ylabel("Density")
 
-            axs[1].scatter(
-                self.grid.x, self.grid.grid[self.c.UCOMP, :],  c="black")
-            axs[1].set_ylabel("Velocity")
+    #         axs[1].scatter(
+    #             self.grid.x, self.grid.grid[self.c.UCOMP, :],  c="black")
+    #         axs[1].set_ylabel("Velocity")
 
-            axs[2].scatter(
-                self.grid.x, self.grid.grid[self.c.PCOMP, :],  c="black")
-            axs[2].set_ylabel("Pressure")
+    #         axs[2].scatter(
+    #             self.grid.x, self.grid.grid[self.c.PCOMP, :],  c="black")
+    #         axs[2].set_ylabel("Pressure")
 
-        elif self.inp.system == "mhd2d":
-            fig, axs = plt.subplots(3, 1, figsize=(10, 15))
-            axs[0].scatter(
-                self.grid.x, self.grid.grid[self.c.RHOCOMP, :], c="black")
-            axs[0].set_ylabel("Density")
+    #     elif self.inp.system == "mhd2d":
+    #         fig, axs = plt.subplots(3, 1, figsize=(10, 15))
+    #         axs[0].scatter(
+    #             self.grid.x, self.grid.grid[self.c.RHOCOMP, :], c="black")
+    #         axs[0].set_ylabel("Density")
 
-            axs[1].scatter(
-                self.grid.x, self.grid.grid[self.c.UCOMP, :],  c="black")
-            axs[1].set_ylabel("Velocity")
+    #         axs[1].scatter(
+    #             self.grid.x, self.grid.grid[self.c.UCOMP, :],  c="black")
+    #         axs[1].set_ylabel("Velocity")
 
-            axs[2].scatter(
-                self.grid.x, self.grid.grid[self.c.PCOMP, :],  c="black")
-            axs[2].set_ylabel("Pressure")
+    #         axs[2].scatter(
+    #             self.grid.x, self.grid.grid[self.c.PCOMP, :],  c="black")
+    #         axs[2].set_ylabel("Pressure")
 
-            axs[3].scatter(
-                self.grid.x, self.grid.grid[self.c.B_XCOMP, :],  c="black")
-            axs[3].set_ylabel("Magnetic Field")
+    #         axs[3].scatter(
+    #             self.grid.x, self.grid.grid[self.c.B_XCOMP, :],  c="black")
+    #         axs[3].set_ylabel("Magnetic Field")
 
-        axs[0].set_title(f"Time: {self.t:.4f}")
-        plt.savefig(
-            f"{self.inp.output_dir}/plot_dt{str(self.timestepNum).zfill(6)}")
-        plt.close()
+    #     axs[0].set_title(f"Time: {self.t:.4f}")
+    #     plt.savefig(
+    #         f"{self.inp.output_dir}/plot_dt{str(self.timestepNum).zfill(6)}")
+    #     plt.close()
 
     def apply_ics(self):
         if self.inp.system == "euler2D":
