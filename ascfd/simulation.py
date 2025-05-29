@@ -15,6 +15,7 @@ from ascfd.euler import Euler
 from ascfd.bcs import BoundaryConditions
 
 import numpy as np
+from matplotlib import cm
 import matplotlib.pyplot as plt
 import os
 
@@ -40,8 +41,8 @@ class Simulation:
         self.t = self.inp.t0
         self.timestepNum = 0
         
-        self.highlight_near_polygon = []
-        self.highlight_inside_polygon = []
+        self.highlight_near_polygon = np.ones_like(self.grid.grid, dtype=bool)
+        # self.highlight_inside_polygon = []
 
         # -1 is no output. Always output ICs if we are outputting.
         if self.inp.output_freq >= 0:
@@ -125,7 +126,7 @@ class Simulation:
 
             lower_bound = 0
             upper_bound = 1
-            step = 0.01
+            step = self.grid.dx
 
             # TODO: none of these three versions of vertices draws a circle in the center:
 
@@ -259,6 +260,7 @@ class Simulation:
 
                 # Start with the current conservative variables
                 U_new = np.copy(consU)
+                print("TYPE OF U_new!!!!", type(U_new))
                 primU = self.euler.cons_to_prim(U_new)
 
                 i_start, i_end = self.grid.Nghost, self.grid.Nx + self.grid.Nghost
@@ -267,7 +269,7 @@ class Simulation:
                 # FLUID UPDATE
                 for i in range(i_start, i_end):
                     for j in range(j_start, j_end):
-                        point = np.array([0.01 * i, 0.01 * j])
+                        point = np.array([self.grid.dx * i, self.grid.dy * j])
                         
                         velocity_vector = np.array([
                                     primU[self.c.UCOMP, i, j],
@@ -287,10 +289,11 @@ class Simulation:
                             outside_is_zero = False
                             
                             if inside_polygon:
-                                self.highlight_inside_polygon.append((i*0.01, j*0.01))
+                                break
+                                # self.highlight_inside_polygon.append((i*0.01, j*0.01))
                                 
                             elif near_polygon:
-                                self.highlight_near_polygon.append((i*0.01, j*0.01))
+                                self.highlight_near_polygon[icomp, i, j] = False
                                 
                                 fluid_vec = fluid_vector_through_time(
                                     vector_map[i][j],
@@ -498,10 +501,13 @@ class Simulation:
         # Ensure the frames subdirectory exists
         frames_dir = os.path.join(self.inp.output_dir, "frames")
         os.makedirs(frames_dir, exist_ok=True)
+        
+        data_dir = os.path.join(self.inp.output_dir, "raw data")
+        os.makedirs(data_dir, exist_ok=True)
 
         # File naming convention: output_timestepNum.txt
         output_filename = os.path.join(
-            frames_dir, f"output_{str(self.timestepNum).zfill(6)}.txt")
+            data_dir, f"output_{str(self.timestepNum).zfill(6)}.txt")
         output_plotname = os.path.join(
             frames_dir, f"output_{str(self.timestepNum).zfill(6)}.png")
 
@@ -525,19 +531,33 @@ class Simulation:
 
         for q in range(self.c.NUMQ):
             # Exclude ghost cells from the plot
-            plot_data = self.grid.grid[q, self.grid.Nghost:-self.grid.Nghost, self.grid.Nghost:-self.grid.Nghost].T
+            plot_data = self.grid.grid[q, self.grid.Nghost:-self.grid.Nghost, self.grid.Nghost:-self.grid.Nghost].T # TODO: why transpose?
             extent = [self.grid.x[self.grid.Nghost], self.grid.x[-self.grid.Nghost-1],
                       self.grid.y[self.grid.Nghost], self.grid.y[-self.grid.Nghost-1]]
 
             im = axs[q].imshow(plot_data, origin='lower', extent=extent, cmap='magma')
+            print("shape", plot_data.shape)
             
-            for i, j in self.highlight_near_polygon:
-                axs[q].plot(i, j, marker='s', color='red', markersize=2)
-                
-            for i, j in self.highlight_inside_polygon:
-                axs[q].plot(i, j, marker='s', color='blue', markersize=2)
-                
             plt.colorbar(im, ax=axs[q])
+            
+            # for i, j in self.highlight_near_polygon:
+            #     axs[q].plot(i-(self.grid.Nghost*self.grid.dx), j-(self.grid.Nghost*self.grid.dy), marker='s', color='red', markersize=3)
+                
+            # for i, j in self.highlight_inside_polygon:
+            #     axs[q].plot(i-self.grid.Nghost, j-self.grid.Nghost, marker='s', color='blue', markersize=2)
+                
+            # highlight_layer = np.zeros((self.grid.shape, 4))  # RGBA image
+            # highlight_layer[self.highlight_near_polygon] = [1, 0, 0, 0.6]  # Red with alpha
+            
+            # lots of cool tricks to make a transparent mask from here: https://stackoverflow.com/questions/10127284/overlay-imshow-plots-in-matplotlib
+            transparent = cm.get_cmap("binary")
+            alphas = np.linspace(0.5, 0, transparent.N+3)
+            transparent._init()
+            transparent._lut[:,-1] = alphas
+            
+            highlight_data = (self.highlight_near_polygon[q, self.grid.Nghost:-self.grid.Nghost, self.grid.Nghost:-self.grid.Nghost]).T # TODO: why transpose?
+            axs[q].imshow(highlight_data, origin='lower', extent=extent, alpha=0.5, cmap=transparent)
+            
             axs[q].set_title(self.c.variable_names[q])
             axs[q].set_xlabel('x')
             axs[q].set_ylabel('y')
