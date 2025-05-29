@@ -39,12 +39,16 @@ class Simulation:
         # The starting timestep will always be 0.
         self.t = self.inp.t0
         self.timestepNum = 0
+        
+        self.highlight_near_polygon = []
+        self.highlight_inside_polygon = []
 
         # -1 is no output. Always output ICs if we are outputting.
         if self.inp.output_freq >= 0:
             self.output()
 
     def run(self):
+        
         while (self.t < self.inp.t_finish) and self.timestepNum < self.inp.nt:
             print(f"Timestep: {self.timestepNum}, Current time: {self.t}")
 
@@ -283,8 +287,11 @@ class Simulation:
                             outside_is_zero = False
                             
                             if inside_polygon:
-                                break
+                                self.highlight_inside_polygon.append((i*0.01, j*0.01))
+                                
                             elif near_polygon:
+                                self.highlight_near_polygon.append((i*0.01, j*0.01))
+                                
                                 fluid_vec = fluid_vector_through_time(
                                     vector_map[i][j],
                                     velocity_vector,
@@ -292,12 +299,12 @@ class Simulation:
                                     dt
                                 )
                                 
-                                please_be_nonzero = [fluid_vec[0], fluid_vec[1], consU[self.c.MUCOMP, i, j], consU[self.c.MVCOMP, i, j]]
+                                # please_be_nonzero = [fluid_vec[0], fluid_vec[1], consU[self.c.MUCOMP, i, j], consU[self.c.MVCOMP, i, j]]
                                 
-                                for i in range(len(please_be_nonzero)):
-                                    if please_be_nonzero[i] != 0:
-                                        near_is_zero = True
-                                        print("**NEAR**", i, please_be_nonzero[i])
+                                # for i in range(len(please_be_nonzero)):
+                                #     if please_be_nonzero[i] != 0:
+                                #         near_is_zero = True
+                                #         print("**NEAR**", i, please_be_nonzero[i])
                                         
                                 # print("**NEAR**", ("UPPER HALF:" if j >= (j_end/2) else "LOWER HALF:"), fluid_vec[0], fluid_vec[1])
                                 # print("**NEAR**", ("UPPER HALF:" if j >= (j_end/2) else "LOWER HALF:"), consU[self.c.MUCOMP, i, j], consU[self.c.MVCOMP, i, j])
@@ -313,9 +320,9 @@ class Simulation:
                                     U_new[icomp, i, j] = consU[icomp, i, j]  # constant fill or marker
                             else:
                                 
-                                for i in range(len(please_be_nonzero)):
-                                    if please_be_nonzero[i] != 0:
-                                        print("*OUTSIDE*", i, please_be_nonzero[i])
+                                # for i in range(len(please_be_nonzero)):
+                                #     if please_be_nonzero[i] != 0:
+                                #         print("*OUTSIDE*", i, please_be_nonzero[i])
                                         
                                 delta = (
                                     (dt / self.grid.dx) * (numFluxX_plus[icomp, i, j] - numFluxX_minus[icomp, i, j]) +
@@ -331,11 +338,13 @@ class Simulation:
                                     U_new[icomp, i, j] = max(updated_value, floor_value)
                                 else:
                                     U_new[icomp, i, j] = updated_value
+                                    
+                print("printed", self.highlight_near_polygon)
                     
-                if not near_is_zero:
-                    print("**NEAR** HAS ALL ZERO VELOCITIES")
-                if not outside_is_zero:
-                    print("**OUTSIDE** HAS ALL ZERO VELOCITIES")
+                # if not near_is_zero:
+                #     print("**NEAR** HAS ALL ZERO VELOCITIES")
+                # if not outside_is_zero:
+                #     print("**OUTSIDE** HAS ALL ZERO VELOCITIES")
 
                 # Powell divergence cleaning for MHD
                 if self.inp.system == "mhd2d":
@@ -505,10 +514,8 @@ class Simulation:
                 for j in range(self.grid.Nghost, self.grid.Ny - self.grid.Nghost):
                     x = self.grid.x[i]
                     y = self.grid.y[j]
-                    components = [self.grid.grid[q, i, j]
-                                  for q in range(self.c.NUMQ)]
-                    f.write(f"{x:.12f}, {y:.12f}, " +
-                            ", ".join(f"{comp:.8f}" for comp in components) + "\n")
+                    components = [self.grid.grid[q, i, j] for q in range(self.c.NUMQ)]
+                    f.write(f"{x:.12f}, {y:.12f}, " + ", ".join(f"{comp:.8f}" for comp in components) + "\n")
 
         if self.inp.system == "euler2D":
             fig, axs = plt.subplots(2, 2, figsize=(15, 15))
@@ -516,19 +523,24 @@ class Simulation:
             fig, axs = plt.subplots(2, 3, figsize=(18, 12))
         axs = axs.ravel()  # Flatten the array to index by i
 
-        for i in range(self.c.NUMQ):
+        for q in range(self.c.NUMQ):
             # Exclude ghost cells from the plot
-            plot_data = self.grid.grid[i, self.grid.Nghost:-
-                                       self.grid.Nghost, self.grid.Nghost:-self.grid.Nghost].T
+            plot_data = self.grid.grid[q, self.grid.Nghost:-self.grid.Nghost, self.grid.Nghost:-self.grid.Nghost].T
             extent = [self.grid.x[self.grid.Nghost], self.grid.x[-self.grid.Nghost-1],
                       self.grid.y[self.grid.Nghost], self.grid.y[-self.grid.Nghost-1]]
 
-            im = axs[i].imshow(plot_data, origin='lower',
-                               extent=extent, cmap='magma')
-            plt.colorbar(im, ax=axs[i])
-            axs[i].set_title(self.c.variable_names[i])
-            axs[i].set_xlabel('x')
-            axs[i].set_ylabel('y')
+            im = axs[q].imshow(plot_data, origin='lower', extent=extent, cmap='magma')
+            
+            for i, j in self.highlight_near_polygon:
+                axs[q].plot(i, j, marker='s', color='red', markersize=2)
+                
+            for i, j in self.highlight_inside_polygon:
+                axs[q].plot(i, j, marker='s', color='blue', markersize=2)
+                
+            plt.colorbar(im, ax=axs[q])
+            axs[q].set_title(self.c.variable_names[q])
+            axs[q].set_xlabel('x')
+            axs[q].set_ylabel('y')
 
         fig.suptitle(f"Time: {self.t:.4f}, Timestep: {self.timestepNum}")
         plt.tight_layout()
