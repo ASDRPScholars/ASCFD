@@ -16,8 +16,8 @@ class Grid2D:
         self.num_vars = num_vars   # number of variables in the grid (e.g., density, velocity, pressure)
         
           # cell size
-        self.dx = (xlim[1] - xlim[0]) / (Nx - 1)
-        self.dy = (ylim[1] - ylim[0]) / (Ny - 1)
+        self.dx = (xlim[1] - xlim[0]) / (Nx)
+        self.dy = (ylim[1] - ylim[0]) / (Ny)
         
         # x and y coordinates, including ghost cells
         self.x = np.linspace(
