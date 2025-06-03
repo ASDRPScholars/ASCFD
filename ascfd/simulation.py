@@ -192,10 +192,15 @@ class Simulation:
                 px, py = point
                 n = len(polygon_points)
                 
-                print("POINT", (px*100, py*100))
+                debug = 0
+                inside_indices = []
+                
+                print("--POINT--", (px*100, py*100))
                 
                 for (tx, ty) in [(px+0.01, py), (px-0.01, py), (px, py+0.01), (px, py-0.01)]:
-                    # ("--TESTING POINT", (px*100, py*100))
+                    
+                    print("TESTING POINT", (tx*100, ty*100))
+                    
                     point_inside = False
                     
                     for i in range(n):
@@ -212,9 +217,13 @@ class Simulation:
                         
                     if point_inside:
                         inside = True
-                        inside_points.append((int(tx*100), int(ty*100)))
+                        inside_points.append((round(tx*100), round(ty*100)))
+                        inside_indices.append(debug)
+                        
+                    debug += 1
                         
                 print("INSIDE POINTS + BOOL", inside_points, inside)
+                print("INSIDE INDICES", inside_indices)
                     
                 return inside, inside_points
                 
