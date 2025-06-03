@@ -50,36 +50,36 @@ class Simulation:
 
     def run(self):
         
-        def is_inside_polygon(polygon_points, point):
-            """
-            Determine whether a point is inside a polygon using a horizontal ray-casting algorithm. 
+        # def is_inside_polygon(polygon_points, point):
+        #     """
+        #     Determine whether a point is inside a polygon using a horizontal ray-casting algorithm. 
 
-            i.e. If we draw a horizontal, right-facing ray from a point and it intersects with the polygon an ODD number of times
-            (an odd number of edges), the point is inside the polygon. If that right-facing raw intersects an EVEN number of edges,
-            then the point is OUTSIDE the polygon. Draw it for yourself and see!
+        #     i.e. If we draw a horizontal, right-facing ray from a point and it intersects with the polygon an ODD number of times
+        #     (an odd number of edges), the point is inside the polygon. If that right-facing raw intersects an EVEN number of edges,
+        #     then the point is OUTSIDE the polygon. Draw it for yourself and see!
 
-            Instead of counting even and odd, we'll just alternate between inside = True and inside = False.
-            """
+        #     Instead of counting even and odd, we'll just alternate between inside = True and inside = False.
+        #     """
 
-            n = len(polygon_points)
-            inside = False
+        #     n = len(polygon_points)
+        #     inside = False
 
-            px, py = point
-            n = len(polygon_points)
+        #     px, py = point
+        #     n = len(polygon_points)
             
-            for i in range(n):
-                # we'll use these two points to draw a line/edge of the polygon
-                p1x, p1y = polygon_points[i]
-                p2x, p2y = polygon_points[(i + 1) % n]
+        #     for i in range(n):
+        #         # we'll use these two points to draw a line/edge of the polygon
+        #         p1x, p1y = polygon_points[i]
+        #         p2x, p2y = polygon_points[(i + 1) % n]
 
-                # check if the point's y-level crosses this edge
-                if (p1y > py) != (p2y > py) and p1y != p2y:
-                    # find the x where this edge intersects y = py
-                    xint = (py - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
-                    if px < xint:
-                        inside = not inside
+        #         # check if the point's y-level crosses this edge
+        #         if (p1y > py) != (p2y > py) and p1y != p2y:
+        #             # find the x where this edge intersects y = py
+        #             xint = (py - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
+        #             if px < xint:
+        #                 inside = not inside
 
-            return inside
+        #     return inside
         
         def is_near_polygon(polygon_points, i_start, i_end, j_start, j_end):
             
@@ -102,14 +102,14 @@ class Simulation:
                     near = False
                     near_polygon_points = []
                     
-                    px, py = i, j
+                    px, py = i*0.01, j*0.01
             
                     debug = 0
                     inside_indices = []
             
-                    print("--POINT--", (px, py))
+                    print("--POINT--", (i, j))
                     
-                    for (tx, ty) in [(px, py), (px+1, py), (px-1, py), (px, py+1), (px, py-1)]:
+                    for (tx, ty) in [(px, py), (px+0.01, py), (px-0.01, py), (px, py+0.01), (px, py-0.01)]:
                         print("TESTING POINT", (tx, ty))
                         point_inside = False
                         
@@ -125,13 +125,18 @@ class Simulation:
                                 if tx < xint:
                                     point_inside = not point_inside
                             
-                        if point_inside and testing_inside:
-                            inside = True
-                            break
+                        # test the point itself first - and if its inside, then break and just return inside = true and near = false
+                        if testing_inside:
+                            if point_inside:
+                                inside = True
+                                break
+                            # if the point itself is NOT inside, THEN test neighboring points:
+                            else:
+                                testing_inside = False
                         
-                        elif point_inside:
+                        if point_inside:
                             near = True
-                            near_polygon_points.append((tx+self.grid.Nghost, ty+self.grid.Nghost))
+                            near_polygon_points.append((round(tx*100)+self.grid.Nghost, round(ty*100)+self.grid.Nghost))
                             inside_indices.append(debug)
                             
                         debug += 1
@@ -313,8 +318,6 @@ class Simulation:
                                 ])
                         
                         # future_point = point + velocity_vector * dt
-                        
-                        inside_polygon[i, j] = is_inside_polygon(vertices, point)
 
                         for icomp in range(self.c.NUMQ):
                             near_is_zero = False
