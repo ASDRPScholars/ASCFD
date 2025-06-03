@@ -183,29 +183,40 @@ class Simulation:
                 return inside
             
             def is_near_polygon(polygon_points, point):
-                n = len(polygon_points)
+                
                 inside = False
+                inside_points = []
+                
+                n = len(polygon_points)
 
                 px, py = point
                 n = len(polygon_points)
                 
-                for (px, py) in [(px+0.01, py), (px-0.01, py), (px, py+0.01), (px, py-0.01)]:
+                print("POINT", (px*100, py*100))
+                
+                for (tx, ty) in [(px+0.01, py), (px-0.01, py), (px, py+0.01), (px, py-0.01)]:
+                    # ("--TESTING POINT", (px*100, py*100))
+                    point_inside = False
+                    
                     for i in range(n):
                         # we'll use these two points to draw a line/edge of the polygon
                         p1x, p1y = polygon_points[i]
                         p2x, p2y = polygon_points[(i + 1) % n]
 
                         # check if the point's y-level crosses this edge
-                        if (p1y > py) != (p2y > py) and p1y != p2y:
+                        if (p1y > ty) != (p2y > ty) and p1y != p2y:
                             # find the x where this edge intersects y = py
-                            xint = (py - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
-                            if px < xint:
-                                inside = not inside
-                                
-                    if inside:
-                        return inside
+                            xint = (ty - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
+                            if tx < xint:
+                                point_inside = not point_inside
+                        
+                    if point_inside:
+                        inside = True
+                        inside_points.append((int(tx*100), int(ty*100)))
+                        
+                print("INSIDE POINTS + BOOL", inside_points, inside)
                     
-                return inside
+                return inside, inside_points
                 
             
             # TODO: find the negative sign
@@ -221,7 +232,7 @@ class Simulation:
                 if norm_squared == 0:
                     return velocity_vector, (0, 0)  # or return velocity unchanged
                 dot_product = np.dot(velocity_vector, embedded_boundary_vector)
-                V_parallel = (embedded_boundary_vector * dot_product / norm_squared)
+                V_parallel = (dot_product / norm_squared) * embedded_boundary_vector
                 V_normal = velocity_vector - V_parallel
                 return V_normal, V_parallel
 
@@ -260,7 +271,7 @@ class Simulation:
 
                 # Start with the current conservative variables
                 U_new = np.copy(consU)
-                print("TYPE OF U_new!!!!", type(U_new))
+                # print("TYPE OF U_new!!!!", type(U_new))
                 primU = self.euler.cons_to_prim(U_new)
 
                 i_start, i_end = self.grid.Nghost, self.grid.Nx + self.grid.Nghost
@@ -269,7 +280,10 @@ class Simulation:
                 # FLUID UPDATE
                 for i in range(i_start, i_end):
                     for j in range(j_start, j_end):
-                        point = np.array([self.grid.dx * i, self.grid.dy * j])
+                        point = (self.grid.dx * i, self.grid.dy * j)
+                        px, py = point
+                        # print("POINT:", i, j)
+                        # print("CONVERTED POINT: ", point)
                         
                         velocity_vector = np.array([
                                     primU[self.c.UCOMP, i, j],
@@ -279,68 +293,77 @@ class Simulation:
                         # future_point = point + velocity_vector * dt
                         
                         inside_polygon = is_inside_polygon(vertices, point)
-                        
-                        #TODO: optimize by bringing all of this logic into inside_polygon — 1 all-in-one call > 5 separate calls
-                        near_polygon = is_near_polygon(vertices, point)
-                        please_be_nonzero = [consU[self.c.MUCOMP, i, j], consU[self.c.MVCOMP, i, j]]
 
                         for icomp in range(self.c.NUMQ):
                             near_is_zero = False
                             outside_is_zero = False
                             
                             if inside_polygon:
+                                print("inside polygon")
+                                # Optionally: self.highlight_inside_polygon.append((i*0.01, j*0.01))
                                 break
-                                # self.highlight_inside_polygon.append((i*0.01, j*0.01))
-                                
-                            elif near_polygon:
+
+                            near_polygon, inside_points = is_near_polygon(vertices, point)
+
+                            if near_polygon:
+                                print("HIII NEAR POLYGON")
                                 self.highlight_near_polygon[icomp, i, j] = False
-                                
+
                                 fluid_vec = fluid_vector_through_time(
                                     vector_map[i][j],
                                     velocity_vector,
                                     vertices,
                                     dt
                                 )
-                                
-                                # please_be_nonzero = [fluid_vec[0], fluid_vec[1], consU[self.c.MUCOMP, i, j], consU[self.c.MVCOMP, i, j]]
-                                
-                                # for i in range(len(please_be_nonzero)):
-                                #     if please_be_nonzero[i] != 0:
-                                #         near_is_zero = True
-                                #         print("**NEAR**", i, please_be_nonzero[i])
-                                        
-                                # print("**NEAR**", ("UPPER HALF:" if j >= (j_end/2) else "LOWER HALF:"), fluid_vec[0], fluid_vec[1])
-                                # print("**NEAR**", ("UPPER HALF:" if j >= (j_end/2) else "LOWER HALF:"), consU[self.c.MUCOMP, i, j], consU[self.c.MVCOMP, i, j])
-                                
+
                                 if icomp == self.c.MUCOMP:
+                                    print("UPDATING MU ON", (px, py))
                                     U_new[icomp, i, j] = U_new[self.c.RHOCOMP, i, j] * fluid_vec[0]
+
                                 elif icomp == self.c.MVCOMP:
+                                    print("UPDATING MV ON", (px, py))
                                     U_new[icomp, i, j] = U_new[self.c.RHOCOMP, i, j] * fluid_vec[1]
+                                    print(U_new[icomp, i, j])
+                                    if U_new[icomp, i, j] <= 0:
+                                        print("IS Y-VELOCITY POSITIVE, ZERO, OR NEGATIVE?", 
+                                            U_new[icomp, i, j] > 0, 
+                                            U_new[icomp, i, j] == 0, 
+                                            U_new[icomp, i, j] < 0)
+                                        print("WHAT IS THE INITIAL Y-VELOCITY VECTOR?", velocity_vector[1])
+                                        print("IS FLUID VEC POSITIVE, ZERO, OR NEGATIVE?", 
+                                            fluid_vec[1] > 0, 
+                                            fluid_vec[1] == 0, 
+                                            fluid_vec[1] < 0)
+
                                 elif icomp == self.c.RHOCOMP:
-                                    # TODO: try doing an average instead of no-update
+                                    for (tx, ty) in inside_points:
+                                        print("UPDATING RHO ON", (tx, ty))
+                                        consU[icomp, tx, ty] = consU[icomp, i, j]
+                                        print("NEW RHO DIFFERENCE =", consU[icomp, tx, ty] - consU[icomp, i, j])
                                     U_new[icomp, i, j] = consU[icomp, i, j]
+
                                 elif icomp == self.c.ECOMP:
-                                    U_new[icomp, i, j] = consU[icomp, i, j]  # constant fill or marker
-                            else:
-                                
-                                # for i in range(len(please_be_nonzero)):
-                                #     if please_be_nonzero[i] != 0:
-                                #         print("*OUTSIDE*", i, please_be_nonzero[i])
-                                        
-                                delta = (
-                                    (dt / self.grid.dx) * (numFluxX_plus[icomp, i, j] - numFluxX_minus[icomp, i, j]) +
-                                    (dt / self.grid.dy) * (numFluxY_plus[icomp, i, j] - numFluxY_minus[icomp, i, j])
-                                )
-                                updated_value = consU[icomp, i, j] - delta
+                                    print("LENGTH OF INSIDE POINTS", len(inside_points))
+                                    for (tx, ty) in inside_points:
+                                        print("UPDATING E ON", (tx, ty))
+                                        consU[icomp, tx, ty] = consU[icomp, i, j]
+                                        print("NEW E DIFFERENCE =", consU[icomp, tx, ty] - consU[icomp, i, j])
+                                    U_new[icomp, i, j] = consU[icomp, i, j]
 
-                                # Apply floors where appropriate
-                                floor_values = {1: 0.01, 3: 0.01}
-                                floor_value = floor_values.get(icomp, None)
+                                # Skip finite volume update if near_polygon and velocity component
+                                if icomp in (self.c.MUCOMP, self.c.MVCOMP):
+                                    continue
 
-                                if floor_value is not None:
-                                    U_new[icomp, i, j] = max(updated_value, floor_value)
-                                else:
-                                    U_new[icomp, i, j] = updated_value
+                            # Fallback: apply finite volume update if not inside/near
+                            delta = (
+                                (dt / self.grid.dx) * (numFluxX_plus[icomp, i, j] - numFluxX_minus[icomp, i, j]) +
+                                (dt / self.grid.dy) * (numFluxY_plus[icomp, i, j] - numFluxY_minus[icomp, i, j])
+                            )
+                            updated_value = consU[icomp, i, j] - delta
+
+                            # # Apply floor where needed
+                            # floor_values = {self.c.MUCOMP: 0.01, self.c.MVCOMP: 0.01}
+                            U_new[icomp, i, j] = updated_value
                                     
                 print("printed", self.highlight_near_polygon)
                     
