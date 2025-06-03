@@ -217,7 +217,7 @@ class Simulation:
                         
                     if point_inside:
                         inside = True
-                        inside_points.append((round(tx*100), round(ty*100)))
+                        inside_points.append((round(tx*100)+self.grid.Nghost, round(ty*100)+self.grid.Nghost))
                         inside_indices.append(debug)
                         
                     debug += 1
@@ -289,6 +289,7 @@ class Simulation:
                 # FLUID UPDATE
                 for i in range(i_start, i_end):
                     for j in range(j_start, j_end):
+                        
                         point = (self.grid.dx * i, self.grid.dy * j)
                         px, py = point
                         # print("POINT:", i, j)
@@ -349,7 +350,6 @@ class Simulation:
                                         print("UPDATING RHO ON", (tx, ty))
                                         consU[icomp, tx, ty] = consU[icomp, i, j]
                                         print("NEW RHO DIFFERENCE =", consU[icomp, tx, ty] - consU[icomp, i, j])
-                                    U_new[icomp, i, j] = consU[icomp, i, j]
 
                                 elif icomp == self.c.ECOMP:
                                     print("LENGTH OF INSIDE POINTS", len(inside_points))
@@ -357,7 +357,6 @@ class Simulation:
                                         print("UPDATING E ON", (tx, ty))
                                         consU[icomp, tx, ty] = consU[icomp, i, j]
                                         print("NEW E DIFFERENCE =", consU[icomp, tx, ty] - consU[icomp, i, j])
-                                    U_new[icomp, i, j] = consU[icomp, i, j]
 
                                 # Skip finite volume update if near_polygon and velocity component
                                 if icomp in (self.c.MUCOMP, self.c.MVCOMP):
