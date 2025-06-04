@@ -102,7 +102,7 @@ class Simulation:
                     near = False
                     near_polygon_points = []
                     
-                    px, py = i*0.01, j*0.01
+                    px, py = i*self.grid.dx, j*self.grid.dy
             
                     debug = 0
                     inside_indices = []
@@ -110,25 +110,38 @@ class Simulation:
                     print("--POINT--", (i, j))
                     
                     for (tx, ty) in [(px, py), (px+0.01, py), (px-0.01, py), (px, py+0.01), (px, py-0.01)]:
-                        print("TESTING POINT", (tx, ty))
+                        print("TESTING POINT", (tx*100, ty*100))
                         point_inside = False
+                        # print("ITERATING OVER TESTING POITNS")
                         
-                        for i in range(n):
+                        for k in range(n):
                             # we'll use these two points to draw a line/edge of the polygon
-                            p1x, p1y = polygon_points[i]
-                            p2x, p2y = polygon_points[(i + 1) % n]
+                            p1x, p1y = polygon_points[k]
+                            p2x, p2y = polygon_points[(k + 1) % n]
+                            
+                            # print("ITERATING OVER POLYGON")
+                            
+                            # print(p1y, p2y, tx, ty)
+                            # print((p1y > ty) != (p2y > ty))
+                            # print(p1y != p2y)
 
                             # check if the point's y-level crosses this edge
-                            if (p1y > ty) != (p2y > ty) and p1y != p2y:
+                            if ((p1y > ty) != (p2y > ty)) and p1y != p2y:
+                                # print("CHECKING Y-LEVEL")
                                 # find the x where this edge intersects y = py
                                 xint = (ty - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
+                                # print("CHECKING X-INT", tx, xint)
                                 if tx < xint:
                                     point_inside = not point_inside
+                                    # print("point_inside changed to", point_inside)
+                                    # print("intersect!", debug)
                             
                         # test the point itself first - and if its inside, then break and just return inside = true and near = false
                         if testing_inside:
+                            # print("testing_inside", testing_inside)
                             if point_inside:
                                 inside = True
+                                # print("found an inside point!", inside)
                                 break
                             # if the point itself is NOT inside, THEN test neighboring points:
                             else:
@@ -136,17 +149,22 @@ class Simulation:
                         
                         if point_inside:
                             near = True
-                            near_polygon_points.append((round(tx*100)+self.grid.Nghost, round(ty*100)+self.grid.Nghost))
+                            near_polygon_points.append((round(tx*100), round(ty*100)))
                             inside_indices.append(debug)
                             
                         debug += 1
                             
-                    print("INSIDE POINTS + BOOL", near_polygon_points, near)
-                    print("INSIDE INDICES", inside_indices)
+                    # print("INSIDE POINTS + BOOL", near_polygon_points, near)
+                    # print("INSIDE INDICES", inside_indices)
                     
                     inside_polygon_array[i, j] = inside
                     near_polygon_array[i, j] = near
                     near_polygon_points_array[i, j] = near_polygon_points
+                    
+            # if True in inside_polygon_array:
+            #     raise ValueError("INSIDE HAS A TRUE")
+            # if True in near_polygon_array:
+            #     raise ValueError("NEAR HAS A TRUE")
                 
             return inside_polygon_array, near_polygon_array, near_polygon_points_array
             
@@ -364,14 +382,14 @@ class Simulation:
                                             fluid_vec[1] < 0)
 
                                 elif icomp == self.c.RHOCOMP:
-                                    for (tx, ty) in near_polygon_points:
+                                    for (tx, ty) in near_polygon_points[i, j]:
                                         print("UPDATING RHO ON", (tx, ty))
                                         U_new[icomp, tx, ty] = U_new[icomp, i, j]
                                         print("NEW RHO DIFFERENCE =", U_new[icomp, tx, ty] - U_new[icomp, i, j])
 
                                 elif icomp == self.c.ECOMP:
                                     print("LENGTH OF INSIDE POINTS", len(near_polygon_points))
-                                    for (tx, ty) in near_polygon_points:
+                                    for (tx, ty) in near_polygon_points[i, j]:
                                         print("UPDATING E ON", (tx, ty))
                                         U_new[icomp, tx, ty] = U_new[icomp, i, j]
                                         print("NEW E DIFFERENCE =", U_new[icomp, tx, ty] - U_new[icomp, i, j])
