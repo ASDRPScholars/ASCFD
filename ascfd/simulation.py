@@ -163,7 +163,7 @@ class Simulation:
                 # FLUID UPDATE
                 
                 print("called ebs!")
-                self.ebs.apply_embedded_boundary_conditions(U_new, primU, vertices, inside_polygon, near_polygon, near_polygon_points, i_start, i_end, j_start, j_end, dt)
+                self.ebs.apply_embedded_boundary_conditions(U_new, primU, self.inp.system, vertices, inside_polygon, near_polygon, near_polygon_points, i_start, i_end, j_start, j_end)
                                 
                 # TODO: is it better for this to use consU since we're directly modifying U_new?
                 _, numFluxX_plus, numFluxX_minus, numFluxY_plus, numFluxY_minus = self.flux.getFlux(
@@ -324,6 +324,9 @@ class Simulation:
                 print("before filling grid")
                 self.grid.fill_grid(ics.rotor_2d)
                 print("after filling grid")
+            elif self.inp.ics == "staticmhd":
+                print("static mhd!")
+                self.grid.fill_grid(ics.static_mhd_2d)
 
         else:
             raise RuntimeError("[FLUID] ICS not valid.")

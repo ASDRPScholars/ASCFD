@@ -109,7 +109,7 @@ class EmbeddedBoundaries:
     lower_bound = 0
     upper_bound = 1
     
-    def apply_embedded_boundary_conditions(self, U_new, primU, vertices, inside_polygon, near_polygon, near_polygon_points, i_start, i_end, j_start, j_end, dt):
+    def apply_embedded_boundary_conditions(self, U_new, primU, system, vertices, inside_polygon, near_polygon, near_polygon_points, i_start, i_end, j_start, j_end):
         # Compute vector map once outside the loop
         vector_map = self.find_embedded_boundary_vector(vertices)
         
@@ -130,9 +130,21 @@ class EmbeddedBoundaries:
                     U_new[self.c.MVCOMP, i, j] = U_new[self.c.RHOCOMP, i, j] * fluid_vec[1]
                     
                     # Update density and energy for near points
-                    for (tx, ty) in near_polygon_points[i, j]:
-                        U_new[self.c.RHOCOMP, tx, ty] = U_new[self.c.RHOCOMP, i, j]
-                        U_new[self.c.ECOMP, tx, ty] = U_new[self.c.ECOMP, i, j]
+                    if system == "euler2D":
+                        for (tx, ty) in near_polygon_points[i, j]:
+                            U_new[self.c.RHOCOMP, tx, ty] = U_new[self.c.RHOCOMP, i, j]
+                            U_new[self.c.ECOMP, tx, ty] = U_new[self.c.ECOMP, i, j]
+                    
+                    elif system == "mhd2d":
+                        for (tx, ty) in near_polygon_points[i, j]:
+                            U_new[self.c.RHOCOMP, tx, ty] = U_new[self.c.RHOCOMP, i, j]
+                            U_new[self.c.ECOMP, tx, ty] = U_new[self.c.ECOMP, i, j]
+    
+                            U_new[self.c.BXCOMP, tx, ty] = U_new[self.c.BXCOMP, i, j]
+                            U_new[self.c.BYCOMP, tx, ty] = U_new[self.c.BYCOMP, i, j]
+                            
+                    else:
+                        raise AssertionError("Unknown variable system passed into embedded boundaries")
                     
                     # Update highlight array
                     self.highlight_near_polygon[:, i, j] = False

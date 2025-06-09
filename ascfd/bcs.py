@@ -111,15 +111,15 @@ class BoundaryConditions:
                         if var == 0:
                             grid.grid[var, i, j] = 1.0
                         elif var == 1:  # mu
-                            grid.grid[var, i, j] = 1.0
+                            grid.grid[var, i, j] = 5
                         elif var == 2:  # mv
                             grid.grid[var, i, j] = 0.0
                         elif var == 3:  # pressure
                             grid.grid[var, i, j] = 3.0
-                        # else:  # other variables (Bx, By, etc.)
-                        #     grid.grid[var, i, j] = grid.grid[var,
-                        #                                      grid.Nghost, j]  # copy from edge
-            # Y STUFF IS BROKEN DON'T USE
+                        else:  # other variables (Bx, By, etc.)
+                            grid.grid[var, i, j] = 1.0  # copy from edge
+            
+            # TODO: Y IMPLEMENTATION BELOW IS BROKEN DON'T USE:
             else:
                 for i in range(grid.Nghost):  # ghost cells on the left
                     for j in range(grid.Nghost, grid.Ny + grid.Nghost):

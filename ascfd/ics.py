@@ -223,3 +223,10 @@ def static_2d(a_x, a_y, a_var):
         return np.ones_like(a_x)
     elif a_var in [1, 2]:
         return np.zeros_like(a_x)
+    
+    
+def static_mhd_2d(a_x, a_y, a_var):
+    if a_var in [0, 3, 4, 5]:
+        return np.ones_like(a_x)
+    elif a_var in [1, 2]:
+        return np.zeros_like(a_x)

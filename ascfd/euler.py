@@ -14,10 +14,17 @@ class Euler:
         if self.c.system == "euler2D":
             # density stays the same
             cons[self.c.RHOCOMP] = a_prim[self.c.RHOCOMP]
-            cons[self.c.MUCOMP] = a_prim[self.c.RHOCOMP] * \
-                a_prim[self.c.UCOMP]  # momentum components x & y
+            cons[self.c.MUCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.UCOMP]  # momentum components x & y
             cons[self.c.MVCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.VCOMP]
             # compute total energy
+            
+            # for i in range(np.shape(a_prim)[0]):
+            #     for j in range(np.shape(a_prim)[1]):
+            #         print("rho, u, v", a_prim[self.c.RHOCOMP, i, j], a_prim[self.c.UCOMP, i, j], a_prim[self.c.VCOMP, i, j])
+            #         E = np.zeros((104, 104))
+            #         E[i, j] = (a_prim[self.c.PCOMP, i, j] / ((self.c.gamma - 1) * a_prim[self.c.RHOCOMP, i, j]) +
+            #             0.5 * (a_prim[self.c.UCOMP, i, j]**2 + a_prim[self.c.VCOMP, i, j]**2))
+
             E = (a_prim[self.c.PCOMP] / ((self.c.gamma - 1) * a_prim[self.c.RHOCOMP]) +
                  0.5 * (a_prim[self.c.UCOMP]**2 + a_prim[self.c.VCOMP]**2))
             cons[self.c.ECOMP] = E * a_prim[self.c.RHOCOMP]
@@ -28,8 +35,20 @@ class Euler:
             cons[self.c.MVCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.VCOMP]
             cons[self.c.BXCOMP] = a_prim[self.c.BXCOMP]
             cons[self.c.BYCOMP] = a_prim[self.c.BYCOMP]
+            
+            # for i in range(np.shape(a_prim)[0]):
+            #     for j in range(np.shape(a_prim)[1]):
+            #         print("(i, j) is: ", i, j)
+            #         print("rho, u, v, Bx, By", a_prim[self.c.RHOCOMP, i, j], a_prim[self.c.UCOMP, i, j], a_prim[self.c.VCOMP, i, j], a_prim[self.c.BXCOMP, i, j], a_prim[self.c.BYCOMP, i, j])
+            #         E = np.zeros((104, 104))
+            #         E[i, j] = (a_prim[self.c.PCOMP, i, j] / ((self.c.gamma - 1) * a_prim[self.c.RHOCOMP, i, j]) +
+            #             0.5 * (a_prim[self.c.UCOMP, i, j]**2 + a_prim[self.c.VCOMP, i, j]**2)) + 0.5 * (a_prim[self.c.BXCOMP, i, j]**2 + a_prim[self.c.BYCOMP, i, j]**2)
+
+            # print(np.shape(E), np.shape(cons))
+            
             E = (a_prim[self.c.PCOMP] / ((self.c.gamma - 1) * a_prim[self.c.RHOCOMP]) +
                  0.5 * (a_prim[self.c.UCOMP]**2 + a_prim[self.c.VCOMP]**2)) + 0.5 * (a_prim[self.c.BXCOMP]**2 + a_prim[self.c.BYCOMP]**2)
+                        
             cons[self.c.ECOMP] = E * a_prim[self.c.RHOCOMP]
 
         else:
