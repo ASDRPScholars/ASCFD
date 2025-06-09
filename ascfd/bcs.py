@@ -116,8 +116,10 @@ class BoundaryConditions:
                             grid.grid[var, i, j] = 0.0
                         elif var == 3:  # pressure
                             grid.grid[var, i, j] = 3.0
-                        else:  # other variables (Bx, By, etc.)
-                            grid.grid[var, i, j] = 1.0  # copy from edge
+                        elif var == 4:  # Bx
+                            grid.grid[var, i, j] = 1.0  
+                        elif var == 5:  # Bx
+                            grid.grid[var, i, j] = 0.0 
             
             # TODO: Y IMPLEMENTATION BELOW IS BROKEN DON'T USE:
             else:
