@@ -111,14 +111,14 @@ class BoundaryConditions:
                         if var == 0:
                             grid.grid[var, i, j] = 1.0
                         elif var == 1:  # mu
-                            grid.grid[var, i, j] = 5
+                            grid.grid[var, i, j] = 1.0
                         elif var == 2:  # mv
                             grid.grid[var, i, j] = 0.0
-                        elif var == 3:  # pressure
-                            grid.grid[var, i, j] = 3.0
+                        elif var == 3:  # energy
+                            grid.grid[var, i, j] = 0.714
                         elif var == 4:  # Bx
                             grid.grid[var, i, j] = 1.0  
-                        elif var == 5:  # Bx
+                        elif var == 5:  # By
                             grid.grid[var, i, j] = 0.0 
             
             # TODO: Y IMPLEMENTATION BELOW IS BROKEN DON'T USE:
