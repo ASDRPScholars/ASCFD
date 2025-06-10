@@ -45,7 +45,7 @@ class Simulation:
 
         # -1 is no output. Always output ICs if we are outputting.
         if self.inp.output_freq >= 0:
-            self.output()
+            self.output(np.zeros_like(self.grid.grid[0]))
 
     def run(self):
         
@@ -190,6 +190,7 @@ class Simulation:
                                 # floor_values = {self.c.RHOCOMP: 0.01, self.c.PCOMP: 0.01}
                                 U_new[icomp, i, j] = updated_value
                                 
+                U_prim = self.euler.cons_to_prim(U_new)
 
                 # Powell divergence cleaning for MHD
                 if self.inp.system == "mhd2d":
@@ -203,21 +204,26 @@ class Simulation:
                             # Central difference requires i-1, i+1, j-1, j+1
                             # Ensure indices are within the bounds where consU is valid (including ghosts)
                             divB_x = (
-                                consU[self.c.BXCOMP, i + 1, j] - consU[self.c.BXCOMP, i - 1, j]) / (2.0 * self.grid.dx)
+                                U_new[self.c.BXCOMP, i + 1, j] - U_new[self.c.BXCOMP, i - 1, j]) / (2.0 * self.grid.dx)
                             divB_y = (
-                                consU[self.c.BYCOMP, i, j + 1] - consU[self.c.BYCOMP, i, j - 1]) / (2.0 * self.grid.dy)
+                                U_new[self.c.BYCOMP, i, j + 1] - U_new[self.c.BYCOMP, i, j - 1]) / (2.0 * self.grid.dy)
                             divB[i, j] = divB_x + divB_y
 
                     # Calculate Powell source terms using primU_n and consU
                     powell_source = calculate_powell_source(
-                        consU, primU_n, divB, self.c)
+                        U_new, U_prim, divB, self.c)
+                    
+                    # region_mask = ~inside_polygon[i_start:i_end, j_start:j_end]
+                    # for icomp in range(self.c.NUMQ):
+                    #     U_new[icomp, i_start:i_end, j_start:j_end][region_mask] += dt * powell_source[icomp, i_start:i_end, j_start:j_end][region_mask]
 
                     # Apply Powell source terms to U_new
                     for i in range(i_start, i_end):
                         for j in range(j_start, j_end):
-                            for icomp in range(self.c.NUMQ):
-                                U_new[icomp, i, j] += dt * \
-                                    powell_source[icomp, i, j]
+                            if inside_polygon[i, j] != True:
+                                for icomp in range(self.c.NUMQ):
+                                    U_new[icomp, i, j] += dt * \
+                                        powell_source[icomp, i, j]
 
                 # TODO: particle step
 
@@ -243,7 +249,7 @@ class Simulation:
 
             # always output the last timestep.
             if (self.timestepNum % self.inp.output_freq == 0) or (self.timestepNum == self.inp.nt-1):
-                self.output()
+                self.output(divB)
 
             # DEBUG
             # self.grid.plot()
@@ -337,7 +343,7 @@ class Simulation:
         # check if self.inp.particle_ic = ...
         pass
 
-    def output(self):
+    def output(self, divB):
         # Ensure the base output directory exists
         os.makedirs(self.inp.output_dir, exist_ok=True)
 
@@ -369,7 +375,7 @@ class Simulation:
         if self.inp.system == "euler2D":
             fig, axs = plt.subplots(2, 2, figsize=(15, 15))
         elif self.inp.system == "mhd2d":
-            fig, axs = plt.subplots(2, 3, figsize=(18, 12))
+            fig, axs = plt.subplots(2, 4, figsize=(36, 18))
         axs = axs.ravel()  # Flatten the array to index by i
 
         for q in range(self.c.NUMQ):
@@ -395,6 +401,14 @@ class Simulation:
             axs[q].set_title(self.c.variable_names[q])
             axs[q].set_xlabel('x')
             axs[q].set_ylabel('y')
+
+        plot_data = divB[self.grid.Nghost:-self.grid.Nghost, self.grid.Nghost:-self.grid.Nghost].T
+        axs[6].imshow(plot_data, origin='lower', extent=extent, cmap='magma')
+        axs[6].imshow(highlight_data, origin='lower', extent=extent, alpha=0.5, cmap=transparent)
+        plt.colorbar(im, ax=axs[6])
+        axs[6].set_title("divB")
+        axs[6].set_xlabel('x')
+        axs[6].set_ylabel('y')
 
         fig.suptitle(f"Time: {self.t:.4f}, Timestep: {self.timestepNum}")
         plt.tight_layout()
