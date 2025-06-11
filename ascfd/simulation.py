@@ -159,11 +159,6 @@ class Simulation:
                 print(self.grid.grid.shape)
                 grid_shape_2d = self.grid.grid.shape[1:]
                 print(grid_shape_2d)
-
-                # FLUID UPDATE
-                
-                print("called ebs!")
-                self.ebs.apply_embedded_boundary_conditions(U_new, primU, self.inp.system, vertices, inside_polygon, near_polygon, near_polygon_points, i_start, i_end, j_start, j_end)
                                 
                 # TODO: is it better for this to use consU since we're directly modifying U_new?
                 _, numFluxX_plus, numFluxX_minus, numFluxY_plus, numFluxY_minus = self.flux.getFlux(
@@ -190,9 +185,14 @@ class Simulation:
                                 # floor_values = {self.c.RHOCOMP: 0.01, self.c.PCOMP: 0.01}
                                 U_new[icomp, i, j] = updated_value
                                 
+                print("1) updated fluxes!")
+                
                 U_prim = self.euler.cons_to_prim(U_new)
-
-                # Powell divergence cleaning for MHD
+                
+                print("2) called ebs!")
+                self.ebs.apply_embedded_boundary_conditions(U_new, U_prim, self.inp.system, vertices, inside_polygon, near_polygon, near_polygon_points, i_start, i_end, j_start, j_end)
+            
+                # # Powell divergence cleaning for MHD
                 if self.inp.system == "mhd2d":
                     # Calculate div(B) using central differences on consU
                     divB = np.zeros_like(consU[0])
@@ -201,13 +201,14 @@ class Simulation:
                     # Note: Using consU which contains Bx, By directly.
                     for i in range(i_start, i_end):
                         for j in range(j_start, j_end):
-                            # Central difference requires i-1, i+1, j-1, j+1
-                            # Ensure indices are within the bounds where consU is valid (including ghosts)
-                            divB_x = (
-                                U_new[self.c.BXCOMP, i + 1, j] - U_new[self.c.BXCOMP, i - 1, j]) / (2.0 * self.grid.dx)
-                            divB_y = (
-                                U_new[self.c.BYCOMP, i, j + 1] - U_new[self.c.BYCOMP, i, j - 1]) / (2.0 * self.grid.dy)
-                            divB[i, j] = divB_x + divB_y
+                            if inside_polygon[i, j] != True and near_polygon[i, j] != True:
+                                # Central difference requires i-1, i+1, j-1, j+1
+                                # Ensure indices are within the bounds where consU is valid (including ghosts)
+                                divB_x = (
+                                    U_new[self.c.BXCOMP, i + 1, j] - U_new[self.c.BXCOMP, i - 1, j]) / (2.0 * self.grid.dx)
+                                divB_y = (
+                                    U_new[self.c.BYCOMP, i, j + 1] - U_new[self.c.BYCOMP, i, j - 1]) / (2.0 * self.grid.dy)
+                                divB[i, j] = divB_x + divB_y
 
                     # Calculate Powell source terms using primU_n and consU
                     powell_source = calculate_powell_source(
@@ -220,11 +221,13 @@ class Simulation:
                     # Apply Powell source terms to U_new
                     for i in range(i_start, i_end):
                         for j in range(j_start, j_end):
-                            if inside_polygon[i, j] != True:
+                            if inside_polygon[i, j] != True and near_polygon[i, j] != True:
                                 for icomp in range(self.c.NUMQ):
                                     U_new[icomp, i, j] += dt * \
                                         powell_source[icomp, i, j]
-
+                    
+                    print("3) cleaned divergence!")
+                    
                 # TODO: particle step
 
             else:
