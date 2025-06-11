@@ -192,6 +192,8 @@ class Simulation:
                 print("2) called ebs!")
                 self.ebs.apply_embedded_boundary_conditions(U_new, U_prim, self.inp.system, vertices, inside_polygon, near_polygon, near_polygon_points, i_start, i_end, j_start, j_end)
             
+                U_prim = self.euler.cons_to_prim(U_new)
+                
                 # # Powell divergence cleaning for MHD
                 if self.inp.system == "mhd2d":
                     # Calculate div(B) using central differences on consU
@@ -209,8 +211,10 @@ class Simulation:
                                 divB_y = (
                                     U_new[self.c.BYCOMP, i, j + 1] - U_new[self.c.BYCOMP, i, j - 1]) / (2.0 * self.grid.dy)
                                 divB[i, j] = divB_x + divB_y
+                                if divB[i, j] == 0:
+                                    print(f"divergence is zero at ({i}, {j})!")
 
-                    # Calculate Powell source terms using primU_n and consU
+                    # TODO: Calculate Powell source terms using primU_n and consU (replaced with U_new and U_prim from EB's -> good?)
                     powell_source = calculate_powell_source(
                         U_new, U_prim, divB, self.c)
                     
@@ -406,9 +410,9 @@ class Simulation:
             axs[q].set_ylabel('y')
 
         plot_data = divB[self.grid.Nghost:-self.grid.Nghost, self.grid.Nghost:-self.grid.Nghost].T
-        axs[6].imshow(plot_data, origin='lower', extent=extent, cmap='magma')
+        im_divB = axs[6].imshow(plot_data, origin='lower', extent=extent, cmap='magma')
         axs[6].imshow(highlight_data, origin='lower', extent=extent, alpha=0.5, cmap=transparent)
-        plt.colorbar(im, ax=axs[6])
+        plt.colorbar(im_divB, ax=axs[6])
         axs[6].set_title("divB")
         axs[6].set_xlabel('x')
         axs[6].set_ylabel('y')
