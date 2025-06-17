@@ -7,15 +7,16 @@ class EmbeddedBoundaries:
     def __init__(self, grid: Grid2D, a_constants: Constants):
         self.grid = grid
         self.c = a_constants
-        self.highlight_near_polygon = np.ones_like(self.grid.grid, dtype=bool)
+        self.highlight_near_polygon = np.zeros_like(self.grid.grid, dtype=bool)
     
     def find_inside_near_points(self, polygon_points, i_start, i_end, j_start, j_end): 
         
         print(polygon_points, i_start, i_end, j_start, j_end)
-        
+     
         inside_polygon_array = np.zeros((i_end-i_start+2, j_end-j_start+2), dtype=bool)
         near_polygon_array = np.zeros((i_end-i_start+2, j_end-j_start+2), dtype=bool)
         near_polygon_points_array = np.zeros((i_end-i_start+2, j_end-j_start+2), dtype=object)
+        boundary_points_array = np.zeros((i_end-i_start+2, j_end-j_start+2), dtype=object)
         
         n = len(polygon_points)
 
@@ -27,7 +28,10 @@ class EmbeddedBoundaries:
                 near = False
                 near_polygon_points = []
                 
-                px, py = i*self.grid.dx, j*self.grid.dy
+                testing_boundary_point = True
+                boundary_point_index = 0
+                
+                px, py = (i-1/2) * self.grid.dx, (j-1/2) *self.grid.dy
                 
                 for (tx, ty) in [(px, py), (px+self.grid.dx, py), (px-self.grid.dx, py), (px, py+self.grid.dy), (px, py-self.grid.dy)]:
                     point_inside = False
@@ -45,6 +49,10 @@ class EmbeddedBoundaries:
                             # print("CHECKING X-INT", tx, xint)
                             if tx < xint:
                                 point_inside = not point_inside
+                                
+                                if testing_boundary_point:
+                                    boundary_point_index = k
+                                    testing_boundary_point = False
                         
                     # test the point itself first - and if its inside, then break and just return inside = true and near = false
                     if testing_inside:
@@ -53,11 +61,14 @@ class EmbeddedBoundaries:
                             break
                         # if the point itself is NOT inside, THEN test neighboring points:
                         else:
+                            boundary_points_array[i, j] = polygon_points[boundary_point_index]
+                            print(boundary_points_array[i, j])
+                            print("appended", polygon_points[boundary_point_index], "to boundary_points!")
                             testing_inside = False
                     
                     if point_inside:
                         near = True
-                        near_polygon_points.append((round(tx*100), round(ty*100)))
+                        near_polygon_points.append((round(tx/self.grid.dx), round(ty/self.grid.dy)))
                 
                 inside_polygon_array[i, j] = inside
                 near_polygon_array[i, j] = near
@@ -66,8 +77,12 @@ class EmbeddedBoundaries:
                 # print("results", inside_polygon_array[i, j], near_polygon_array[i, j], near_polygon_points_array[i, j])
                 
         # print(inside_polygon_array, near_polygon_array, near_polygon_points_array)
-            
-        return inside_polygon_array, near_polygon_array, near_polygon_points_array
+        
+        print("BOUNDARY BOBUNDARY")  
+        for item in boundary_points_array:
+            print(item)
+
+        return inside_polygon_array, near_polygon_array, near_polygon_points_array, boundary_points_array
         
     
     def fluid_vector_through_time(self, embedded_boundary_vector, velocity_vector):
@@ -116,6 +131,8 @@ class EmbeddedBoundaries:
         for i in range(i_start, i_end):
             for j in range(j_start, j_end):
                 if inside_polygon[i, j]:
+                     # Update highlight array
+                    self.highlight_near_polygon[:, i, j] = True
                     continue
                     
                 if near_polygon[i, j]:
@@ -146,11 +163,66 @@ class EmbeddedBoundaries:
                     else:
                         raise AssertionError("Unknown variable system passed into embedded boundaries")
                     
-                    # Update highlight array
-                    self.highlight_near_polygon[:, i, j] = False
+                   
                     
         print("finished applying eb's!")
         
         return U_new
-                                
+    
+    def apply_boundary_reconstruction_condition(self, U_new, primU, system, vertices, inside_polygon, near_polygon, near_polygon_points, boundary_points, i_start, i_end, j_start, j_end):
+        for i in range(i_start, i_end):
+            for j in range(j_start, j_end):
+                if inside_polygon[i, j]:
+                    self.highlight_near_polygon[:, i, j] = True
+                    continue
+                elif near_polygon[i, j]:
+                    # px, py = (i-1/2) * self.grid.dx, (j-1/2) * self.grid.dy
+                    interpolation_points = [(tx, ty) for (tx, ty) in [(i+1, j), (i-1, j), (i, j+1), (i, j-1)] if (tx, ty) not in near_polygon_points[i, j]]
+                    
+                    if len(interpolation_points) < 2:
+                        raise IndexError("Less than 2 boundary reconstruction interpolation points found.")
+                    
+                    print(f"boundary reconstruction! interpolation points for {i}, {j} are {interpolation_points} while near_polygon_points are {near_polygon_points[i, j]}")
+                    
+                    boundary_point = boundary_points[i, j]
+                    
+                    # TODO: MAKE 3D LATER? currently hardcoded to x and y
+                    x_velocities = np.zeros(3)
+                    y_velocities = np.zeros(3)
+                    coefficients = np.zeros((3, 3))
+                    
+                    k = 0
+
+                    # only fill matrices with two interpolation points (that's all we need)
+                    while k < 2:
+                        point = interpolation_points[k]
+                        
+                        x_velocity = primU[self.c.UCOMP, point[0], point[1]]
+                        x_velocities[k] = x_velocity
+                        
+                        y_velocity = primU[self.c.VCOMP, point[0], point[1]]
+                        y_velocities[k] = y_velocity
+                        
+                        coefficients[k] = [point[0], point[1], 1]
+                        
+                        k += 1
+                        
+                    # set velocity to 0 at boundary point - no slip condition
+                    x_velocities[2] = 0
+                    y_velocities[2] = 0
+                    print("BOUNDARY POINT", boundary_point)
+                    coefficients[2] = [boundary_point[0], boundary_point[1], 1]
+                    
+                    u_solution = np.linalg.solve(coefficients, x_velocities)
+                    v_solution = np.linalg.solve(coefficients, y_velocities)
+                    
+                    px = (i - 0.5) * self.grid.dx
+                    py = (j - 0.5) * self.grid.dy
+                    u = np.dot(u_solution, [px, py, 1])
+                    v = np.dot(v_solution, [px, py, 1])
+                    
+                    U_new[self.c.MUCOMP, i, j] = U_new[self.c.RHOCOMP, i, j] * u
+                    U_new[self.c.MVCOMP, i, j] = U_new[self.c.RHOCOMP, i, j] * v
+                    
+        return U_new
 

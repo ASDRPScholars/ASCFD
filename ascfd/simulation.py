@@ -46,15 +46,23 @@ class Simulation:
         # -1 is no output. Always output ICs if we are outputting.
         if self.inp.output_freq >= 0:
             self.output(np.zeros_like(self.grid.grid[0]))
+            # self.output()
 
     def run(self):
         
         # TODO: add eb parsing from .txt or .dat (use airfoil .dat as example!)
+        
+        # NOTHING
+        # vertices = []
+        
         # BIG r = 0.25 CIRCLE CENTERED AT (0.3, 0.5)
         # vertices = [(0.55, 0.5), (0.5487510413195065, 0.524958354161707), (0.5450166444603104, 0.5496673326987653), (0.5388341222814015, 0.5738800516653348), (0.5302652485007213, 0.5973545855771626), (0.5193956404725932, 0.6198563846510508), (0.5063339037274196, 0.6411606183487588), (0.4912105468211221, 0.6610544218094228), (0.47417667733679136, 0.6793390227248807), (0.45540249206766614, 0.6958317274068708), (0.43507557646703493, 0.7103677462019741), (0.41339903035639436, 0.7228018400153589), (0.3905894386191684, 0.7330097714918066), (0.36687470715614684, 0.7408895463542983), (0.34249178572506017, 0.7463624324971151), (0.31768430041692564, 0.7493737466510136), (0.2927001194246777, 0.7498934007603762), (0.2677888764261187, 0.7479162026131172), (0.24319947632672811, 0.7434619077195488), (0.219177608284124, 0.7365750219218535), (0.1959632908632143, 0.7273243567064204), (0.1737884738500355, 0.7158023416622183), (0.15287472068616342, 0.7021241009548974), (0.1334309946800438, 0.68642630304418), (0.11565157111468849, 0.6688657951377877), (0.09971409611326643, 0.6496180360259889), (0.08577781165776305, 0.6288753429553658), (0.0739819644957346, 0.6068449700584573), (0.06444441483283536, 0.5837470375389759), (0.0572604587126023, 0.5598123323034953), (0.05250187584988858, 0.5352800020149665), (0.05021621243168012, 0.5103951656083223), (0.05042630605131174, 0.4854064641431046), (0.053130057522783825, 0.4605635764641875), (0.058300451855134855, 0.43611472449329175), (0.06588582817730107, 0.41230419307759464), (0.07581039591646344, 0.38936988917628645), (0.0879749920723982, 0.3675409647728763), (0.10225807202139614, 0.34703552726431985), (0.11851692394996532, 0.3280584602040062), (0.13658909478409734, 0.31079937617301767), (0.15629401336668305, 0.29543072223389716), (0.1774347946648253, 0.28210605689660284), (0.19980020698000633, 0.2709585158126362), (0.22316678250539515, 0.26209948152762097), (0.24730105014230508, 0.25561747058372575), (0.27196186826623625, 0.2515772490916339), (0.29690283413427715, 0.2500191856089748), (0.32187474585986137, 0.25095884779103983), (0.3466280923556435, 0.25438684684391677), (0.37091554636580615, 0.26026893133421525), (0.3944944356782446, 0.2685463294180667), (0.4171291678250937, 0.27913633606996135), (0.43859358404478965, 0.2919331394440243), (0.45867321898565794, 0.30680887811100266), (0.4771674435728144, 0.3236149186074014), (0.4938914696275618, 0.3421833405319189), (0.5086781962097893, 0.36232861435058966), (0.5213798792353292, 0.38384945514655966), (0.5318696076860084, 0.40653083379243976), (0.5400425716625912, 0.43014612545026726), (0.5458171096106459, 0.4544593739319747), (0.5491355242558043, 0.47922764929562434)]
         
         # SMALL r = 0.12 CIRCLE CENTERED AT (0.3, 0.5)
         vertices = [(0.42, 0.5), (0.4194004998333631, 0.5119800099976194), (0.417607989340949, 0.5238403196954073), (0.4146403786950727, 0.5354624247993608), (0.4105273192803462, 0.5467302010770381), (0.4053099074268447, 0.5575310646325043), (0.3990402737891614, 0.5677570968074043), (0.3917810624741386, 0.577306122468523), (0.38360480512165984, 0.5860827309079427), (0.3745931961924797, 0.593999229155298), (0.36483627670417673, 0.6009765181769475), (0.3544315345710693, 0.6069448832073723), (0.3434829305372008, 0.6118446903160671), (0.33209985943495046, 0.6156269822500632), (0.3203960571480289, 0.6182539675986152), (0.3084884642001243, 0.6196993983924866), (0.2964960573238453, 0.6199488323649807), (0.284538660684537, 0.6189997772542962), (0.2727357486368295, 0.6168617157053834), (0.2612052519763795, 0.6135560105224898), (0.25006237961434286, 0.6091156912190818), (0.23941846744801704, 0.6035851239978648), (0.22937986592935844, 0.5970195684583508), (0.220046877446421, 0.5894846254612064), (0.21151275413505047, 0.581055581666138), (0.20386276613436788, 0.5718166572924747), (0.19717334959572624, 0.5618601646185756), (0.1915113429579526, 0.5512855856280595), (0.18693331911976097, 0.5401985780187084), (0.1834850201820491, 0.5287099195056777), (0.1812009004079465, 0.5169344009671839), (0.18010378196720644, 0.5049896794919947), (0.18020462690462963, 0.49299510278869024), (0.18150242761093624, 0.48107051670281), (0.18398421689046474, 0.46933506775678), (0.1876251975251045, 0.4579060126772454), (0.19238899003990245, 0.4468975468046175), (0.19822799619475112, 0.4364196630909806), (0.20508387457027016, 0.42657705308687355), (0.21288812349598335, 0.417468060897923), (0.22156276549636672, 0.4091837005630485), (0.23102112641600786, 0.4018067466722706), (0.24116870143911615, 0.3954109073103694), (0.25190409935040303, 0.3900600875900654), (0.26312005560258966, 0.38580775113325805), (0.27470450406830643, 0.3826963858801884), (0.2865416967677934, 0.3807570795639843), (0.29851336038445303, 0.3800092090923079), (0.31049987801273343, 0.3804602469396991), (0.32238148433070885, 0.3821056864850801), (0.33403946225558695, 0.38492908704042333), (0.3453573291255574, 0.38890223812067204), (0.35622200055604497, 0.3939854413135815), (0.366524920341499, 0.40012790693313166), (0.3761631451131158, 0.40726826149328127), (0.38504037291495086, 0.41533516093155265), (0.39306790542122966, 0.4242480034553211), (0.4001655341806989, 0.43391773488828306), (0.40626234203295797, 0.44424773847034865), (0.411297411689284, 0.4551348002203711), (0.41522043439804374, 0.4664701402161283), (0.41799221261311004, 0.4781404994873479), (0.41958505164278603, 0.4900292716618997)]        
+        
+        # SMALL r = 0.12 CIRCLE CENTERED AT (0.16, 0.5)
+        # vertices = [(0.28, 0.5), (0.2794004998333631, 0.5119800099976194), (0.277607989340949, 0.5238403196954073), (0.27464037869507274, 0.5354624247993608), (0.27052731928034623, 0.5467302010770381), (0.26530990742684474, 0.5575310646325043), (0.2590402737891614, 0.5677570968074043), (0.2517810624741386, 0.577306122468523), (0.24360480512165986, 0.5860827309079427), (0.23459319619247976, 0.593999229155298), (0.22483627670417677, 0.6009765181769475), (0.21443153457106928, 0.6069448832073723), (0.20348293053720085, 0.6118446903160671), (0.19209985943495048, 0.6156269822500632), (0.1803960571480289, 0.6182539675986152), (0.1684884642001243, 0.6196993983924866), (0.1564960573238453, 0.6199488323649807), (0.144538660684537, 0.6189997772542962), (0.1327357486368295, 0.6168617157053834), (0.12120525197637952, 0.6135560105224898), (0.11006237961434287, 0.6091156912190818), (0.09941846744801705, 0.6035851239978648), (0.08937986592935845, 0.5970195684583508), (0.08004687744642103, 0.5894846254612064), (0.07151275413505048, 0.581055581666138), (0.0638627661343679, 0.5718166572924747), (0.05717334959572627, 0.5618601646185756), (0.05151134295795262, 0.5512855856280595), (0.04693331911976098, 0.5401985780187084), (0.04348502018204911, 0.5287099195056777), (0.041200900407946536, 0.5169344009671839), (0.04010378196720647, 0.5049896794919947), (0.04020462690462964, 0.49299510278869024), (0.041502427610936254, 0.48107051670281), (0.04398421689046475, 0.46933506775678), (0.04762519752510452, 0.4579060126772454), (0.05238899003990247, 0.4468975468046175), (0.05822799619475115, 0.4364196630909806), (0.06508387457027016, 0.42657705308687355), (0.07288812349598336, 0.417468060897923), (0.08156276549636673, 0.4091837005630485), (0.09102112641600787, 0.4018067466722706), (0.10116870143911616, 0.3954109073103694), (0.11190409935040305, 0.3900600875900654), (0.12312005560258968, 0.38580775113325805), (0.13470450406830645, 0.3826963858801884), (0.1465416967677934, 0.3807570795639843), (0.15851336038445302, 0.3800092090923079), (0.17049987801273347, 0.3804602469396991), (0.1823814843307089, 0.3821056864850801), (0.19403946225558694, 0.38492908704042333), (0.20535732912555743, 0.38890223812067204), (0.21622200055604496, 0.3939854413135815), (0.22652492034149901, 0.40012790693313166), (0.2361631451131158, 0.40726826149328127), (0.2450403729149509, 0.41533516093155265), (0.2530679054212297, 0.4242480034553211), (0.2601655341806989, 0.43391773488828306), (0.266262342032958, 0.44424773847034865), (0.27129741168928406, 0.4551348002203711), (0.2752204343980437, 0.4664701402161283), (0.27799221261311, 0.4781404994873479), (0.279585051642786, 0.4900292716618997)]
         
         # FOR (200, 200) RESOLUTION GRID: SMALL r = 0.25 CIRCLE CENTERED AT (0.5, 1)
         # vertices = [(0.75, 1.0), (0.7487510413195064, 1.024958354161707), (0.7450166444603104, 1.0496673326987653), (0.7388341222814014, 1.0738800516653348), (0.7302652485007213, 1.0973545855771627), (0.7193956404725932, 1.1198563846510508), (0.7063339037274196, 1.1411606183487588), (0.6912105468211222, 1.1610544218094228), (0.6741766773367914, 1.1793390227248808), (0.6554024920676661, 1.1958317274068708), (0.6350755764670349, 1.2103677462019742), (0.6133990303563943, 1.2228018400153589), (0.5905894386191683, 1.2330097714918065), (0.5668747071561469, 1.2408895463542982), (0.5424917857250602, 1.246362432497115), (0.5176843004169257, 1.2493737466510135), (0.49270011942467773, 1.2498934007603764), (0.4677888764261187, 1.2479162026131172), (0.4431994763267281, 1.2434619077195488), (0.419177608284124, 1.2365750219218536), (0.3959632908632143, 1.2273243567064203), (0.37378847385003555, 1.2158023416622183), (0.35287472068616343, 1.2021241009548975), (0.3334309946800438, 1.18642630304418), (0.3156515711146885, 1.1688657951377877), (0.29971409611326644, 1.1496180360259889), (0.28577781165776306, 1.1288753429553657), (0.27398196449573464, 1.1068449700584573), (0.2644444148328354, 1.083747037538976), (0.2572604587126023, 1.0598123323034954), (0.2525018758498886, 1.0352800020149664), (0.25021621243168013, 1.0103951656083223), (0.2504263060513118, 0.9854064641431046), (0.25313005752278384, 0.9605635764641876), (0.25830045185513484, 0.9361147244932918), (0.2658858281773011, 0.9123041930775946), (0.27581039591646345, 0.8893698891762865), (0.2879749920723982, 0.8675409647728762), (0.30225807202139615, 0.8470355272643199), (0.31851692394996534, 0.8280584602040062), (0.3365890947840974, 0.8107993761730177), (0.3562940133666831, 0.7954307222338972), (0.3774347946648253, 0.7821060568966028), (0.39980020698000635, 0.7709585158126362), (0.4231667825053952, 0.762099481527621), (0.4473010501423051, 0.7556174705837257), (0.47196186826623626, 0.7515772490916339), (0.49690283413427716, 0.7500191856089748), (0.5218747458598614, 0.7509588477910398), (0.5466280923556435, 0.7543868468439168), (0.5709155463658061, 0.7602689313342152), (0.5944944356782447, 0.7685463294180668), (0.6171291678250936, 0.7791363360699614), (0.6385935840447896, 0.7919331394440243), (0.658673218985658, 0.8068088781110027), (0.6771674435728143, 0.8236149186074013), (0.6938914696275619, 0.8421833405319189), (0.7086781962097893, 0.8623286143505897), (0.7213798792353292, 0.8838494551465597), (0.7318696076860085, 0.9065308337924398), (0.7400425716625911, 0.9301461254502672), (0.7458171096106458, 0.9544593739319747), (0.7491355242558042, 0.9792276492956243)]
@@ -62,16 +70,21 @@ class Simulation:
         # AIRFOIL
         # vertices = [(1.500362, 1.001207), (1.499415, 1.001635), (1.496575, 1.002915), (1.491851, 1.005031), (1.485257, 1.007956), (1.476812, 1.011653), (1.4665409999999999, 1.016078), (1.454476, 1.021177), (1.440653, 1.026886), (1.425115, 1.033139), (1.407912, 1.039859), (1.3890989999999999, 1.046969), (1.3687390000000001, 1.054385), (1.346901, 1.062022), (1.323658, 1.069793), (1.299092, 1.07761), (1.27329, 1.085386), (1.246345, 1.093035), (1.2183570000000001, 1.100473), (1.18943, 1.10762), (1.1596739999999999, 1.114396), (1.129204, 1.120731), (1.098139, 1.126555), (1.066605, 1.131806), (1.034729, 1.136429), (1.002644, 1.140374), (0.970484, 1.143601), (0.9383870000000001, 1.146077), (0.9064920000000001, 1.1477789999999999), (0.874044, 1.148488), (0.841845, 1.147792), (0.810292, 1.145719), (0.7795540000000001, 1.142334), (0.749791, 1.137721), (0.72116, 1.131984), (0.6938070000000001, 1.125241), (0.66787, 1.117627), (0.643472, 1.109283), (0.620725, 1.100361), (0.599729, 1.091016), (0.580568, 1.081406), (0.563315, 1.071683), (0.54803, 1.061999), (0.53476, 1.052493), (0.52354, 1.043297), (0.514395, 1.034528), (0.50734, 1.026286), (0.50238, 1.018658), (0.499513, 1.011707), (0.498726, 1.00548), (0.5, 1.0), (0.503247, 0.995407), (0.508372, 0.991824), (0.515332, 0.989225), (0.524077, 0.987574), (0.534549, 0.986823), (0.546684, 0.986917), (0.560413, 0.987787), (0.575663, 0.98936), (0.592357, 0.991553), (0.610415, 0.994278), (0.629758, 0.997441), (0.650306, 1.000943), (0.6719809999999999, 1.004684), (0.694706, 1.008559), (0.718407, 1.012465), (0.743013, 1.016297), (0.768456, 1.019952), (0.794667, 1.023329), (0.821583, 1.026332), (0.849138, 1.028866), (0.877266, 1.030845), (0.906127, 1.032201), (0.93628, 1.033226), (0.966726, 1.034045), (0.997356, 1.034626), (1.0280610000000001, 1.034939), (1.058728, 1.034964), (1.089242, 1.034687), (1.119486, 1.034104), (1.149343, 1.033216), (1.178695, 1.032035), (1.207422, 1.030577), (1.235408, 1.028866), (1.262537, 1.026934), (1.288694, 1.024814), (1.313766, 1.022547), (1.337647, 1.020175), (1.360229, 1.017742), (1.381414, 1.015294), (1.401105, 1.012876), (1.419213, 1.010534), (1.435654, 1.008309), (1.450351, 1.006243), (1.463235, 1.004372), (1.474244, 1.00273), (1.483326, 1.001346), (1.4904359999999999, 1.000244), (1.49554, 0.999443), (1.498612, 0.998956), (1.499638, 0.998793)]
         
+        # SQUARE
+        # vertices = [(0.2, 0.6), (0.4, 0.6), (0.4, 0.4), (0.2, 0.4)]
+        
         # TODO: add back i_start and i_end
         i_start, i_end = self.grid.Nghost, self.grid.Nx + self.grid.Nghost
         j_start, j_end = self.grid.Nghost, self.grid.Ny + self.grid.Nghost
         
         print("called inside_near_polygon!")
-        inside_polygon, near_polygon, near_polygon_points = self.ebs.find_inside_near_points(vertices, i_start, i_end, j_start, j_end)
+        inside_polygon, near_polygon, near_polygon_points, boundary_points = self.ebs.find_inside_near_points(vertices, i_start, i_end, j_start, j_end)
                 
+        print("BOUNDARY POINTS ARRAY IS", boundary_points)
         # TIME LOOP
         while (self.t < self.inp.t_finish) and self.timestepNum < self.inp.nt:
             print(f"Timestep: {self.timestepNum}, Current time: {self.t}")
+            # print("!FLAG! BX AT (2, 53) IS", self.grid.grid[4, 2, 53])
 
             self.bcs.apply_bcs()
 
@@ -79,6 +92,7 @@ class Simulation:
 
             # Store primitive variables at the start of the step for Powell terms
             primU_n = np.copy(self.grid.grid)
+            consU_n = self.euler.prim_to_cons(primU_n)
 
             # Determine timestep dt based on CFL condition
             if self.inp.system == "euler2D":
@@ -186,17 +200,22 @@ class Simulation:
                                 U_new[icomp, i, j] = updated_value
                                 
                 print("1) updated fluxes!")
+                # print("!FLAG! BX AT (2, 53) IS", U_new[4, 2, 53])
                 
                 U_prim = self.euler.cons_to_prim(U_new)
                 
                 print("2) called ebs!")
-                self.ebs.apply_embedded_boundary_conditions(U_new, U_prim, self.inp.system, vertices, inside_polygon, near_polygon, near_polygon_points, i_start, i_end, j_start, j_end)
-            
+                # self.ebs.apply_embedded_boundary_conditions(U_new, U_prim, self.inp.system, vertices, inside_polygon, near_polygon, near_polygon_points, i_start, i_end, j_start, j_end)
+                self.ebs.apply_boundary_reconstruction_condition(U_new, U_prim, self.inp.system, vertices, inside_polygon, near_polygon, near_polygon_points, boundary_points, i_start, i_end, j_start, j_end)
+                
+                # print("!FLAG! BX AT (2, 53) IS", U_new[4, 2, 53])
+                
                 U_prim = self.euler.cons_to_prim(U_new)
                 
-                # # Powell divergence cleaning for MHD
+                # # # Powell divergence cleaning for MHD
                 if self.inp.system == "mhd2d":
                     # Calculate div(B) using central differences on consU
+                    # divB = np.zeros(consU.shape[1:])
                     divB = np.zeros_like(consU[0])
                     # Need to calculate divB over the domain where U_new is updated + 1 layer for central diff
                     # However, we only apply the source term within the main update loop domain.
@@ -211,26 +230,56 @@ class Simulation:
                                 divB_y = (
                                     U_new[self.c.BYCOMP, i, j + 1] - U_new[self.c.BYCOMP, i, j - 1]) / (2.0 * self.grid.dy)
                                 divB[i, j] = divB_x + divB_y
-                                if divB[i, j] == 0:
-                                    print(f"divergence is zero at ({i}, {j})!")
+                                if divB[i, j] != 0:
+                                    print(f"divergence is non-zero at ({i}, {j})! it is {divB[i, j]}")
 
-                    # TODO: Calculate Powell source terms using primU_n and consU (replaced with U_new and U_prim from EB's -> good?)
-                    powell_source = calculate_powell_source(
-                        U_new, U_prim, divB, self.c)
+                #     # TODO: USING BEFORE-FLUX-UPDATE VARIABLES AGAIN FOR STABILITY (6/16/25) — Calculate Powell source terms using primU_n and consU (replaced with U_new and U_prim from EB's -> good?)
+                #     powell_source = calculate_powell_source(consU_n, primU_n, divB, self.c)
                     
-                    # region_mask = ~inside_polygon[i_start:i_end, j_start:j_end]
-                    # for icomp in range(self.c.NUMQ):
-                    #     U_new[icomp, i_start:i_end, j_start:j_end][region_mask] += dt * powell_source[icomp, i_start:i_end, j_start:j_end][region_mask]
+                #     # Apply Powell source terms to U_new
+                #     for i in range(i_start, i_end):
+                #         for j in range(j_start, j_end):
+                #             if inside_polygon[i, j] != True and near_polygon[i, j] != True:
+                #                 for icomp in range(self.c.NUMQ):
+                #                     # DIVERGENCE CLEANING
+                                    
+                #                     if powell_source[icomp, i, j] != 0:
+                #                         print("------")
+                #                         print(f"powell source is {powell_source[icomp, i, j]} at ({i}, {j}) for variable {icomp}")
+                #                         print(f"U_new was updated from {U_new[icomp, i, j]}")
+                                        
+                #                         # TODO: DOUBLE CHECK POWELL CALCULATION IS THIS RIGHT ????
+                                        
+                #                         U_new[icomp, i, j] += powell_source[icomp, i, j] * dt
+                                        
+                #                         print(f"to {U_new[icomp, i, j]}")
+                                        
+                                        
+                    # # Scalar divergence cleaning for MHD
+                    # if self.inp.system == "mhd2d":
+                    #     # Your existing divergence calculation (keep this part)
+                    #     divB = np.zeros_like(consU[0])
+                    #     for i in range(i_start, i_end):
+                    #         for j in range(j_start, j_end):
+                    #             if inside_polygon[i, j] != True and near_polygon[i, j] != True:
+                    #                 divB_x = (U_new[self.c.BXCOMP, i + 1, j] - U_new[self.c.BXCOMP, i - 1, j]) / (2.0 * self.grid.dx)
+                    #                 divB_y = (U_new[self.c.BYCOMP, i, j + 1] - U_new[self.c.BYCOMP, i, j - 1]) / (2.0 * self.grid.dy)
+                    #                 divB[i, j] = divB_x + divB_y
 
-                    # Apply Powell source terms to U_new
-                    for i in range(i_start, i_end):
-                        for j in range(j_start, j_end):
-                            if inside_polygon[i, j] != True and near_polygon[i, j] != True:
-                                for icomp in range(self.c.NUMQ):
-                                    U_new[icomp, i, j] += dt * \
-                                        powell_source[icomp, i, j]
+                    #     # Apply scalar divergence cleaning
+                    #     max_divB_before = np.max(np.abs(divB))
+                    #     if max_divB_before > 1e-12:  # Only clean if there's significant divergence
+                    #         print(f"!FLAG! BX AT (2, 53) BEFORE CLEANING: {U_new[4, 2, 53]}")
+                            
+                    #         phi = apply_scalar_divergence_cleaning(
+                    #             U_new, divB, self.grid, self.c, 
+                    #             inside_polygon, near_polygon, 
+                    #             i_start, i_end, j_start, j_end
+                    #         )
+                            
+                    #         print(f"!FLAG! BX AT (2, 53) AFTER CLEANING: {U_new[4, 2, 53]}")
                     
-                    print("3) cleaned divergence!")
+                    # print("3) cleaned divergence!")
                     
                 # TODO: particle step
 
@@ -255,15 +304,18 @@ class Simulation:
             self.t += dt
 
             # always output the last timestep.
-            if (self.timestepNum % self.inp.output_freq == 0) or (self.timestepNum == self.inp.nt-1):
-                self.output(divB)
+            # TODO: ADD BACK THIS ISN'T WORKING:
+            # if (self.timestepNum % self.inp.output_freq == 0) or (self.timestepNum == self.inp.nt-1):
+                # print("!FLAG! BX AT (2, 53) IS", self.grid.grid[4, 2, 53])
+            # self.output()
+            self.output(divB)
 
             # DEBUG
             # self.grid.plot()
             self.grid.check_grid(self.c)
 
-        if self.inp.make_movie:
-            self.generate_movie()
+        # if self.inp.make_movie:
+        #     self.generate_movie()
 
         print("SUCCESS!")
         return self.grid
@@ -351,6 +403,7 @@ class Simulation:
         pass
 
     def output(self, divB):
+        print("CALLED OUTPUT?!?!?!!")
         # Ensure the base output directory exists
         os.makedirs(self.inp.output_dir, exist_ok=True)
 
@@ -385,9 +438,19 @@ class Simulation:
             fig, axs = plt.subplots(2, 4, figsize=(36, 18))
         axs = axs.ravel()  # Flatten the array to index by i
 
+        print("outputting...")
+        # print("!FLAG! BX AT (2, 53) IS", self.grid.grid[4, 2, 53])
+        
         for q in range(self.c.NUMQ):
             # Exclude ghost cells from the plot
             plot_data = self.grid.grid[q, self.grid.Nghost:-self.grid.Nghost, self.grid.Nghost:-self.grid.Nghost].T # TODO: why transpose?
+            # plot_data = self.grid.grid[q, :, :].T
+            
+            if q == 4:
+                print("IN q in NUMQ loop...")
+                # print("!FLAG! BX AT (2, 53) IS", plot_data[53, 2])
+                print(f"currently plotting x-magnetic field with min: {plot_data.min()} max: {plot_data.max()}")
+                
             extent = [self.grid.x[self.grid.Nghost], self.grid.x[-self.grid.Nghost-1],
                       self.grid.y[self.grid.Nghost], self.grid.y[-self.grid.Nghost-1]]
 
@@ -397,8 +460,8 @@ class Simulation:
             plt.colorbar(im, ax=axs[q])
             
             # lots of cool tricks to make a transparent mask from here: https://stackoverflow.com/questions/10127284/overlay-imshow-plots-in-matplotlib
-            transparent = cm.get_cmap("binary")
-            alphas = np.linspace(0.5, 0, transparent.N+3)
+            transparent = cm.get_cmap("binary_r")
+            alphas = np.linspace(0, 0.5, transparent.N+3)
             transparent._init()
             transparent._lut[:,-1] = alphas
             
@@ -489,7 +552,9 @@ def calculate_powell_source(consU, primU, divB, c):
 
     powell_source = np.zeros_like(consU)
     # S_rho = 0
+    print(powell_source.shape, Bx.shape, divB.shape)
     powell_source[c.MUCOMP] = -Bx * divB
+
     powell_source[c.MVCOMP] = -By * divB
     # S_MWCOMP = 0 in 2D
     powell_source[c.ECOMP] = -(u * Bx + v * By) * divB
@@ -497,3 +562,125 @@ def calculate_powell_source(consU, primU, divB, c):
     powell_source[c.BYCOMP] = -v * divB
     # S_BZCOMP = 0 in 2D
     return powell_source
+
+def solve_poisson_2d_jacobi(source, dx, dy, inside_polygon, near_polygon, i_start, i_end, j_start, j_end, max_iter=1000, tolerance=1e-6):
+    """
+    Solve 2D Poisson equation ∇²φ = source using Jacobi iteration
+    Only updates cells that are not inside or near the polygon
+    Uses the same domain bounds as your main update loop
+    """
+    phi = np.zeros_like(source)
+    phi_new = np.zeros_like(source)
+    
+    dx2, dy2 = dx**2, dy**2
+    denominator = 2/dx2 + 2/dy2
+    
+    print(f"Poisson solver working on domain: i=[{i_start},{i_end}), j=[{j_start},{j_end})")
+    print(f"Source array shape: {source.shape}")
+    
+    for iteration in range(max_iter):
+        phi_old = phi.copy()
+        
+        # Use the same bounds as your main loop, but ensure we don't go to boundaries
+        for i in range(max(1, i_start), min(source.shape[0]-1, i_end)):
+            for j in range(max(1, j_start), min(source.shape[1]-1, j_end)):
+                if inside_polygon[i, j] or near_polygon[i, j]:
+                    continue  # Skip boundary cells
+                
+                # Make sure we have valid neighbors before accessing them
+                if (i > 0 and i < source.shape[0]-1 and 
+                    j > 0 and j < source.shape[1]-1):
+                    
+                    phi_new[i, j] = (
+                        (phi[i+1, j] + phi[i-1, j]) / dx2 +
+                        (phi[i, j+1] + phi[i, j-1]) / dy2 -
+                        source[i, j]
+                    ) / denominator
+        
+        # Check convergence only on active cells
+        max_change = 0.0
+        for i in range(max(1, i_start), min(source.shape[0]-1, i_end)):
+            for j in range(max(1, j_start), min(source.shape[1]-1, j_end)):
+                if not (inside_polygon[i, j] or near_polygon[i, j]):
+                    max_change = max(max_change, abs(phi_new[i, j] - phi[i, j]))
+        
+        if max_change < tolerance:
+            print(f"Poisson solver converged in {iteration+1} iterations")
+            break
+            
+        phi = phi_new.copy()
+    
+    if iteration == max_iter - 1:
+        print(f"Warning: Poisson solver did not converge after {max_iter} iterations")
+    
+    return phi
+
+def apply_scalar_divergence_cleaning(U_new, divB, grid, c, inside_polygon, near_polygon, i_start, i_end, j_start, j_end):
+    """
+    Apply scalar divergence cleaning to the magnetic field components
+    
+    Parameters:
+    -----------
+    U_new : numpy array
+        Conservative variables array [NUMQ, Nx, Ny]
+    divB : numpy array
+        Divergence of magnetic field [Nx, Ny]
+    grid : grid object
+        Contains dx, dy spacing
+    c : constants object
+        Contains component indices like BXCOMP, BYCOMP
+    inside_polygon, near_polygon : boolean arrays
+        Boundary condition masks
+    i_start, i_end, j_start, j_end : int
+        Update domain bounds
+    """
+    
+    print("Starting scalar divergence cleaning...")
+    
+    # Step 1: Solve Poisson equation ∇²φ = div(B)
+    phi = solve_poisson_2d_jacobi(divB, grid.dx, grid.dy, inside_polygon, near_polygon, 
+                                  i_start, i_end, j_start, j_end)
+    
+    # Step 2: Apply divergence cleaning using φ gradients
+    # Store original values for debugging
+    Bx_original = U_new[c.BXCOMP].copy()
+    By_original = U_new[c.BYCOMP].copy()
+    
+    # Calculate gradients of phi and subtract from B components
+    for i in range(i_start, i_end):
+        for j in range(j_start, j_end):
+            if inside_polygon[i, j] or near_polygon[i, j]:
+                continue  # Skip boundary cells
+            
+            # Calculate phi gradients using central differences where possible
+            # X-component correction
+            if i > 0 and i < U_new.shape[1]-1:
+                dphi_dx = (phi[i+1, j] - phi[i-1, j]) / (2.0 * grid.dx)
+            elif i == 0:
+                dphi_dx = (phi[i+1, j] - phi[i, j]) / grid.dx
+            else:  # i == shape[1]-1
+                dphi_dx = (phi[i, j] - phi[i-1, j]) / grid.dx
+            
+            # Y-component correction
+            if j > 0 and j < U_new.shape[2]-1:
+                dphi_dy = (phi[i, j+1] - phi[i, j-1]) / (2.0 * grid.dy)
+            elif j == 0:
+                dphi_dy = (phi[i, j+1] - phi[i, j]) / grid.dy
+            else:  # j == shape[2]-1
+                dphi_dy = (phi[i, j] - phi[i, j-1]) / grid.dy
+            
+            # Apply corrections (equations 2.2 from the paper)
+            U_new[c.BXCOMP, i, j] -= dphi_dx
+            U_new[c.BYCOMP, i, j] -= dphi_dy
+    
+    # Calculate max corrections for diagnostics
+    max_Bx_correction = np.max(np.abs(U_new[c.BXCOMP] - Bx_original))
+    max_By_correction = np.max(np.abs(U_new[c.BYCOMP] - By_original))
+    max_phi = np.max(np.abs(phi))
+    
+    print(f"Divergence cleaning applied:")
+    print(f"  Max Bx correction: {max_Bx_correction:.6e}")
+    print(f"  Max By correction: {max_By_correction:.6e}")
+    print(f"  Max phi value: {max_phi:.6e}")
+    
+    return phi
