@@ -73,13 +73,27 @@ class Simulation:
         # SQUARE
         # vertices = [(0.2, 0.6), (0.4, 0.6), (0.4, 0.4), (0.2, 0.4)]
         
+        # HALL THRUSTER DISCHARGE CHANNEL WALLS
+        # top_wall = [(-0.1, 0.6), (0.4, 0.6), (0.4, 1.1), (-0.1, 1.1)]
+        # bottom_wall = [(-0.1, -0.1), (0.4, -0.1), (0.4, 0.4), (-0.1, 0.4)]
+        
+        # inside_polygon1, near_polygon1, near_polygon_points1, boundary_points1 = self.ebs.find_inside_near_points(top_wall, i_start, i_end, j_start, j_end)
+        # inside_polygon2, near_polygon2, near_polygon_points2, boundary_points2 = self.ebs.find_inside_near_points(bottom_wall, i_start, i_end, j_start, j_end)
+         
+        # inside_polygon = np.logical_or(inside_polygon1, inside_polygon2)
+        # near_polygon = np.logical_or(near_polygon1, near_polygon2)
+        # near_polygon_points = np.logical_or(near_polygon_points1, near_polygon_points2)
+        # boundary_points = np.logical_or(boundary_points1, boundary_points2)
+        
+        
         # TODO: add back i_start and i_end
         i_start, i_end = self.grid.Nghost, self.grid.Nx + self.grid.Nghost
         j_start, j_end = self.grid.Nghost, self.grid.Ny + self.grid.Nghost
         
         print("called inside_near_polygon!")
+        
         inside_polygon, near_polygon, near_polygon_points, boundary_points = self.ebs.find_inside_near_points(vertices, i_start, i_end, j_start, j_end)
-                
+               
         print("BOUNDARY POINTS ARRAY IS", boundary_points)
         # TIME LOOP
         while (self.t < self.inp.t_finish) and self.timestepNum < self.inp.nt:
@@ -255,31 +269,31 @@ class Simulation:
                 #                         print(f"to {U_new[icomp, i, j]}")
                                         
                                         
-                    # # Scalar divergence cleaning for MHD
-                    # if self.inp.system == "mhd2d":
-                    #     # Your existing divergence calculation (keep this part)
-                    #     divB = np.zeros_like(consU[0])
-                    #     for i in range(i_start, i_end):
-                    #         for j in range(j_start, j_end):
-                    #             if inside_polygon[i, j] != True and near_polygon[i, j] != True:
-                    #                 divB_x = (U_new[self.c.BXCOMP, i + 1, j] - U_new[self.c.BXCOMP, i - 1, j]) / (2.0 * self.grid.dx)
-                    #                 divB_y = (U_new[self.c.BYCOMP, i, j + 1] - U_new[self.c.BYCOMP, i, j - 1]) / (2.0 * self.grid.dy)
-                    #                 divB[i, j] = divB_x + divB_y
+                    # Scalar divergence cleaning for MHD
+                    if self.inp.system == "mhd2d":
+                        # Your existing divergence calculation (keep this part)
+                        divB = np.zeros_like(consU[0])
+                        for i in range(i_start, i_end):
+                            for j in range(j_start, j_end):
+                                if inside_polygon[i, j] != True and near_polygon[i, j] != True:
+                                    divB_x = (U_new[self.c.BXCOMP, i + 1, j] - U_new[self.c.BXCOMP, i - 1, j]) / (2.0 * self.grid.dx)
+                                    divB_y = (U_new[self.c.BYCOMP, i, j + 1] - U_new[self.c.BYCOMP, i, j - 1]) / (2.0 * self.grid.dy)
+                                    divB[i, j] = divB_x + divB_y
 
-                    #     # Apply scalar divergence cleaning
-                    #     max_divB_before = np.max(np.abs(divB))
-                    #     if max_divB_before > 1e-12:  # Only clean if there's significant divergence
-                    #         print(f"!FLAG! BX AT (2, 53) BEFORE CLEANING: {U_new[4, 2, 53]}")
+                        # Apply scalar divergence cleaning
+                        max_divB_before = np.max(np.abs(divB))
+                        if max_divB_before > 1e-12:  # Only clean if there's significant divergence
+                            print(f"!FLAG! BX AT (2, 53) BEFORE CLEANING: {U_new[4, 2, 53]}")
                             
-                    #         phi = apply_scalar_divergence_cleaning(
-                    #             U_new, divB, self.grid, self.c, 
-                    #             inside_polygon, near_polygon, 
-                    #             i_start, i_end, j_start, j_end
-                    #         )
+                            phi = apply_scalar_divergence_cleaning(
+                                U_new, divB, self.grid, self.c, 
+                                inside_polygon, near_polygon, 
+                                i_start, i_end, j_start, j_end
+                            )
                             
-                    #         print(f"!FLAG! BX AT (2, 53) AFTER CLEANING: {U_new[4, 2, 53]}")
+                            print(f"!FLAG! BX AT (2, 53) AFTER CLEANING: {U_new[4, 2, 53]}")
                     
-                    # print("3) cleaned divergence!")
+                    print("3) cleaned divergence!")
                     
                 # TODO: particle step
 
