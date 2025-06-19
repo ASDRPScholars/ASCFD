@@ -1,11 +1,11 @@
 import math
 
-a = 0.3
+a = 0.16
 b = 0.5
-r = 0.25
+r = 0.12
 
 # The lower this value the higher quality the circle is with more points generated
-stepSize = 0.1
+stepSize = 0.01
 
 # Generated vertices
 positions = []

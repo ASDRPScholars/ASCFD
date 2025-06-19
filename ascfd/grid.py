@@ -46,7 +46,9 @@ class Grid2D:
         # Fill the grid using a user-supplied function `f`
         for var in range(self.num_vars):
             # we can jsut fill ghost cells too, i don't think it matters we're just going to override anyways
+            print("filling grid!")
             self.grid[var] = f(self.meshX, self.meshY, var)
+            print("grid for", var, "filled with", f(self.meshX, self.meshY, var))
 
     # def plot(self):
     #     # Create a figure with 4 subplots arranged in 2x2

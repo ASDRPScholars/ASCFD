@@ -1,6 +1,7 @@
 __pycache__
 myEnv/
 *.txt
+*.png
 *.mp4
 *.png
 *.gif

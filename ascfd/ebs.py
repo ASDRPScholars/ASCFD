@@ -28,10 +28,10 @@ class EmbeddedBoundaries:
                 near = False
                 near_polygon_points = []
                 
-                testing_boundary_point = True
-                boundary_point_index = 0
+                # testing_boundary_point = True
+                # boundary_point_index = 0
                 
-                px, py = (i-1/2) * self.grid.dx, (j-1/2) *self.grid.dy
+                px, py = (i+1/2) * self.grid.dx, (j+1/2) *self.grid.dy
                 
                 for (tx, ty) in [(px, py), (px+self.grid.dx, py), (px-self.grid.dx, py), (px, py+self.grid.dy), (px, py-self.grid.dy)]:
                     point_inside = False
@@ -50,9 +50,9 @@ class EmbeddedBoundaries:
                             if tx < xint:
                                 point_inside = not point_inside
                                 
-                                if testing_boundary_point:
-                                    boundary_point_index = k
-                                    testing_boundary_point = False
+                                # if testing_boundary_point:
+                                #     boundary_point_index = k
+                                #     testing_boundary_point = False
                         
                     # test the point itself first - and if its inside, then break and just return inside = true and near = false
                     if testing_inside:
@@ -61,9 +61,11 @@ class EmbeddedBoundaries:
                             break
                         # if the point itself is NOT inside, THEN test neighboring points:
                         else:
-                            boundary_points_array[i, j] = polygon_points[boundary_point_index]
-                            print(boundary_points_array[i, j])
-                            print("appended", polygon_points[boundary_point_index], "to boundary_points!")
+                            # boundary_points_array[i, j] = polygon_points[boundary_point_index]
+                            # print(boundary_points_array[i, j])
+                            # print("appended", polygon_points[boundary_point_index], "to boundary_points!")
+                            boundary_point = self.get_boundary_projection_and_normal((px, py), polygon_points)
+                            boundary_points_array[i, j] = boundary_point
                             testing_inside = False
                     
                     if point_inside:
@@ -169,7 +171,48 @@ class EmbeddedBoundaries:
         
         return U_new
     
-    def apply_boundary_reconstruction_condition(self, U_new, primU, system, vertices, inside_polygon, near_polygon, near_polygon_points, boundary_points, i_start, i_end, j_start, j_end):
+    def get_boundary_projection_and_normal(self, A, polygon):
+        """
+        Given:
+            A: an (x, y) point near the boundary (interface point)
+            polygon: a list of (x, y) points forming the wall (can be open or closed)
+
+        Returns:
+            W: the closest point on the polygon to A (projected onto nearest segment)
+            n_hat: the outward unit normal of the segment W lies on
+        """
+        print("PASSING IN A AND POLYGON:", A, polygon)
+        A = np.array(A)
+        min_dist = float('inf')
+        best_proj = None
+        best_normal = None
+
+        for i in range(len(polygon) - 1):  # don't wrap — treat as open unless closed manually
+            p1 = np.array(polygon[i])
+            p2 = np.array(polygon[i + 1])
+
+            seg = p2 - p1
+            seg_len_sq = np.dot(seg, seg)
+
+            # Projection of A onto segment
+            t = np.clip(np.dot(A - p1, seg) / seg_len_sq, 0, 1)
+            proj = p1 + t * seg
+            dist = np.linalg.norm(A - proj)
+
+            if dist < min_dist:
+                min_dist = dist
+                best_proj = proj
+                # Perpendicular to segment (rotate 90° counter-clockwise)
+                normal = np.array([-seg[1], seg[0]])
+                normal /= np.linalg.norm(normal)
+                best_normal = normal
+    
+
+        print("RETURNING", tuple(best_proj))
+
+        return tuple(best_proj)
+    
+    def apply_boundary_reconstruction_condition(self, U_new, primU, inside_polygon, near_polygon, near_polygon_points, boundary_points, i_start, i_end, j_start, j_end):
         for i in range(i_start, i_end):
             for j in range(j_start, j_end):
                 if inside_polygon[i, j]:
@@ -182,9 +225,9 @@ class EmbeddedBoundaries:
                     if len(interpolation_points) < 2:
                         raise IndexError("Less than 2 boundary reconstruction interpolation points found.")
                     
-                    print(f"boundary reconstruction! interpolation points for {i}, {j} are {interpolation_points} while near_polygon_points are {near_polygon_points[i, j]}")
                     
                     boundary_point = boundary_points[i, j]
+                    print(f"boundary reconstruction! interpolation points for {i}, {j} are {interpolation_points} while near_polygon_points are {near_polygon_points[i, j]} and boundary point is precisely {boundary_point}")
                     
                     # TODO: MAKE 3D LATER? currently hardcoded to x and y
                     x_velocities = np.zeros(3)
@@ -216,8 +259,8 @@ class EmbeddedBoundaries:
                     u_solution = np.linalg.solve(coefficients, x_velocities)
                     v_solution = np.linalg.solve(coefficients, y_velocities)
                     
-                    px = (i - 0.5) * self.grid.dx
-                    py = (j - 0.5) * self.grid.dy
+                    px = (i + 0.5) * self.grid.dx
+                    py = (j + 0.5) * self.grid.dy
                     u = np.dot(u_solution, [px, py, 1])
                     v = np.dot(v_solution, [px, py, 1])
                     
