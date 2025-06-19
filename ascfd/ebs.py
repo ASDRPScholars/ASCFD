@@ -28,8 +28,8 @@ class EmbeddedBoundaries:
                 near = False
                 near_polygon_points = []
                 
-                # testing_boundary_point = True
-                # boundary_point_index = 0
+                testing_boundary_point = True
+                boundary_point_index = 0
                 
                 px, py = (i+1/2) * self.grid.dx, (j+1/2) *self.grid.dy
                 
@@ -50,9 +50,9 @@ class EmbeddedBoundaries:
                             if tx < xint:
                                 point_inside = not point_inside
                                 
-                                # if testing_boundary_point:
-                                #     boundary_point_index = k
-                                #     testing_boundary_point = False
+                                if testing_boundary_point:
+                                    boundary_point_index = k
+                                    testing_boundary_point = False
                         
                     # test the point itself first - and if its inside, then break and just return inside = true and near = false
                     if testing_inside:
@@ -61,11 +61,12 @@ class EmbeddedBoundaries:
                             break
                         # if the point itself is NOT inside, THEN test neighboring points:
                         else:
-                            # boundary_points_array[i, j] = polygon_points[boundary_point_index]
-                            # print(boundary_points_array[i, j])
-                            # print("appended", polygon_points[boundary_point_index], "to boundary_points!")
-                            boundary_point = self.get_boundary_projection_and_normal((px, py), polygon_points)
-                            boundary_points_array[i, j] = boundary_point
+                            boundary_points_array[i, j] = polygon_points[boundary_point_index]
+                            print(boundary_points_array[i, j])
+                            print("appended", polygon_points[boundary_point_index], "to boundary_points!")
+                            
+                            # boundary_point = self.get_boundary_projection_and_normal((px, py), polygon_points)
+                            # boundary_points_array[i, j] = boundary_point
                             testing_inside = False
                     
                     if point_inside:
