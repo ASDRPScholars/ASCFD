@@ -57,6 +57,7 @@ class Flux:
         numFluxY_plus = np.zeros_like(a_grid)
         numFluxY_minus = np.zeros_like(a_grid)
 
+        # include ONE ghost cell on left and right
         for i in range(a_Nghost - 1, a_Nx + a_Nghost):
             for j in range(a_Nghost - 1, a_Ny + a_Nghost):
                 sMaxX = max(
