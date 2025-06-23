@@ -11,7 +11,7 @@ class EmbeddedBoundaries:
     
     def find_inside_near_points(self, polygon_points, i_start, i_end, j_start, j_end): 
         
-        print(polygon_points, i_start, i_end, j_start, j_end)
+        # print(polygon_points, i_start, i_end, j_start, j_end)
      
         inside_polygon_array = np.zeros((i_end-i_start+2, j_end-j_start+2), dtype=bool)
         near_polygon_array = np.zeros((i_end-i_start+2, j_end-j_start+2), dtype=bool)
@@ -62,8 +62,8 @@ class EmbeddedBoundaries:
                         # if the point itself is NOT inside, THEN test neighboring points:
                         else:
                             boundary_points_array[i, j] = polygon_points[boundary_point_index]
-                            print(boundary_points_array[i, j])
-                            print("appended", polygon_points[boundary_point_index], "to boundary_points!")
+                            # print(boundary_points_array[i, j])
+                            # print("appended", polygon_points[boundary_point_index], "to boundary_points!")
                             
                             # boundary_point = self.get_boundary_projection_and_normal((px, py), polygon_points)
                             # boundary_points_array[i, j] = boundary_point
@@ -81,7 +81,7 @@ class EmbeddedBoundaries:
                 
         # print(inside_polygon_array, near_polygon_array, near_polygon_points_array)
         
-        print("BOUNDARY BOBUNDARY")  
+        # print("BOUNDARY BOBUNDARY")  
         for item in boundary_points_array:
             print(item)
 
