@@ -45,8 +45,8 @@ class Simulation:
 
         # -1 is no output. Always output ICs if we are outputting.
         if self.inp.output_freq >= 0:
-            # self.output(np.zeros_like(self.grid.grid[0]))
-            self.output()
+            self.output(np.zeros_like(self.grid.grid[0]))
+            # self.output(np.zeros_like(se))
 
     def run(self):
         
@@ -77,30 +77,44 @@ class Simulation:
         # AIRFOIL
         # vertices = [(1.500362, 1.001207), (1.499415, 1.001635), (1.496575, 1.002915), (1.491851, 1.005031), (1.485257, 1.007956), (1.476812, 1.011653), (1.4665409999999999, 1.016078), (1.454476, 1.021177), (1.440653, 1.026886), (1.425115, 1.033139), (1.407912, 1.039859), (1.3890989999999999, 1.046969), (1.3687390000000001, 1.054385), (1.346901, 1.062022), (1.323658, 1.069793), (1.299092, 1.07761), (1.27329, 1.085386), (1.246345, 1.093035), (1.2183570000000001, 1.100473), (1.18943, 1.10762), (1.1596739999999999, 1.114396), (1.129204, 1.120731), (1.098139, 1.126555), (1.066605, 1.131806), (1.034729, 1.136429), (1.002644, 1.140374), (0.970484, 1.143601), (0.9383870000000001, 1.146077), (0.9064920000000001, 1.1477789999999999), (0.874044, 1.148488), (0.841845, 1.147792), (0.810292, 1.145719), (0.7795540000000001, 1.142334), (0.749791, 1.137721), (0.72116, 1.131984), (0.6938070000000001, 1.125241), (0.66787, 1.117627), (0.643472, 1.109283), (0.620725, 1.100361), (0.599729, 1.091016), (0.580568, 1.081406), (0.563315, 1.071683), (0.54803, 1.061999), (0.53476, 1.052493), (0.52354, 1.043297), (0.514395, 1.034528), (0.50734, 1.026286), (0.50238, 1.018658), (0.499513, 1.011707), (0.498726, 1.00548), (0.5, 1.0), (0.503247, 0.995407), (0.508372, 0.991824), (0.515332, 0.989225), (0.524077, 0.987574), (0.534549, 0.986823), (0.546684, 0.986917), (0.560413, 0.987787), (0.575663, 0.98936), (0.592357, 0.991553), (0.610415, 0.994278), (0.629758, 0.997441), (0.650306, 1.000943), (0.6719809999999999, 1.004684), (0.694706, 1.008559), (0.718407, 1.012465), (0.743013, 1.016297), (0.768456, 1.019952), (0.794667, 1.023329), (0.821583, 1.026332), (0.849138, 1.028866), (0.877266, 1.030845), (0.906127, 1.032201), (0.93628, 1.033226), (0.966726, 1.034045), (0.997356, 1.034626), (1.0280610000000001, 1.034939), (1.058728, 1.034964), (1.089242, 1.034687), (1.119486, 1.034104), (1.149343, 1.033216), (1.178695, 1.032035), (1.207422, 1.030577), (1.235408, 1.028866), (1.262537, 1.026934), (1.288694, 1.024814), (1.313766, 1.022547), (1.337647, 1.020175), (1.360229, 1.017742), (1.381414, 1.015294), (1.401105, 1.012876), (1.419213, 1.010534), (1.435654, 1.008309), (1.450351, 1.006243), (1.463235, 1.004372), (1.474244, 1.00273), (1.483326, 1.001346), (1.4904359999999999, 1.000244), (1.49554, 0.999443), (1.498612, 0.998956), (1.499638, 0.998793)]
         
-        # SQUARE
+        # # SQUARE
         # vertices = [(0.2, 0.6), (0.4, 0.6), (0.4, 0.4), (0.2, 0.4)]
         
-        # HALL THRUSTER DISCHARGE CHANNEL WALLS
+        # HALL THRUSTER DISCHARGE CHANNEL WALLS HIGH RES
         # top_wall = [(-0.1, 0.6), (-0.09000000000000001, 0.6), (-0.08, 0.6), (-0.07, 0.6), (-0.060000000000000005, 0.6), (-0.05, 0.6), (-0.04000000000000001, 0.6), (-0.03, 0.6), (-0.020000000000000004, 0.6), (-0.010000000000000009, 0.6), (0.0, 0.6), (0.009999999999999995, 0.6), (0.01999999999999999, 0.6), (0.03, 0.6), (0.04000000000000001, 0.6), (0.04999999999999999, 0.6), (0.06, 0.6), (0.07, 0.6), (0.07999999999999999, 0.6), (0.09, 0.6), (0.1, 0.6), (0.10999999999999999, 0.6), (0.12, 0.6), (0.13, 0.6), (0.13999999999999999, 0.6), (0.15, 0.6), (0.16, 0.6), (0.17, 0.6), (0.18000000000000002, 0.6), (0.18999999999999997, 0.6), (0.19999999999999998, 0.6), (0.21, 0.6), (0.22, 0.6), (0.23, 0.6), (0.24000000000000002, 0.6), (0.25, 0.6), (0.26, 0.6), (0.27, 0.6), (0.28, 0.6), (0.29000000000000004, 0.6), (0.30000000000000004, 0.6), (0.31000000000000005, 0.6), (0.31999999999999995, 0.6), (0.32999999999999996, 0.6), (0.33999999999999997, 0.6), (0.35, 0.6), (0.36, 0.6), (0.37, 0.6), (0.38, 0.6), (0.39, 0.6), (0.4, 0.6), (0.4, 0.61), (0.4, 0.62), (0.4, 0.63), (0.4, 0.64), (0.4, 0.65), (0.4, 0.66), (0.4, 0.67), (0.4, 0.6799999999999999), (0.4, 0.69), (0.4, 0.7), (0.4, 0.71), (0.4, 0.72), (0.4, 0.73), (0.4, 0.74), (0.4, 0.75), (0.4, 0.76), (0.4, 0.77), (0.4, 0.78), (0.4, 0.79), (0.4, 0.8), (0.4, 0.81), (0.4, 0.8200000000000001), (0.4, 0.8300000000000001), (0.4, 0.8400000000000001), (0.4, 0.8500000000000001), (0.4, 0.8600000000000001), (0.4, 0.8700000000000001), (0.4, 0.8800000000000001), (0.4, 0.89), (0.4, 0.9), (0.4, 0.91), (0.4, 0.92), (0.4, 0.93), (0.4, 0.9400000000000001), (0.4, 0.9500000000000001), (0.4, 0.96), (0.4, 0.97), (0.4, 0.9800000000000001), (0.4, 0.9900000000000001), (0.4, 1.0), (0.4, 1.0100000000000002), (0.4, 1.02), (0.4, 1.03), (0.4, 1.04), (0.4, 1.05), (0.4, 1.06), (0.4, 1.07), (0.4, 1.08), (0.4, 1.09), (0.4, 1.1), (0.39, 1.1), (0.38, 1.1), (0.37, 1.1), (0.36000000000000004, 1.1), (0.35000000000000003, 1.1), (0.34, 1.1), (0.33, 1.1), (0.32, 1.1), (0.31000000000000005, 1.1), (0.30000000000000004, 1.1), (0.29000000000000004, 1.1), (0.28, 1.1), (0.27, 1.1), (0.26, 1.1), (0.25, 1.1), (0.24000000000000002, 1.1), (0.23, 1.1), (0.22000000000000003, 1.1), (0.21000000000000002, 1.1), (0.2, 1.1), (0.19000000000000003, 1.1), (0.18000000000000002, 1.1), (0.17, 1.1), (0.16000000000000003, 1.1), (0.15000000000000002, 1.1), (0.14, 1.1), (0.13, 1.1), (0.12, 1.1), (0.11000000000000004, 1.1), (0.10000000000000003, 1.1), (0.09000000000000002, 1.1), (0.08000000000000002, 1.1), (0.07, 1.1), (0.06, 1.1), (0.04999999999999999, 1.1), (0.040000000000000036, 1.1), (0.030000000000000027, 1.1), (0.020000000000000018, 1.1), (0.010000000000000009, 1.1), (0.0, 1.1), (-0.010000000000000009, 1.1), (-0.019999999999999962, 1.1), (-0.02999999999999997, 1.1), (-0.03999999999999998, 1.1), (-0.04999999999999999, 1.1), (-0.06, 1.1), (-0.07, 1.1), (-0.07999999999999996, 1.1), (-0.08999999999999997, 1.1), (-0.1, 1.1), (-0.1, 1.09), (-0.1, 1.08), (-0.1, 1.07), (-0.1, 1.06), (-0.1, 1.05), (-0.1, 1.04), (-0.1, 1.03), (-0.1, 1.02), (-0.1, 1.01), (-0.1, 1.0), (-0.1, 0.9900000000000001), (-0.1, 0.9800000000000001), (-0.1, 0.9700000000000001), (-0.1, 0.9600000000000001), (-0.1, 0.9500000000000001), (-0.1, 0.9400000000000001), (-0.1, 0.93), (-0.1, 0.92), (-0.1, 0.91), (-0.1, 0.9), (-0.1, 0.89), (-0.1, 0.88), (-0.1, 0.87), (-0.1, 0.8600000000000001), (-0.1, 0.8500000000000001), (-0.1, 0.8400000000000001), (-0.1, 0.8300000000000001), (-0.1, 0.8200000000000001), (-0.1, 0.81), (-0.1, 0.8), (-0.1, 0.79), (-0.1, 0.78), (-0.1, 0.77), (-0.1, 0.76), (-0.1, 0.75), (-0.1, 0.74), (-0.1, 0.73), (-0.1, 0.72), (-0.1, 0.71), (-0.1, 0.7), (-0.1, 0.69), (-0.1, 0.6799999999999999), (-0.1, 0.6699999999999999), (-0.1, 0.6599999999999999), (-0.1, 0.6499999999999999), (-0.1, 0.6399999999999999), (-0.1, 0.6299999999999999), (-0.1, 0.62), (-0.1, 0.61)]
         # bottom_wall = [(-0.1, -0.1), (-0.09000000000000001, -0.1), (-0.08, -0.1), (-0.07, -0.1), (-0.060000000000000005, -0.1), (-0.05, -0.1), (-0.04000000000000001, -0.1), (-0.03, -0.1), (-0.020000000000000004, -0.1), (-0.010000000000000009, -0.1), (0.0, -0.1), (0.009999999999999995, -0.1), (0.01999999999999999, -0.1), (0.03, -0.1), (0.04000000000000001, -0.1), (0.04999999999999999, -0.1), (0.06, -0.1), (0.07, -0.1), (0.07999999999999999, -0.1), (0.09, -0.1), (0.1, -0.1), (0.10999999999999999, -0.1), (0.12, -0.1), (0.13, -0.1), (0.13999999999999999, -0.1), (0.15, -0.1), (0.16, -0.1), (0.17, -0.1), (0.18000000000000002, -0.1), (0.18999999999999997, -0.1), (0.19999999999999998, -0.1), (0.21, -0.1), (0.22, -0.1), (0.23, -0.1), (0.24000000000000002, -0.1), (0.25, -0.1), (0.26, -0.1), (0.27, -0.1), (0.28, -0.1), (0.29000000000000004, -0.1), (0.30000000000000004, -0.1), (0.31000000000000005, -0.1), (0.31999999999999995, -0.1), (0.32999999999999996, -0.1), (0.33999999999999997, -0.1), (0.35, -0.1), (0.36, -0.1), (0.37, -0.1), (0.38, -0.1), (0.39, -0.1), (0.4, -0.1), (0.4, -0.09000000000000001), (0.4, -0.08), (0.4, -0.07), (0.4, -0.060000000000000005), (0.4, -0.05), (0.4, -0.04000000000000001), (0.4, -0.03), (0.4, -0.020000000000000004), (0.4, -0.010000000000000009), (0.4, 0.0), (0.4, 0.009999999999999995), (0.4, 0.01999999999999999), (0.4, 0.03), (0.4, 0.04000000000000001), (0.4, 0.04999999999999999), (0.4, 0.06), (0.4, 0.07), (0.4, 0.07999999999999999), (0.4, 0.09), (0.4, 0.1), (0.4, 0.10999999999999999), (0.4, 0.12), (0.4, 0.13), (0.4, 0.13999999999999999), (0.4, 0.15), (0.4, 0.16), (0.4, 0.17), (0.4, 0.18000000000000002), (0.4, 0.18999999999999997), (0.4, 0.19999999999999998), (0.4, 0.21), (0.4, 0.22), (0.4, 0.23), (0.4, 0.24000000000000002), (0.4, 0.25), (0.4, 0.26), (0.4, 0.27), (0.4, 0.28), (0.4, 0.29000000000000004), (0.4, 0.30000000000000004), (0.4, 0.31000000000000005), (0.4, 0.31999999999999995), (0.4, 0.32999999999999996), (0.4, 0.33999999999999997), (0.4, 0.35), (0.4, 0.36), (0.4, 0.37), (0.4, 0.38), (0.4, 0.39), (0.4, 0.4), (0.39, 0.4), (0.38, 0.4), (0.37, 0.4), (0.36000000000000004, 0.4), (0.35000000000000003, 0.4), (0.34, 0.4), (0.33, 0.4), (0.32, 0.4), (0.31000000000000005, 0.4), (0.30000000000000004, 0.4), (0.29000000000000004, 0.4), (0.28, 0.4), (0.27, 0.4), (0.26, 0.4), (0.25, 0.4), (0.24000000000000002, 0.4), (0.23, 0.4), (0.22000000000000003, 0.4), (0.21000000000000002, 0.4), (0.2, 0.4), (0.19000000000000003, 0.4), (0.18000000000000002, 0.4), (0.17, 0.4), (0.16000000000000003, 0.4), (0.15000000000000002, 0.4), (0.14, 0.4), (0.13, 0.4), (0.12, 0.4), (0.11000000000000004, 0.4), (0.10000000000000003, 0.4), (0.09000000000000002, 0.4), (0.08000000000000002, 0.4), (0.07, 0.4), (0.06, 0.4), (0.04999999999999999, 0.4), (0.040000000000000036, 0.4), (0.030000000000000027, 0.4), (0.020000000000000018, 0.4), (0.010000000000000009, 0.4), (0.0, 0.4), (-0.010000000000000009, 0.4), (-0.019999999999999962, 0.4), (-0.02999999999999997, 0.4), (-0.03999999999999998, 0.4), (-0.04999999999999999, 0.4), (-0.06, 0.4), (-0.07, 0.4), (-0.07999999999999996, 0.4), (-0.08999999999999997, 0.4), (-0.1, 0.4), (-0.1, 0.39), (-0.1, 0.38), (-0.1, 0.37), (-0.1, 0.36000000000000004), (-0.1, 0.35000000000000003), (-0.1, 0.34), (-0.1, 0.33), (-0.1, 0.32), (-0.1, 0.31000000000000005), (-0.1, 0.30000000000000004), (-0.1, 0.29000000000000004), (-0.1, 0.28), (-0.1, 0.27), (-0.1, 0.26), (-0.1, 0.25), (-0.1, 0.24000000000000002), (-0.1, 0.23), (-0.1, 0.22000000000000003), (-0.1, 0.21000000000000002), (-0.1, 0.2), (-0.1, 0.19000000000000003), (-0.1, 0.18000000000000002), (-0.1, 0.17), (-0.1, 0.16000000000000003), (-0.1, 0.15000000000000002), (-0.1, 0.14), (-0.1, 0.13), (-0.1, 0.12), (-0.1, 0.11000000000000004), (-0.1, 0.10000000000000003), (-0.1, 0.09000000000000002), (-0.1, 0.08000000000000002), (-0.1, 0.07), (-0.1, 0.06), (-0.1, 0.04999999999999999), (-0.1, 0.040000000000000036), (-0.1, 0.030000000000000027), (-0.1, 0.020000000000000018), (-0.1, 0.010000000000000009), (-0.1, 0.0), (-0.1, -0.010000000000000009), (-0.1, -0.019999999999999962), (-0.1, -0.02999999999999997), (-0.1, -0.03999999999999998), (-0.1, -0.04999999999999999), (-0.1, -0.06), (-0.1, -0.07), (-0.1, -0.07999999999999996), (-0.1, -0.08999999999999997)]
         
-        top_wall = [(-0.1, 0.6), (0.4, 0.6), (0.4, 1.1), (-0.1, 1.1)]
-        bottom_wall = [(-0.1, -0.1), (0.4, -0.1), (0.4, 0.4), (-0.1, 0.4)]
+        # top_wall = [(-0.1, 0.6), (0.4, 0.6), (0.4, 1.1), (-0.1, 1.1)]
+        # bottom_wall = [(-0.1, -0.1), (0.4, -0.1), (0.4, 0.4), (-0.1, 0.4)]
 
-        inside_polygon1, near_polygon1, near_polygon_points1, boundary_points1 = self.ebs.find_inside_near_points(top_wall, i_start, i_end, j_start, j_end)
-        inside_polygon2, near_polygon2, near_polygon_points2, boundary_points2 = self.ebs.find_inside_near_points(bottom_wall, i_start, i_end, j_start, j_end)
+        # # HALL THRUSTER WALLS (REGULAR RES)
+        # top_wall = [(0, 0.6), (0.4, 0.6), (0.4, 1.0), (0.0, 1.0)]
+        # bottom_wall = [(0.0, 0), (0.4, 0), (0.4, 0.4), (0, 0.4)]
+        
+        # HALL THRUSTER WALLS w/ TAPERED CORNERS
+        top_wall = [(-0.1, 0.6), (0.35, 0.6), (0.4, 0.65), (0.4, 1.1), (0.35, 1.15), (-0.1, 1.1)]
+        bottom_wall = [(-0.1, -0.1), (0.35, -0.15), (0.4, -0.1), (0.4, 0.35), (0.35, 0.4), (-0.1, 0.4)]
+        
+        vertices = [(-0.4, 0.6), (0.35, 0.6), (0.4, 0.65), (0.4, 1.1), (0.35, 1.15), (-0.5, 1.1), (-0.5, -0.1), (0.35, -0.15), (0.4, -0.1), (0.4, 0.35), (0.35, 0.4), (-0.4, 0.4)]
+        
+        # inside_polygon1, near_polygon1, near_polygon_points1, boundary_points1 = self.ebs.find_inside_near_points(top_wall, i_start, i_end, j_start, j_end)
+        # inside_polygon2, near_polygon2, near_polygon_points2, boundary_points2 = self.ebs.find_inside_near_points(bottom_wall, i_start, i_end, j_start, j_end)
+        
+        # inside_polygon, near_polygon, near_polygon_points, boundary_points = self.ebs.find_inside_near_points(bottom_wall, i_start, i_end, j_start, j_end)
          
-        inside_polygon = np.logical_or(inside_polygon1, inside_polygon2)
-        near_polygon = np.logical_or(near_polygon1, near_polygon2)
-        near_polygon_points = np.logical_or(near_polygon_points1, near_polygon_points2)
-        boundary_points = np.logical_or(boundary_points1, boundary_points2)
+        # inside_polygon = np.logical_or(inside_polygon1, inside_polygon2)
+        # near_polygon = np.logical_or(near_polygon1, near_polygon2)
+        # near_polygon_points = np.logical_or(near_polygon_points1, near_polygon_points2)
+        # boundary_points = np.logical_or(boundary_points1, boundary_points2)
+        
+        # bottom_wall.append(top_wall)
 
         
         print("called inside_near_polygon!")
         
-        # inside_polygon, near_polygon, near_polygon_points, boundary_points = self.ebs.find_inside_near_points(vertices, i_start, i_end, j_start, j_end)
+        inside_polygon, near_polygon, near_polygon_points = self.ebs.find_inside_near_points(vertices, i_start, i_end, j_start, j_end)
                
-        print("BOUNDARY POINTS ARRAY IS", boundary_points)
+        # print("BOUNDARY POINTS ARRAY IS", boundary_points)
         # TIME LOOP
         while (self.t < self.inp.t_finish) and self.timestepNum < self.inp.nt:
             print(f"Timestep: {self.timestepNum}, Current time: {self.t}")
@@ -201,9 +215,9 @@ class Simulation:
                 for i in range(i_start, i_end):
                     for j in range(j_start, j_end):
                         for icomp in range(self.c.NUMQ):
-                            if icomp in (self.c.MUCOMP, self.c.MVCOMP) and near_polygon[i, j] == True:
-                                continue
-                            elif inside_polygon[i, j] == True:
+                            # if icomp in (self.c.MUCOMP, self.c.MVCOMP) and near_polygon[i, j] == True:
+                            #     continue
+                            if inside_polygon[i, j] == True:
                                 continue
                             else:
                                 # Fallback: apply finite volume update if not inside/near
@@ -225,54 +239,56 @@ class Simulation:
                 U_prim = self.euler.cons_to_prim(U_new)
                 
                 print("2) called ebs!")
-                # self.ebs.apply_embedded_boundary_conditions(U_new, U_prim, self.inp.system, vertices, inside_polygon, near_polygon, near_polygon_points, i_start, i_end, j_start, j_end)
-                self.ebs.apply_boundary_reconstruction_condition(U_new, U_prim, inside_polygon, near_polygon, near_polygon_points, boundary_points, i_start, i_end, j_start, j_end)
+                self.ebs.apply_embedded_boundary_conditions(U_new, U_prim, self.inp.system, vertices, inside_polygon, near_polygon, near_polygon_points, i_start, i_end, j_start, j_end)
+                # self.ebs.apply_embedded_boundary_conditions(U_new, U_prim, self.inp.system, top_wall, inside_polygon1, near_polygon1, near_polygon_points1, i_start, i_end, j_start, j_end)
+                # self.ebs.apply_embedded_boundary_conditions(U_new, U_prim, self.inp.system, bottom_wall, inside_polygon2, near_polygon2, near_polygon_points2, i_start, i_end, j_start, j_end)
+                # self.ebs.apply_boundary_reconstruction_condition(U_new, U_prim, inside_polygon, near_polygon, near_polygon_points, boundary_points, i_start, i_end, j_start, j_end)
                 
                 # print("!FLAG! BX AT (2, 53) IS", U_new[4, 2, 53])
                 
                 U_prim = self.euler.cons_to_prim(U_new)
                 
-                # # # Powell divergence cleaning for MHD
-                # if self.inp.system == "mhd2d":
-                #     # Calculate div(B) using central differences on consU
-                #     # divB = np.zeros(consU.shape[1:])
-                #     divB = np.zeros_like(consU[0])
-                #     # Need to calculate divB over the domain where U_new is updated + 1 layer for central diff
-                #     # However, we only apply the source term within the main update loop domain.
-                #     # Note: Using consU which contains Bx, By directly.
-                #     for i in range(i_start, i_end):
-                #         for j in range(j_start, j_end):
-                #             if inside_polygon[i, j] != True and near_polygon[i, j] != True:
-                #                 # Central difference requires i-1, i+1, j-1, j+1
-                #                 # Ensure indices are within the bounds where consU is valid (including ghosts)
-                #                 divB_x = (
-                #                     U_new[self.c.BXCOMP, i + 1, j] - U_new[self.c.BXCOMP, i - 1, j]) / (2.0 * self.grid.dx)
-                #                 divB_y = (
-                #                     U_new[self.c.BYCOMP, i, j + 1] - U_new[self.c.BYCOMP, i, j - 1]) / (2.0 * self.grid.dy)
-                #                 divB[i, j] = divB_x + divB_y
-                #                 if divB[i, j] != 0:
-                #                     print(f"divergence is non-zero at ({i}, {j})! it is {divB[i, j]}")
+                # # Powell divergence cleaning for MHD
+                if self.inp.system == "mhd2d":
+                    # Calculate div(B) using central differences on consU
+                    # divB = np.zeros(consU.shape[1:])
+                    divB = np.zeros_like(consU[0])
+                    # Need to calculate divB over the domain where U_new is updated + 1 layer for central diff
+                    # However, we only apply the source term within the main update loop domain.
+                    # Note: Using consU which contains Bx, By directly.
+                    for i in range(i_start, i_end):
+                        for j in range(j_start, j_end):
+                            if inside_polygon[i, j] != True and near_polygon[i, j] != True:
+                                # Central difference requires i-1, i+1, j-1, j+1
+                                # Ensure indices are within the bounds where consU is valid (including ghosts)
+                                divB_x = (
+                                    U_new[self.c.BXCOMP, i + 1, j] - U_new[self.c.BXCOMP, i - 1, j]) / (2.0 * self.grid.dx)
+                                divB_y = (
+                                    U_new[self.c.BYCOMP, i, j + 1] - U_new[self.c.BYCOMP, i, j - 1]) / (2.0 * self.grid.dy)
+                                divB[i, j] = divB_x + divB_y
+                                if divB[i, j] != 0:
+                                    print(f"divergence is non-zero at ({i}, {j})! it is {divB[i, j]}")
 
-                #     # TODO: USING BEFORE-FLUX-UPDATE VARIABLES AGAIN FOR STABILITY (6/16/25) — Calculate Powell source terms using primU_n and consU (replaced with U_new and U_prim from EB's -> good?)
-                #     powell_source = calculate_powell_source(consU_n, primU_n, divB, self.c)
+                    # TODO: USING BEFORE-FLUX-UPDATE VARIABLES AGAIN FOR STABILITY (6/16/25) — Calculate Powell source terms using primU_n and consU (replaced with U_new and U_prim from EB's -> good?)
+                    powell_source = calculate_powell_source(consU_n, primU_n, divB, self.c)
                     
-                #     # Apply Powell source terms to U_new
-                #     for i in range(i_start, i_end):
-                #         for j in range(j_start, j_end):
-                #             if inside_polygon[i, j] != True and near_polygon[i, j] != True:
-                #                 for icomp in range(self.c.NUMQ):
-                #                     # DIVERGENCE CLEANING
+                    # Apply Powell source terms to U_new
+                    for i in range(i_start, i_end):
+                        for j in range(j_start, j_end):
+                            if inside_polygon[i, j] != True and near_polygon[i, j] != True:
+                                for icomp in range(self.c.NUMQ):
+                                    # DIVERGENCE CLEANING
                                     
-                #                     if powell_source[icomp, i, j] != 0:
-                #                         print("------")
-                #                         print(f"powell source is {powell_source[icomp, i, j]} at ({i}, {j}) for variable {icomp}")
-                #                         print(f"U_new was updated from {U_new[icomp, i, j]}")
+                                    if powell_source[icomp, i, j] != 0:
+                                        print("------")
+                                        print(f"powell source is {powell_source[icomp, i, j]} at ({i}, {j}) for variable {icomp}")
+                                        print(f"U_new was updated from {U_new[icomp, i, j]}")
                                         
-                #                         # TODO: DOUBLE CHECK POWELL CALCULATION IS THIS RIGHT ????
+                                        # TODO: DOUBLE CHECK POWELL CALCULATION IS THIS RIGHT ????
                                         
-                #                         U_new[icomp, i, j] += powell_source[icomp, i, j] * dt
+                                        U_new[icomp, i, j] += powell_source[icomp, i, j] * dt
                                         
-                #                         print(f"to {U_new[icomp, i, j]}")
+                                        print(f"to {U_new[icomp, i, j]}")
                                         
                                         
                     # Scalar divergence cleaning for MHD
@@ -327,8 +343,8 @@ class Simulation:
             # TODO: ADD BACK THIS ISN'T WORKING:
             # if (self.timestepNum % self.inp.output_freq == 0) or (self.timestepNum == self.inp.nt-1):
                 # print("!FLAG! BX AT (2, 53) IS", self.grid.grid[4, 2, 53])
-            self.output()
-            # self.output(divB)
+            # self.output()
+            self.output(divB)
 
             # DEBUG
             # self.grid.plot()
@@ -422,7 +438,7 @@ class Simulation:
         # check if self.inp.particle_ic = ...
         pass
 
-    def output(self):
+    def output(self, divB):
         print("CALLED OUTPUT?!?!?!!")
         # Ensure the base output directory exists
         os.makedirs(self.inp.output_dir, exist_ok=True)
@@ -492,13 +508,13 @@ class Simulation:
             axs[q].set_xlabel('x')
             axs[q].set_ylabel('y')
 
-        # plot_data = divB[self.grid.Nghost:-self.grid.Nghost, self.grid.Nghost:-self.grid.Nghost].T
-        # im_divB = axs[6].imshow(plot_data, origin='lower', extent=extent, cmap='magma')
-        # axs[6].imshow(highlight_data, origin='lower', extent=extent, alpha=0.5, cmap=transparent)
-        # plt.colorbar(im_divB, ax=axs[6])
-        # axs[6].set_title("divB")
-        # axs[6].set_xlabel('x')
-        # axs[6].set_ylabel('y')
+        plot_data = divB[self.grid.Nghost:-self.grid.Nghost, self.grid.Nghost:-self.grid.Nghost].T
+        im_divB = axs[6].imshow(plot_data, origin='lower', extent=extent, cmap='magma')
+        axs[6].imshow(highlight_data, origin='lower', extent=extent, alpha=0.5, cmap=transparent)
+        plt.colorbar(im_divB, ax=axs[6])
+        axs[6].set_title("divB")
+        axs[6].set_xlabel('x')
+        axs[6].set_ylabel('y')
 
         fig.suptitle(f"Time: {self.t:.4f}, Timestep: {self.timestepNum}")
         plt.tight_layout()
