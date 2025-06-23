@@ -154,9 +154,8 @@ class Simulation:
                 new_pos = pos + velocity * dt
                 print("NEW POS:", new_pos)
 
-                if point_in_polygon(new_pos, boundary_points):
-                    print("we are inside of polygon")
-                    normal = find_polygon_normal(new_pos, boundary_points)
+                if point_in_polygon(new_pos, vertices):
+                    normal = find_polygon_normal(new_pos, vertices)
                     velocity = velocity - 2 * np.dot(velocity, normal) * normal
                     new_pos = pos + velocity * dt * self.inp.bounce_back_multiplier
                     # count += 1  # Count a bounce
@@ -519,7 +518,7 @@ class Simulation:
     def apply_particles(self):
         if self.inp.particle_ic is None: 
             return 
-        
+                
         if self.inp.number_of_particles < 1 or self.inp.number_of_particles is None:
             print("Please change number of particles")
 
