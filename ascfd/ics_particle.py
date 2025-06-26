@@ -1,22 +1,30 @@
 from ascfd.constants import *
 import numpy as np
+from matplotlib.path import Path
+
+
+def checkPolygon(point, points):
+    path = Path(points)
+    return path.contains_point(point)
 
 
 def random_particles_no_condition(numParticles):
     particles = []
 
     while len(particles) < numParticles:
-        randomX, randomY = 0.1, np.random.rand()
+        randomX, randomY = np.random.rand(), np.random.rand()
         particles.append([randomX, randomY])
         
     return np.array(particles)
 
 # dont use this yet
-def random_particles_with_condition(numParticles, conditionFunction):
+def random_particles_with_condition(numParticles, points):
     particles = []
 
     while len(particles) < numParticles:
         randomX, randomY = np.random.rand(), np.random.rand()
 
-        if conditionFunction(randomX, randomY):
+        if not checkPolygon([randomX, randomY], points):
             particles.append([randomX, randomY])
+        
+    return np.array(particles)
