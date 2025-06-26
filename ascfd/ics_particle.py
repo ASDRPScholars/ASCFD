@@ -6,7 +6,7 @@ def random_particles_no_condition(numParticles):
     particles = []
 
     while len(particles) < numParticles:
-        randomX, randomY = 0.1, 0.2 # np.random.rand(), np.random.rand()
+        randomX, randomY = 0.1, np.random.rand()
         particles.append([randomX, randomY])
         
     return np.array(particles)

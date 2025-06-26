@@ -36,12 +36,6 @@ class Simulation:
         self.ebs = EmbeddedBoundaries(self.grid, self.c)
         self.flux = Flux(self.c, self.inp.flux)
     
-        # while len(self.particles) < 3:
-        #     x_rand, y_rand = np.random.rand(), np.random.rand()
-        #     print("RANDOM", x_rand, y_rand)
-        #     # if not point_in_polygon((x_rand, y_rand), shape_points):
-        #     self.particles.append([x_rand, y_rand])
-        #     # print(self.particles)]
         
         self.apply_ics()
         self.apply_particles()
@@ -126,48 +120,42 @@ class Simulation:
                
         print("BOUNDARY POINTS ARRAY IS", boundary_points)
 
+        # def point_in_polygon(point, polygon):
+        #     path = Path(polygon)
+        #     return path.contains_point(point)
+
+
         def point_in_polygon(point, polygon):
-            print(polygon)
+
+            
+
             path = Path(polygon)
             return path.contains_point(point)
-                    
-        def update_particles(self):
-            if self.inp.particle_ic is None:
-                return
-        
-            new_particles = []
-            
-            flow_field = np.stack((self.grid.grid[self.c.UCOMP], self.grid.grid[self.c.VCOMP]), axis=-1)
-            # (104, 104, 2)
-
-            for k in range(len(self.particles)):
-                pos = np.array(self.particles[k])
-                
-                i = round(pos[0]/self.grid.dx)
-                j = round(pos[1]/self.grid.dy)
-
-                print("I:", i)
-                print("J:", j)
-
-                velocity = flow_field[i, j]
-                print("VELOCITY:", velocity)
-                new_pos = pos + velocity * dt
-                print("NEW POS:", new_pos)
-
-                if point_in_polygon(new_pos, vertices):
-                    normal = find_polygon_normal(new_pos, vertices)
-                    velocity = velocity - 2 * np.dot(velocity, normal) * normal
-                    new_pos = pos + velocity * dt * self.inp.bounce_back_multiplier
-                    # count += 1  # Count a bounce
-
-                # if count <= max_bounces:
-                new_particles.append(new_pos)
-                # new_bounce_counts.append(count)
 
 
-            return np.array(new_particles)
-        
-        
+
+# def update_particles(particles, bounce_counts, dt, bounce_back_multiplier, max_bounces):
+#     new_particles = []
+#     new_bounce_counts = []
+
+#     for i in range(len(particles)):
+#         pos = particles[i]
+#         velocity = flow_field(pos[0], pos[1])
+#         new_pos = pos + velocity * dt
+#         count = bounce_counts[i]
+
+#         if point_in_polygon(new_pos, shape_points):
+#             normal = find_polygon_normal(new_pos, shape_points)
+#             velocity = velocity - 2 * np.dot(velocity, normal) * normal
+#             new_pos = pos + velocity * dt * bounce_back_multiplier
+#             count += 1  # Count a bounce
+
+#         if count <= max_bounces:
+#             new_particles.append(new_pos)
+#             new_bounce_counts.append(count)
+
+#     return np.array(new_particles), np.array(new_bounce_counts)
+
         def find_polygon_normal(point, polygon_points):
             min_dist = float("inf")
             closest_normal = np.array([0, 0])
@@ -176,7 +164,7 @@ class Simulation:
             center = np.mean(polygon_points, axis=0)
 
             for i in range(len(polygon_points)):
-                p1 = polygon_points[i]
+                p1 = np.array(polygon_points[i])
                 p2 = polygon_points[(i + 1) % len(polygon_points)]
                 edge = p2 - p1
 
@@ -197,6 +185,127 @@ class Simulation:
                 closest_normal *= -1
 
             return closest_normal
+
+        def update_particles(self):
+            if self.inp.particle_ic is None:
+                return
+    
+            if self.inp.number_of_particles < 1 or self.inp.number_of_particles is None:
+                print("Please change number of particles")
+                return
+            
+            boundary_normals = self.ebs.find_embedded_boundary_vector(vertices, getNormal=True)
+            
+            particles = np.array(self.particles)
+
+            new_particles = []
+
+            flow_field = np.stack((self.grid.grid[self.c.UCOMP], self.grid.grid[self.c.VCOMP]), axis=-1)
+
+            for k in range(len(particles)):
+                pos = particles[k]
+                i = int(round(pos[0] / self.grid.dx))
+                j = int(round(pos[1] / self.grid.dy))
+
+                if i > 99 or j > 99 or i < 0 or j < 0:
+                    continue
+                    
+
+                velocity = flow_field[i, j]
+
+                new_pos = pos + velocity * dt
+
+                i_new = int(round(new_pos[0] / self.grid.dx))
+                j_new = int(round(new_pos[1] / self.grid.dy))
+
+                if i_new > 99 or j_new > 99 or i_new < 0 or j_new < 0:
+                    continue
+
+                inside = inside_polygon[i_new, j_new]
+                near = near_polygon[i_new, j_new]
+
+                if inside or near:
+
+                    print("IN POLYGON!!!!")
+
+                    # normal = boundary_normals[i_new, j_new]
+                    normal = find_polygon_normal(new_pos, vertices)
+
+                    print("Normal:", normal)
+
+                    velocity = velocity - 2 * np.dot(velocity, normal) * normal
+
+                    print("Velocity:", velocity)
+
+                    print("dt:", dt)
+
+                    change = velocity * dt * self.inp.bounce_back_multiplier
+
+                    print("CHANGE:", change)
+
+                    new_pos = pos + change
+        
+                new_particles.append(new_pos)
+
+
+            return np.array(new_particles)
+
+
+
+        def old_update_particles(self):
+            if self.inp.particle_ic is None:
+                return
+        
+            new_particles = []
+            
+            flow_field = np.stack((self.grid.grid[self.c.UCOMP], self.grid.grid[self.c.VCOMP]), axis=-1)
+            # (104, 104, 2)
+
+            for k in range(len(self.particles)):
+                pos = np.array(self.particles[k])
+                
+                i = round(pos[0]/self.grid.dx)
+                j = round(pos[1]/self.grid.dy)
+
+                # print("I:", i)
+                # print("J:", j)
+
+                velocity = flow_field[i, j]
+                # print("VELOCITY:", velocity)
+                new_pos = pos + velocity * dt
+                # print("NEW POS:", new_pos)
+
+
+
+                if inside_polygon[round(new_pos[0]/self.grid.dx), round(new_pos[1]/self.grid.dy)] or near_polygon[round(new_pos[0]/self.grid.dx), round(new_pos[1]/self.grid.dy)]:
+                    print("we are in the polygon")
+                    x = round(new_pos[0]/self.grid.dx)
+                    y = round(new_pos[1]/self.grid.dy)
+                    normal = self.ebs.find_embedded_boundary_vector(vertices)[x, y]
+
+                    temp = None
+                    x_comp = normal[0]
+                    y_comp = normal[1]
+
+                    temp = x_comp
+                    x_comp = y_comp
+                    y_comp = temp
+
+                    normal = np.array([x_comp, -y_comp])
+
+                    print("NORMAL: ", normal)
+                    print("OTHER:", -2 * np.dot(velocity, normal) * normal)
+                    velocity = velocity - 2 * np.dot(velocity, normal) * normal
+                    new_pos = pos + velocity * dt * self.inp.bounce_back_multiplier
+                    # count += 1  # Count a bounce
+
+                # if count <= max_bounces:
+                new_particles.append(new_pos)
+                # new_bounce_counts.append(count)
+
+
+            return np.array(new_particles)
+    
         
         # TIME LOOP
         

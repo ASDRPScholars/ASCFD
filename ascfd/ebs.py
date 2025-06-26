@@ -83,7 +83,8 @@ class EmbeddedBoundaries:
         
         # print("BOUNDARY BOBUNDARY")  
         for item in boundary_points_array:
-            print(item)
+            pass
+            # print(item)
 
         return inside_polygon_array, near_polygon_array, near_polygon_points_array, boundary_points_array
         
@@ -103,7 +104,7 @@ class EmbeddedBoundaries:
         return V_normal, V_parallel
 
     # TODO: check that x_int and dx implementation behaves properly
-    def find_embedded_boundary_vector(self, vertices):
+    def find_embedded_boundary_vector(self, vertices, getNormal=False):
         vector_map = np.zeros((self.grid.Nx, self.grid.Ny, 2))
 
         for i, x in enumerate(self.grid.x_int):
@@ -120,7 +121,14 @@ class EmbeddedBoundaries:
                     if dist < min_dist:
                         min_dist = dist
                         tangent = v2 - v1
+                
+            if getNormal: # get normal vector instead of tangent vector flag
 
+                # dont use this it doesnt work lol
+
+                normal = np.array([-tangent[1], tangent[0]])
+                vector_map[i, j] = normal
+            else:
                 vector_map[i, j] = tangent
         return vector_map
             
@@ -168,7 +176,7 @@ class EmbeddedBoundaries:
                     
                    
                     
-        print("finished applying eb's!")
+        # print("finished applying eb's!")
         
         return U_new
     
@@ -182,7 +190,7 @@ class EmbeddedBoundaries:
             W: the closest point on the polygon to A (projected onto nearest segment)
             n_hat: the outward unit normal of the segment W lies on
         """
-        print("PASSING IN A AND POLYGON:", A, polygon)
+        # print("PASSING IN A AND POLYGON:", A, polygon)
         A = np.array(A)
         min_dist = float('inf')
         best_proj = None
@@ -209,7 +217,7 @@ class EmbeddedBoundaries:
                 best_normal = normal
     
 
-        print("RETURNING", tuple(best_proj))
+        # print("RETURNING", tuple(best_proj))
 
         return tuple(best_proj)
     
@@ -228,7 +236,7 @@ class EmbeddedBoundaries:
                     
                     
                     boundary_point = boundary_points[i, j]
-                    print(f"boundary reconstruction! interpolation points for {i}, {j} are {interpolation_points} while near_polygon_points are {near_polygon_points[i, j]} and boundary point is precisely {boundary_point}")
+                    # print(f"boundary reconstruction! interpolation points for {i}, {j} are {interpolation_points} while near_polygon_points are {near_polygon_points[i, j]} and boundary point is precisely {boundary_point}")
                     
                     # TODO: MAKE 3D LATER? currently hardcoded to x and y
                     x_velocities = np.zeros(3)
@@ -254,7 +262,7 @@ class EmbeddedBoundaries:
                     # set velocity to 0 at boundary point - no slip condition
                     x_velocities[2] = 0
                     y_velocities[2] = 0
-                    print("BOUNDARY POINT", boundary_point)
+                    # print("BOUNDARY POINT", boundary_point)
                     coefficients[2] = [boundary_point[0], boundary_point[1], 1]
                     
                     u_solution = np.linalg.solve(coefficients, x_velocities)
