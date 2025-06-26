@@ -151,9 +151,10 @@ class EmbeddedBoundaries:
         return inside_polygon_array, near_polygon_array, near_polygon_points_array, boundary_points_array
         
     
-    def fluid_vector_through_time(self, embedded_boundary_vector, velocity_vector):
-        _, V_parallel = self.decompose_vector(embedded_boundary_vector, velocity_vector)
-        return V_parallel
+    def get_parallel_vector(self, embedded_boundary_vector, x_vector, y_vector):
+        xy_vector = np.array(x_vector, y_vector)
+        _, parallel_vector = self.decompose_vector(embedded_boundary_vector, xy_vector)
+        return parallel_vector
 
     @staticmethod
     def decompose_vector(embedded_boundary_vector, velocity_vector):
@@ -210,9 +211,15 @@ class EmbeddedBoundaries:
                     print("i, j:", i, j)
                     print(f"vector map for {i}, {j}", vector_map[i, j])
                     
-                    fluid_vec = self.fluid_vector_through_time(
+                    fluid_vec = self.get_parallel_vector(
                         vector_map[i, j],
-                        velocity_vector
+                        primU[self.c.UCOMP, i, j], 
+                        primU[self.c.VCOMP, i, j]
+                    )
+                    mag_vec = self.get_parallel_vector(
+                        vector_map[i, j],
+                        primU[self.c.BXCOMP, i, j], 
+                        primU[self.c.BYCOMP, i, j]
                     )
                     
                     print("OLD VELOCITY VECTOR WAS:", velocity_vector, "NEW VELOCITY VECTOR IS: ", fluid_vec, "WHILE EMBEDDED BOUNDARY DIRECTION IS: ", vector_map[i, j], "AT i, j =", i, j)
@@ -220,6 +227,9 @@ class EmbeddedBoundaries:
                     # Update momentum components
                     U_new[self.c.MUCOMP, i, j] = U_new[self.c.RHOCOMP, i, j] * fluid_vec[0]
                     U_new[self.c.MVCOMP, i, j] = U_new[self.c.RHOCOMP, i, j] * fluid_vec[1]
+                    # Update magnetic field 
+                    U_new[self.c.BXCOMP, i, j] =  mag_vec[0]
+                    U_new[self.c.BYCOMP, i, j] =  mag_vec[1]
                     
                     # Update density and energy for near points
                     if system == "euler2D":
