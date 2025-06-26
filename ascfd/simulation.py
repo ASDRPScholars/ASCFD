@@ -112,7 +112,7 @@ class Simulation:
         
         print("called inside_near_polygon!")
         
-        inside_polygon, near_polygon, near_polygon_points = self.ebs.find_inside_near_points(vertices, i_start, i_end, j_start, j_end)
+        inside_polygon, near_polygon, near_polygon_points, boundary_points = self.ebs.find_inside_near_points(vertices, i_start, i_end, j_start, j_end)
                
         # print("BOUNDARY POINTS ARRAY IS", boundary_points)
         # TIME LOOP
@@ -239,10 +239,11 @@ class Simulation:
                 U_prim = self.euler.cons_to_prim(U_new)
                 
                 print("2) called ebs!")
-                self.ebs.apply_embedded_boundary_conditions(U_new, U_prim, self.inp.system, vertices, inside_polygon, near_polygon, near_polygon_points, i_start, i_end, j_start, j_end)
+                # self.ebs.apply_embedded_boundary_conditions(U_new, U_prim, self.inp.system, vertices, inside_polygon, near_polygon, near_polygon_points, i_start, i_end, j_start, j_end)
                 # self.ebs.apply_embedded_boundary_conditions(U_new, U_prim, self.inp.system, top_wall, inside_polygon1, near_polygon1, near_polygon_points1, i_start, i_end, j_start, j_end)
                 # self.ebs.apply_embedded_boundary_conditions(U_new, U_prim, self.inp.system, bottom_wall, inside_polygon2, near_polygon2, near_polygon_points2, i_start, i_end, j_start, j_end)
                 # self.ebs.apply_boundary_reconstruction_condition(U_new, U_prim, inside_polygon, near_polygon, near_polygon_points, boundary_points, i_start, i_end, j_start, j_end)
+                self.ebs.apply_boundary_reconstruction_condition(U_new, U_prim, inside_polygon, near_polygon, near_polygon_points, boundary_points, i_start, i_end, j_start, j_end)
                 
                 # print("!FLAG! BX AT (2, 53) IS", U_new[4, 2, 53])
                 
