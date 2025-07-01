@@ -15,7 +15,7 @@ def random_particles_no_condition(numParticles):
         randomX, randomY = np.random.rand(), np.random.rand()
         particles.append([randomX, randomY])
         
-    return np.array(particles)
+    return particles
 
 # dont use this yet
 def random_particles_with_condition(numParticles, points):
@@ -27,4 +27,4 @@ def random_particles_with_condition(numParticles, points):
         if not checkPolygon([randomX, randomY], points):
             particles.append([randomX, randomY])
         
-    return np.array(particles)
+    return particles

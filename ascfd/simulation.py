@@ -54,12 +54,24 @@ class Simulation:
             # self.output(np.zeros_like(self.grid.grid[0]))
             self.output()
             
-    def populate_particles(self):
-        pass
-        # print("PARTICLES<??")
+    def seed_particles(self):
+        if self.inp.particle_ic is None: 
+            return 
+        
+        particle_ic_name = self.inp.particle_ic
+
+        if particle_ic_name == "random_particles_no_condition":
+            seeded_particles = random_particles_no_condition(self.inp.seeding_per_timestep)
+        elif particle_ic_name == "random_particles_with_condition":
+            seeded_particles = random_particles_with_condition(self.inp.seeding_per_timestep, self.shape)
+
+        self.particles = self.particles.tolist()
+
+        for particleTuple in seeded_particles:
+
+            self.particles.append(particleTuple)
 
     def run(self):
-        self.populate_particles()
         # print("Is running?")
         
         # TODO: add back i_start and i_end
@@ -196,16 +208,16 @@ class Simulation:
             if self.inp.number_of_particles < 1 or self.inp.number_of_particles is None:
                 print("Please change number of particles")
                 return
-            
-            boundary_normals = self.ebs.find_embedded_boundary_vector(vertices, getNormal=True)
-            
+                        
             particles = np.array(self.particles)
 
             new_particles = []
+            new_bounce_counts = np.zeros(len(self.particles))
 
             flow_field = np.stack((self.grid.grid[self.c.UCOMP], self.grid.grid[self.c.VCOMP]), axis=-1)
 
-            for k in range(len(particles)):
+            for k in range(len(self.particles)):
+
                 pos = particles[k]
                 i = int(round(pos[0] / self.grid.dx))
                 j = int(round(pos[1] / self.grid.dy))
@@ -221,94 +233,27 @@ class Simulation:
                 i_new = int(round(new_pos[0] / self.grid.dx))
                 j_new = int(round(new_pos[1] / self.grid.dy))
 
-                if i_new > 99 or j_new > 99 or i_new < 0 or j_new < 0:
+                if i_new > 100 or j_new > 100 or i_new < 0 or j_new < 0:
                     continue
 
                 inside = inside_polygon[i_new, j_new]
                 near = near_polygon[i_new, j_new]
 
                 if inside or near:
-
-                    print("IN POLYGON!!!!")
-
-                    # normal = boundary_normals[i_new, j_new]
                     normal = find_polygon_normal(new_pos, vertices)
-
-                    print("Normal:", normal)
-
                     velocity = velocity - 2 * np.dot(velocity, normal) * normal
-
-                    print("Velocity:", velocity)
-
-                    print("dt:", dt)
-
                     change = velocity * dt * self.inp.bounce_back_multiplier
-
-                    print("CHANGE:", change)
-
                     new_pos = pos + change
-        
-                new_particles.append(new_pos)
 
+                    new_bounce_counts[k] += 1
 
-            return np.array(new_particles)
-
-
-
-        def old_update_particles(self):
-            if self.inp.particle_ic is None:
-                return
-        
-            new_particles = []
-            
-            flow_field = np.stack((self.grid.grid[self.c.UCOMP], self.grid.grid[self.c.VCOMP]), axis=-1)
-            # (104, 104, 2)
-
-            for k in range(len(self.particles)):
-                pos = np.array(self.particles[k])
                 
-                i = round(pos[0]/self.grid.dx)
-                j = round(pos[1]/self.grid.dy)
-
-                # print("I:", i)
-                # print("J:", j)
-
-                velocity = flow_field[i, j]
-                # print("VELOCITY:", velocity)
-                new_pos = pos + velocity * dt
-                # print("NEW POS:", new_pos)
+                if new_bounce_counts[k] < self.inp.max_number_of_bounces:
+                    new_particles.append(new_pos)
 
 
+            return np.array(new_particles), np.array(new_bounce_counts)
 
-                if inside_polygon[round(new_pos[0]/self.grid.dx), round(new_pos[1]/self.grid.dy)] or near_polygon[round(new_pos[0]/self.grid.dx), round(new_pos[1]/self.grid.dy)]:
-                    print("we are in the polygon")
-                    x = round(new_pos[0]/self.grid.dx)
-                    y = round(new_pos[1]/self.grid.dy)
-                    normal = self.ebs.find_embedded_boundary_vector(vertices)[x, y]
-
-                    temp = None
-                    x_comp = normal[0]
-                    y_comp = normal[1]
-
-                    temp = x_comp
-                    x_comp = y_comp
-                    y_comp = temp
-
-                    normal = np.array([x_comp, -y_comp])
-
-                    print("NORMAL: ", normal)
-                    print("OTHER:", -2 * np.dot(velocity, normal) * normal)
-                    velocity = velocity - 2 * np.dot(velocity, normal) * normal
-                    new_pos = pos + velocity * dt * self.inp.bounce_back_multiplier
-                    # count += 1  # Count a bounce
-
-                # if count <= max_bounces:
-                new_particles.append(new_pos)
-                # new_bounce_counts.append(count)
-
-
-            return np.array(new_particles)
-    
         
         # TIME LOOP
         
@@ -513,7 +458,11 @@ class Simulation:
                     # print("3) cleaned divergence!")
                     
                 # TODO: particle step
-                self.particles = update_particles(self)
+                # Seed or update first? I asssumed seeding first
+                if self.timestepNum % 5 == 0:
+                    print("SEEDING PARTICLES")
+                    self.seed_particles()
+                self.particles, self.bounce_counts = update_particles(self)
 
             else:
                 raise RuntimeError("Timestepping method not supported.")
@@ -630,14 +579,16 @@ class Simulation:
     def apply_particles(self):
         if self.inp.particle_ic is None: 
             return 
+        
+        self.bounce_counts = np.zeros(self.inp.number_of_particles)
                 
         if self.inp.number_of_particles < 1 or self.inp.number_of_particles is None:
             print("Please change number of particles")
 
         if self.inp.particle_ic == "random_particles_no_condition":
-            self.particles = random_particles_no_condition(self.inp.number_of_particles)
+            self.particles = np.array(random_particles_no_condition(self.inp.number_of_particles))
         elif self.inp.particle_ic == "random_particles_with_condition":
-            self.particles = random_particles_with_condition(self.inp.number_of_particles, self.shape)
+            self.particles = np.array(random_particles_with_condition(self.inp.number_of_particles, self.shape))
 
     def output(self):
         print("CALLED OUTPUT?!?!?!!")
