@@ -173,8 +173,8 @@ class BoundaryConditions:
                 for i in range(grid.Nghost):  # ghost cells on the left
                     for j in range(grid.Nghost, grid.Ny + grid.Nghost):
                         # Set inflow values here. Example:
-                        upper_bound = grid.Ny * 0.59
-                        lower_bound = grid.Ny * 0.41
+                        upper_bound = grid.Ny * 0.55
+                        lower_bound = grid.Ny * 0.45
 
                         # set inflow to only come out of the discharge chamber
                         if lower_bound < j < upper_bound:
@@ -186,10 +186,12 @@ class BoundaryConditions:
                                 grid.grid[var, i, j] = 0.0
                             elif var == 3:  # energy
                                 grid.grid[var, i, j] = 3.125
-                            elif var == 4:  # Bx
-                                grid.grid[var, i, j] = 1.0
-                            elif var == 5:  # By
-                                grid.grid[var, i, j] = 0.0 
+                        
+                        if var == 4:  # Bx
+                            grid.grid[var, i, j] = 1.0
+                        elif var == 5:  # By
+                            grid.grid[var, i, j] = 0.0 
+                            
                         # else:
                         #     if var == 0:
                         #         grid.grid[var, i, j] = 1.0
@@ -200,6 +202,40 @@ class BoundaryConditions:
                         #     elif var == 3:  # energy
                         #         grid.grid[var, i, j] = 2.5
 
+    # #TODO: AI CODE — IS TAPERING THE FUNCTION THE RIGHT STRAT?
+    # @staticmethod
+    # def channel_inflow_lo(grid: Grid2D, dim: int):
+    #     if dim != 0:
+    #         return
+
+    #     # Define inflow profile parameters
+    #     j_center = grid.Ny * 0.5
+    #     sigma = grid.Ny * 0.05  # width of taper; tune this for sharper or smoother falloff
+    #     max_mu = 0.5
+    #     max_energy = 3.125
+    #     max_rho = 1.0
+    #     max_Bx = 1.0
+    #     max_By = 0.0
+
+    #     for i in range(grid.Nghost):  # ghost cells on the left
+    #         for j in range(grid.Nghost, grid.Ny + grid.Nghost):
+    #             dy = j - j_center
+    #             taper = np.exp(- (dy**2) / (2 * sigma**2))  # Gaussian taper from 1.0 at center to ~0 at edges
+
+    #             for var in range(grid.num_vars):
+    #                 if var == 0:  # density
+    #                     grid.grid[var, i, j] = max_rho  # optional: apply taper to this too
+    #                 elif var == 1:  # mu (x momentum)
+    #                     grid.grid[var, i, j] = taper * max_mu
+    #                 elif var == 2:  # mv (y momentum)
+    #                     grid.grid[var, i, j] = 0.0
+    #                 elif var == 3:  # energy
+    #                     grid.grid[var, i, j] = max_energy  # could also taper slightly if needed
+    #                 elif var == 4:  # Bx
+    #                     grid.grid[var, i, j] = max_Bx
+    #                 elif var == 5:  # By
+    #                     grid.grid[var, i, j] = max_By
+                    
     @staticmethod
     def neumann_lo(grid: Grid2D, dim: int) -> None:
         print("called BoundaryConditions.neumann_lo()!")

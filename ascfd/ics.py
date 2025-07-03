@@ -226,8 +226,10 @@ def static_2d(a_x, a_y, a_var):
     
     
 def static_mhd_2d(a_x, a_y, a_var):
-    if a_var in [0, 3]:
+    if a_var == 0:
         return np.ones_like(a_x)
+    elif a_var == 3:
+        return 1.05
     elif a_var in [1, 2, 5]:
         return np.zeros_like(a_x)
     elif a_var == 4:
