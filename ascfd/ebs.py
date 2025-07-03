@@ -4,6 +4,8 @@ import numpy as np
 
 class EmbeddedBoundaries:
     
+    
+    
     def __init__(self, grid: Grid2D, a_constants: Constants):
         self.grid = grid
         self.c = a_constants
@@ -98,12 +100,19 @@ class EmbeddedBoundaries:
                 near = False
                 near_polygon_points = []
                 
+                neighbor_offsets = [
+                    (0, 0),
+                    (self.grid.dx, 0), (-self.grid.dx, 0),
+                    (0, self.grid.dy), (0, -self.grid.dy),
+                ]
+                
                 # testing_boundary_point = True
                 # boundary_point_index = 0
                 
                 px, py = (i+1/2) * self.grid.dx, (j+1/2) *self.grid.dy
                 
-                for (tx, ty) in [(px, py), (px+self.grid.dx, py), (px-self.grid.dx, py), (px, py+self.grid.dy), (px, py-self.grid.dy)]:
+                for (dx, dy) in neighbor_offsets:
+                    (tx, ty) = px + dx, py + dy
                     point_inside = False
        
                     for k in range(n):
@@ -140,7 +149,12 @@ class EmbeddedBoundaries:
                     
                     if point_inside:
                         near = True
-                        near_polygon_points.append((round(tx/self.grid.dx), round(ty/self.grid.dy)))
+                        # near_polygon_points.append((round(tx/self.grid.dx), round(ty/self.grid.dy)))
+                        
+                        # TODO: understand
+                        grid_x = int((tx + 1e-8) // self.grid.dx)  # Add epsilon to avoid rounding errors
+                        grid_y = int((ty + 1e-8) // self.grid.dy)
+                        near_polygon_points.append((grid_x, grid_y))
                 
                 inside_polygon_array[i, j] = inside
                 near_polygon_array[i, j] = near
@@ -151,10 +165,10 @@ class EmbeddedBoundaries:
         return inside_polygon_array, near_polygon_array, near_polygon_points_array, boundary_points_array
         
     
-    def get_parallel_vector(self, embedded_boundary_vector, x_vector, y_vector):
+    def get_decomposed_vector(self, embedded_boundary_vector, x_vector, y_vector):
         xy_vector = np.array(x_vector, y_vector)
-        _, parallel_vector = self.decompose_vector(embedded_boundary_vector, xy_vector)
-        return parallel_vector
+        normal_vector, parallel_vector = self.decompose_vector(embedded_boundary_vector, xy_vector)
+        return normal_vector, parallel_vector
 
     @staticmethod
     def decompose_vector(embedded_boundary_vector, velocity_vector):
@@ -164,7 +178,9 @@ class EmbeddedBoundaries:
         dot_product = np.dot(velocity_vector, embedded_boundary_vector)
         V_parallel = (dot_product / norm_squared) * embedded_boundary_vector
         V_normal = velocity_vector - V_parallel
-        return V_normal, V_parallel
+        # return V_normal, V_parallel
+    # TODO: IS IT FLIPPED IDK??
+        return V_parallel, V_normal
 
     # TODO: check that x_int and dx implementation behaves properly
     def find_embedded_boundary_vector(self, vertices):
@@ -227,9 +243,12 @@ class EmbeddedBoundaries:
                     # Update momentum components
                     U_new[self.c.MUCOMP, i, j] = U_new[self.c.RHOCOMP, i, j] * fluid_vec[0]
                     U_new[self.c.MVCOMP, i, j] = U_new[self.c.RHOCOMP, i, j] * fluid_vec[1]
-                    # Update magnetic field 
-                    U_new[self.c.BXCOMP, i, j] =  mag_vec[0]
-                    U_new[self.c.BYCOMP, i, j] =  mag_vec[1]
+                    
+                    # # Update magnetic field 
+                    # U_new[self.c.BXCOMP, i, j] = mag_vec[0]
+                    # print("BEFORE BY", U_new[self.c.BYCOMP, i, j], f"for i, j ({i}, {j})")
+                    # U_new[self.c.BYCOMP, i, j] = mag_vec[1]
+                    # print("AFTER BY", U_new[self.c.BYCOMP, i, j], f"for i, j ({i}, {j})")
                     
                     # Update density and energy for near points
                     if system == "euler2D":
@@ -242,8 +261,9 @@ class EmbeddedBoundaries:
                             U_new[self.c.RHOCOMP, tx, ty] = U_new[self.c.RHOCOMP, i, j]
                             U_new[self.c.ECOMP, tx, ty] = U_new[self.c.ECOMP, i, j]
     
-                            U_new[self.c.BXCOMP, tx, ty] = U_new[self.c.BXCOMP, i, j]
-                            U_new[self.c.BYCOMP, tx, ty] = U_new[self.c.BYCOMP, i, j]
+                            # U_new[self.c.BXCOMP, tx, ty] = U_new[self.c.BXCOMP, i, j]
+                            # U_new[self.c.BYCOMP, tx, ty] = U_new[self.c.BYCOMP, i, j]
+                            
                             
                     else:
                         raise AssertionError("Unknown variable system passed into embedded boundaries")
@@ -297,7 +317,9 @@ class EmbeddedBoundaries:
 
         return tuple(best_proj)
     
-    def apply_boundary_reconstruction_condition(self, U_new, primU, inside_polygon, near_polygon, near_polygon_points, boundary_points, i_start, i_end, j_start, j_end):
+    def apply_boundary_reconstruction_condition(self, vertices, U_new, primU, inside_polygon, near_polygon, near_polygon_points, boundary_points, i_start, i_end, j_start, j_end):
+        vector_map = self.find_embedded_boundary_vector(vertices)
+        
         for i in range(i_start, i_end):
             for j in range(j_start, j_end):
                 # print("near_polyon is", near_polygon[i, j], "for", i, j)
@@ -339,7 +361,7 @@ class EmbeddedBoundaries:
                     # set velocity to 0 at boundary point - no slip condition
                     x_velocities[2] = 0
                     y_velocities[2] = 0
-                    print("BOUNDARY POINT", boundary_point)
+                    # print("BOUNDARY POINT", boundary_point)
                     coefficients[2] = [boundary_point[0], boundary_point[1], 1]
                     
                     u_solution = np.linalg.solve(coefficients, x_velocities)
@@ -352,6 +374,36 @@ class EmbeddedBoundaries:
                     
                     U_new[self.c.MUCOMP, i, j] = U_new[self.c.RHOCOMP, i, j] * u
                     U_new[self.c.MVCOMP, i, j] = U_new[self.c.RHOCOMP, i, j] * v
+                    
+                    normal_B, parallel_B = self.get_decomposed_vector(
+                        vector_map[i, j],
+                        primU[self.c.BXCOMP, i, j], 
+                        primU[self.c.BYCOMP, i, j]
+                    )
+                    
+                    if j == 59:
+                        # print("NORMAL AND PARALLEL")
+                        print(normal_B, parallel_B)
+                    
+                    # if system == "mhd2d":
+                    for (tx, ty) in near_polygon_points[i, j]:
+                        # print("POINT", i, j)
+                        # print("HAS NEAR POLYGON POINTS", tx, ty)
+                        U_new[self.c.RHOCOMP, tx, ty] = U_new[self.c.RHOCOMP, i, j]
+                        U_new[self.c.ECOMP, tx, ty] = U_new[self.c.ECOMP, i, j]
+
+                        # # TODO: DOE STHIS WORK
+                        # U_new[self.c.BXCOMP, tx, ty] = parallel_B[0] # - normal_B[0]
+                        # U_new[self.c.BYCOMP, tx, ty] = -normal_B[1]
+                        
+                        U_new[self.c.BXCOMP, tx, ty] = U_new[self.c.BXCOMP, i, j]
+                        U_new[self.c.BYCOMP, tx, ty] = -U_new[self.c.BYCOMP, i, j]
+                    
+                    # # Update magnetic field 
+                    # U_new[self.c.BXCOMP, i, j] = mag_vec[0]
+                    # print("BEFORE BY", U_new[self.c.BYCOMP, i, j], f"for i, j ({i}, {j})")
+                    # U_new[self.c.BYCOMP, i, j] = mag_vec[1]
+                    # print("AFTER BY", U_new[self.c.BYCOMP, i, j], f"for i, j ({i}, {j})")
                     
         return U_new
 
