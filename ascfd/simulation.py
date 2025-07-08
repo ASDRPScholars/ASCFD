@@ -64,6 +64,8 @@ class Simulation:
             seeded_particles = random_particles_no_condition(self.inp.seeding_per_timestep)
         elif particle_ic_name == "random_particles_with_condition":
             seeded_particles = random_particles_with_condition(self.inp.seeding_per_timestep, self.shape)
+        elif particle_ic_name == "random_along_left_wall":
+            seeded_particles = random_along_left_wall(self.inp.seeding_per_timestep)
 
         self.particles = self.particles.tolist()
 
@@ -72,7 +74,6 @@ class Simulation:
             self.particles.append(particleTuple)
 
     def run(self):
-        # print("Is running?")
         
         # TODO: add back i_start and i_end
         i_start, i_end = self.grid.Nghost, self.grid.Nx + self.grid.Nghost
@@ -589,6 +590,8 @@ class Simulation:
             self.particles = np.array(random_particles_no_condition(self.inp.number_of_particles))
         elif self.inp.particle_ic == "random_particles_with_condition":
             self.particles = np.array(random_particles_with_condition(self.inp.number_of_particles, self.shape))
+        elif self.inp.particle_ic == "random_along_left_wall":
+            self.particles = np.array(random_along_left_wall(self.inp.seeding_per_timestep))
 
     def output(self):
         print("CALLED OUTPUT?!?!?!!")

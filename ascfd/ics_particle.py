@@ -28,3 +28,14 @@ def random_particles_with_condition(numParticles, points):
             particles.append([randomX, randomY])
         
     return particles
+
+
+def random_along_left_wall(numParticles):
+    particles = []
+
+    while len(particles) < numParticles:
+        xPos, yPos = 0, np.random.rand()
+        particles.append([xPos, yPos])
+
+    return particles
+
