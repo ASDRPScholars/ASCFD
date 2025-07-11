@@ -1,9 +1,9 @@
-output/
 __pycache__
 myEnv/
 *.txt
 *.png
 *.mp4
+*.png
 *.gif
 *.pdf
 *.html

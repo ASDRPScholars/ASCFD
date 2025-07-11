@@ -9,6 +9,7 @@ class Constants:
         # Default ratio of specific heats (gamma)
         self.gamma = 1.4
         self.system = inputs.system
+        self.g = 9.81
 
         # Define constants and variables for the Euler 2D system
         if inputs.system == "euler2D":

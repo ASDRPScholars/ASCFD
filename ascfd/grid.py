@@ -16,8 +16,8 @@ class Grid2D:
         self.num_vars = num_vars   # number of variables in the grid (e.g., density, velocity, pressure)
         
           # cell size
-        self.dx = (xlim[1] - xlim[0]) / (Nx - 1)
-        self.dy = (ylim[1] - ylim[0]) / (Ny - 1)
+        self.dx = (xlim[1] - xlim[0]) / (Nx)
+        self.dy = (ylim[1] - ylim[0]) / (Ny)
         
         # x and y coordinates, including ghost cells
         self.x = np.linspace(
@@ -46,30 +46,32 @@ class Grid2D:
         # Fill the grid using a user-supplied function `f`
         for var in range(self.num_vars):
             # we can jsut fill ghost cells too, i don't think it matters we're just going to override anyways
+            print("filling grid!")
             self.grid[var] = f(self.meshX, self.meshY, var)
+            print("grid for", var, "filled with", f(self.meshX, self.meshY, var))
 
-    def plot(self):
-        # Create a figure with 4 subplots arranged in 2x2
-        fig, axs = plt.subplots(2, 2, figsize=(12, 10))
-        axs = axs.flatten()  # Flatten the 2x2 grid into a 1D array of axes
+    # def plot(self):
+    #     # Create a figure with 4 subplots arranged in 2x2
+    #     fig, axs = plt.subplots(2, 2, figsize=(12, 10))
+    #     axs = axs.flatten()  # Flatten the 2x2 grid into a 1D array of axes
 
-        # Titles for each subplot corresponding to each variable
-        titles = ["Density", "UVel", "VVel", "Pressure"]
+    #     # Titles for each subplot corresponding to each variable
+    #     titles = ["Density", "UVel", "VVel", "Pressure"]
 
-        for i in range(self.num_vars):
-            # create color plots for each variable
-            pcm = axs[i].pcolormesh(
-                self.meshX, self.meshY, self.grid[i].T, cmap="inferno", shading="auto"
-            )
-            fig.colorbar(
-                pcm, ax=axs[i], orientation="vertical" # color bar
-            )
-            axs[i].set_title(titles[i]) # plot title
-            axs[i].set_xlabel("X") # label X-axis
-            axs[i].set_ylabel("Y") # label Y-axis
+    #     for i in range(self.num_vars):
+    #         # create color plots for each variable
+    #         pcm = axs[i].pcolormesh(
+    #             self.meshX, self.meshY, self.grid[i].T, cmap="inferno", shading="auto"
+    #         )
+    #         fig.colorbar(
+    #             pcm, ax=axs[i], orientation="vertical" # color bar
+    #         )
+    #         axs[i].set_title(titles[i]) # plot title
+    #         axs[i].set_xlabel("X") # label X-axis
+    #         axs[i].set_ylabel("Y") # label Y-axis
 
-        plt.tight_layout()  # layout to prevent overlap
-        plt.show()  # display the plot
+    #     plt.tight_layout()  # layout to prevent overlap
+    #     plt.show()  # display the plot
 
     def apply_periodic_bcs(self):
         # periodic boundary conditions

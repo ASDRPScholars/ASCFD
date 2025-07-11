@@ -51,6 +51,9 @@ class Inputs:
         if self.t0 >= self.t_finish:
             raise RuntimeError("Initial time is >= to the final time.")
 
+        # ebs
+        self.ics = self.get_config_value(config, "Embedded Bouncaries", "ebs")
+        
         # Fluid
         self.ics = self.get_config_value(config, "Fluid", "ics")
         self.system = self.get_config_value(config, "Fluid", "system")
