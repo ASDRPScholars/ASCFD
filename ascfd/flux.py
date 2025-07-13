@@ -39,7 +39,7 @@ class Flux:
     def rusanov(self, a_grid, a_Nx, a_Ny, a_Nghost):
 
         #get density 
-        if self.c.system == "euler2D":
+        if self.c.system == "euler2d":
             density = a_grid[self.c.RHOCOMP]
         else:
             raise RuntimeError("Density method needs to be implemented.")
@@ -79,7 +79,7 @@ class Flux:
     
     def rusanov_vectorized(self, a_grid, a_Nx, a_Ny, a_Nghost):
         #get density 
-        if self.c.system == "euler2D":
+        if self.c.system == "euler2d":
             density = a_grid[self.c.RHOCOMP]
         else:
             raise RuntimeError("Density method needs to be implemented.")
@@ -153,7 +153,7 @@ class Flux:
     def lax_friedrichs(self, a_grid):
         a_grid.assert_variable_type("prim")
 
-        if self.c.system == "euler2D":
+        if self.c.system == "euler2d":
             density = a_grid.grid[self.c.RHOCOMP] # extract density
         else:
             raise RuntimeError("Density method needs to be implemented.")
@@ -191,8 +191,8 @@ class Flux:
         """
         Calculates the numerical flux using the HLLC approximate Riemann solver.
         """
-        if self.c.system != "euler2D":
-            raise NotImplementedError("HLLC flux is only implemented for euler2D system.")
+        if self.c.system != "euler2d":
+            raise NotImplementedError("HLLC flux is only implemented for euler2d system.")
 
         # Get primitive variables (rho, u, v, p)
         rho = a_grid[self.c.RHOCOMP]
@@ -435,7 +435,7 @@ class Flux:
         a_grid.assert_variable_type("prim")
 
         #get density 
-        if self.c.system == "euler2D":
+        if self.c.system == "euler2d":
             print("HLLD on Euler is not supported!")
             sys.exit()
         elif self.c.system == "mhd2d":
@@ -521,7 +521,7 @@ class Flux:
         a_grid.assert_variable_type("prim")
 
         #get density 
-        if self.c.system == "euler2D":
+        if self.c.system == "euler2d":
             density = a_grid.grid[self.c.RHOCOMP]
         elif self.c.system == "mhd2d":
             density = a_grid.grid[self.c.RHOCOMP]
