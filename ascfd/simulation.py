@@ -27,7 +27,7 @@ class Simulation:
         self.bcs = BoundaryConditions(self.grid, self.inp.bcs_lo, self.inp.bcs_hi)
         self.flux = Flux(self.c, self.inp.flux)
 
-        self.applyICS()
+        self.apply_ics()
 
         self.bcs.apply_bcs()
         self.grid.check_grid(self.c)
@@ -198,7 +198,7 @@ class Simulation:
  
    
  
-    def applyICS(self):
+    def apply_ics(self):
 
         if self.inp.system == "euler2d":
             if self.inp.ics == "diagonal_advection":
