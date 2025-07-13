@@ -11,7 +11,7 @@ class Euler:
     def prim_to_cons(self, a_prim):
         cons = np.zeros_like(a_prim)
 
-        if self.c.system == "euler2D":
+        if self.c.system == "euler2d":
             cons[self.c.RHOCOMP] = a_prim[self.c.RHOCOMP] # density stays the same
             cons[self.c.MUCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.UCOMP] # momentum components x & y
             cons[self.c.MVCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.VCOMP]
@@ -42,7 +42,7 @@ class Euler:
     def cons_to_prim(self, a_cons):
         prim = np.zeros_like(a_cons)
 
-        if self.c.system == "euler2D":
+        if self.c.system == "euler2d":
             # copy density
             prim[self.c.RHOCOMP] = a_cons[self.c.RHOCOMP]
             # compute velocity components
@@ -81,7 +81,7 @@ class Euler:
         flux_x = np.zeros_like(a_prim) # flux in x-direction
         flux_y = np.zeros_like(a_prim) # flux in y-direction
 
-        if self.c.system == "euler2D":
+        if self.c.system == "euler2d":
             # extract primitive variables
             rho = a_prim[self.c.RHOCOMP] # density
             u = a_prim[self.c.UCOMP] # x-velocity
@@ -100,7 +100,7 @@ class Euler:
             
             # flux in y-direction
             flux_y[self.c.RHOCOMP] = rho * v # mass flux
-            flux_y[self.c.MUCOMP] = rho * u * v - g # momentum flux in x 
+            flux_y[self.c.MUCOMP] = rho * u * v - self.c.g # momentum flux in x 
             flux_y[self.c.MVCOMP] = rho * v**2 + p # momentum flux in y 
             flux_y[self.c.ECOMP] = (E + p) * v # energy flux
 
@@ -142,7 +142,7 @@ class Euler:
  
     def get_max_speed(self, a_grid):
 
-        if self.c.system == "euler2D":
+        if self.c.system == "euler2d":
             if a_grid.variables == "prim":
                 return np.max(a_grid.grid[self.c.UCOMP])
             elif a_grid.variables == "cons":
@@ -172,7 +172,3 @@ class Euler:
             else:
                 print("unsupported")
                 exit()
-
-def g():
-    # definiton of gravity
-    g = rho * 9.81

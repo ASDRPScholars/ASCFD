@@ -50,7 +50,7 @@ class Simulation:
             self.grid.assert_variable_type("prim")
             
             # Determine timestep dt based on CFL condition
-            if self.inp.system == "euler2D":
+            if self.inp.system == "euler2d":
                 density = self.grid.grid[self.c.RHOCOMP]
                 pressure = self.grid.grid[self.c.PCOMP]
                 u = self.grid.grid[self.c.UCOMP]
@@ -167,7 +167,7 @@ class Simulation:
         if not os.path.exists(self.inp.output_dir):
             os.makedirs(self.inp.output_dir)
 
-        if self.inp.system == "euler2D":
+        if self.inp.system == "euler2d":
             fig, axs = plt.subplots(3, 1, figsize=(10, 15))
             axs[0].scatter(self.grid.x, self.grid.grid[self.c.RHOCOMP, :], c="black")
             axs[0].set_ylabel("Density")
@@ -200,7 +200,7 @@ class Simulation:
  
     def applyICS(self):
 
-        if self.inp.system == "euler2D":
+        if self.inp.system == "euler2d":
             if self.inp.ics == "diagonal_advection":
                 self.grid.fill_grid(ics.diagonal_advection_2d)
             elif self.inp.ics == "kelvin_helmholtz":
@@ -229,44 +229,53 @@ class Simulation:
     def output(self):
         # Ensure the base output directory exists
         os.makedirs(self.inp.output_dir, exist_ok=True)
-        
+
         # Ensure the frames subdirectory exists
         frames_dir = os.path.join(self.inp.output_dir, "frames")
         os.makedirs(frames_dir, exist_ok=True)
         
+        data_dir = os.path.join(self.inp.output_dir, "raw data")
+        os.makedirs(data_dir, exist_ok=True)
+
         # File naming convention: output_timestepNum.txt
-        output_filename = os.path.join(frames_dir, f"output_{str(self.timestepNum).zfill(6)}.txt")
-        output_plotname = os.path.join(frames_dir, f"output_{str(self.timestepNum).zfill(6)}.png")
+        output_filename = os.path.join(
+            data_dir, f"output_{str(self.timestepNum).zfill(6)}.txt")
+        output_plotname = os.path.join(
+            frames_dir, f"output_{str(self.timestepNum).zfill(6)}.png")
 
         with open(output_filename, 'w') as f:
             # Write header
             f.write(f"# Time: {self.t:.4f}\n")
             f.write("# x, y, density, x-velocity, y-velocity, pressure\n")
-            
+
             for i in range(self.grid.Nghost, self.grid.Nx - self.grid.Nghost):
                 for j in range(self.grid.Nghost, self.grid.Ny - self.grid.Nghost):
                     x = self.grid.x[i]
                     y = self.grid.y[j]
                     components = [self.grid.grid[q, i, j] for q in range(self.c.NUMQ)]
                     f.write(f"{x:.12f}, {y:.12f}, " + ", ".join(f"{comp:.8f}" for comp in components) + "\n")
-       
-        if self.inp.system == "euler2D":
+
+        if self.inp.system == "euler2d":
             fig, axs = plt.subplots(2, 2, figsize=(15, 15))
         elif self.inp.system == "mhd2d":
-            fig, axs = plt.subplots(2, 3, figsize=(18, 12))
+            fig, axs = plt.subplots(2, 4, figsize=(36, 18))
         axs = axs.ravel()  # Flatten the array to index by i
-
-        for i in range(self.c.NUMQ):
+        
+        for q in range(self.c.NUMQ):
             # Exclude ghost cells from the plot
-            plot_data = self.grid.grid[i, self.grid.Nghost:-self.grid.Nghost, self.grid.Nghost:-self.grid.Nghost].T
+            plot_data = self.grid.grid[q, self.grid.Nghost:-self.grid.Nghost, self.grid.Nghost:-self.grid.Nghost].T # TODO: why transpose?
+            # plot_data = self.grid.grid[q, :, :].T
+            
             extent = [self.grid.x[self.grid.Nghost], self.grid.x[-self.grid.Nghost-1],
-                      self.grid.y[self.grid.Nghost], self.grid.y[-self.grid.Nghost-1]]
-           
-            im = axs[i].imshow(plot_data, origin='lower', extent=extent)
-            plt.colorbar(im, ax=axs[i])
-            axs[i].set_title(self.c.variable_names[i])
-            axs[i].set_xlabel('x')
-            axs[i].set_ylabel('y')
+                    self.grid.y[self.grid.Nghost], self.grid.y[-self.grid.Nghost-1]]
+
+            im = axs[q].imshow(plot_data, origin='lower', extent=extent, cmap='magma')
+            
+            plt.colorbar(im, ax=axs[q])
+            
+            axs[q].set_title(self.c.variable_names[q])
+            axs[q].set_xlabel('x')
+            axs[q].set_ylabel('y')
 
         fig.suptitle(f"Time: {self.t:.4f}, Timestep: {self.timestepNum}")
         plt.tight_layout()

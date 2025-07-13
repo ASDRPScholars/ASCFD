@@ -8,10 +8,11 @@ class Constants:
 
         # Default ratio of specific heats (gamma)
         self.gamma = 1.4
+        self.g = 9.81
         self.system = inputs.system
 
         # Define constants and variables for the Euler 2D system
-        if inputs.system == "euler2D":
+        if inputs.system == "euler2d":
             
             #primitive variables (Density, X-Velocity, Y-Velocity, Pressure)
             self.RHOCOMP = 0 # Density
@@ -27,7 +28,7 @@ class Constants:
             # number of variables in the system
             self.NUMQ = 4
 
-            self.system = "euler2D"
+            self.system = "euler2d"
 
             self.gamma = inputs.gammas[0] #gammas
 
