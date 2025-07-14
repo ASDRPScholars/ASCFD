@@ -47,12 +47,11 @@ class Inputs:
             )
         self.cfl = self.get_config_value(config, "Time", "cfl", type_func=float)
 
-
         if self.t0 >= self.t_finish:
             raise RuntimeError("Initial time is >= to the final time.")
 
         # Fluid
-        self.ics = self.get_config_value(config, "Fluid", "ics")
+        self.fluid_ics = self.get_config_value(config, "Fluid", "fluid_ics")
         self.system = self.get_config_value(config, "Fluid", "system")
 
         #if self.system == "euler1DNS2":
@@ -65,12 +64,16 @@ class Inputs:
         self.bcs_hi = self.get_config_value(config, "Method", "bcs_hi", type_func=self.parse_bcs)
 
         # Particle
-
-        self.particle_ic = self.get_config_value(config, "Particle", "particle_ic", mandatory = False, default=None)
-        self.number_of_particles = self.get_config_value(config, "Particle", "number_of_particles", mandatory = False, default = 0, type_func = int)
+        self.particle_ics = self.get_config_value(config, "Particle", "particle_ics", mandatory = False, default=None)
+        self.n_particles = self.get_config_value(config, "Particle", "n_particles", mandatory = False, default = 0, type_func = int)
         self.seeding_per_timestep = self.get_config_value(config, "Particle", "seeding_per_timestep", mandatory = False, default = 0, type_func = int)
         self.bounce_back_multiplier = self.get_config_value(config, "Particle", "bounce_back_multiplier", mandatory = False, default = 1.0, type_func = float)
         self.max_number_of_bounces = self.get_config_value(config, "Particle", "max_number_of_bounces", mandatory = False, default = 3, type_func = int)
+        
+        # Electric Field
+        self.E_ics = self.get_config_value(config, "Fields", "E_ics")
+        self.B_ics = self.get_config_value(config, "Fields", "B_ics")
+        
 
         # Output
         self.output_freq = self.get_config_value(
