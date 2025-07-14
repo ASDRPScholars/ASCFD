@@ -461,7 +461,6 @@ class Simulation:
                 # TODO: particle step
                 # Seed or update first? I asssumed seeding first
                 if self.timestepNum % 5 == 0:
-                    print("SEEDING PARTICLES")
                     self.seed_particles()
                 self.particles, self.bounce_counts = update_particles(self)
 
