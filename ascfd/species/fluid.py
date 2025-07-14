@@ -1,6 +1,7 @@
 from ascfd.grid import Grid2D
 from ascfd.constants import Constants
 from ascfd.euler import Euler
+from ascfd.inputs import Inputs
 
 import ascfd.ics as ics
 
@@ -8,7 +9,7 @@ import numpy as np
 
 
 class FluidSpecies:
-    def __init__(self, params, a_inputs, dt):
+    def __init__(self, params, a_inputs: Inputs, dt):
         self.c = Constants(a_inputs)
         self.euler = Euler(self.c)
         
@@ -17,9 +18,45 @@ class FluidSpecies:
         
         self.dt = dt
 
-        self.grid_data = Grid2D(self.inp.xlim, self.inp.ylim, self.inp.nx, self.inp.ny, self.inp.numghosts, self.c.NUMQ)
+        # TODO: move Grid2D functionality into each species class? or Grid -> FluidGrid, FieldGrid polymorphism?
+        # self.grid_data = Grid2D(self.inp.xlim, self.inp.ylim, self.inp.nx, self.inp.ny, self.inp.numghosts, self.c.NUMQ)
+        
+        self.grid_data = np.zeros((self.c.NUMQ, self.inp.nx + 2 * self.inp.numghosts, self.inp.nx + 2 * self.inp.numghosts))
+        
+        # boring logistics stuff for apply_ics()
+        dx = (self.inp.xlim[1] - self.inp.xlim[0]) / (self.inp.nx - 1)
+        dy = (self.inp.ylim[1] - self.inp.ylim[0]) / (self.inp.ny - 1)
+        x = np.linspace(self.inp.xlim[0] - dx * self.inp.numghosts, self.inp.xlim[1] + dx * self.inp.numghosts, self.inp.nx + 2 * self.inp.numghosts)
+        y = np.linspace(self.inp.ylim[0] - dy * self.inp.numghosts, self.inp.ylim[1] + dy * self.inp.numghosts, self.inp.ny + 2 * self.inp.numghosts)
+        
+        self.mesh_x, self.mesh_y = np.meshgrid(x, y)
         
         self.apply_ics()
+        
+        
+    def apply_ics(self):
+            
+        if self.inp.system == "euler2d":
+            if self.inp.ics == "diagonal_advection":
+                f = ics.diagonal_advection_2d
+            elif self.inp.ics == "kelvin_helmholtz":
+                f = ics.kelvin_helmholtz_2d
+            elif self.inp.ics == "double_mach_reflection":
+                f = ics.double_mach_reflection_2d
+            elif self.inp.ics == "riemann_problem":
+                f = ics.riemann_2d
+            else:
+                raise RuntimeError("[FLUID] ICS not valid.")
+           
+        elif self.inp.system == "mhd2d":
+            if self.inp.ics == "orszag_tang":
+                f = ics.orszag_tang_2d
+           
+        else:
+            raise RuntimeError("[FLUID] ICS not valid.")
+        
+        for var in range(self.num_vars):
+            self.grid_data[var] = f(self.mesh_x, self.mesh_y, var)
         
         
     def update(self):
@@ -38,25 +75,35 @@ class FluidSpecies:
                     
         self.grid_data = self.euler.cons_to_prim(consU_new)
     
+    
     def get_charge_density(self):
         pass
     
-    def apply_ics(self):
-        if self.inp.system == "euler2d":
-            if self.inp.ics == "diagonal_advection":
-                self.grid_data.fill_grid(ics.diagonal_advection_2d)
-            elif self.inp.ics == "kelvin_helmholtz":
-                self.grid_data.fill_grid(ics.kelvin_helmholtz_2d)
-            elif self.inp.ics == "double_mach_reflection":
-                self.grid_data.fill_grid(ics.double_mach_reflection_2d)
-            elif self.inp.ics == "riemann_problem":
-                self.grid_data.fill_grid(ics.riemann_2d)
-            else:
-                raise RuntimeError("[FLUID] ICS not valid.")
-           
-        elif self.inp.system == "mhd2d":
-            if self.inp.ics == "orszag_tang":
-                self.grid_data.fill_grid(ics.orszag_tang_2d)
-           
-        else:
-            raise RuntimeError("[FLUID] ICS not valid.")
+    
+    def check_grid(self, constants, prim=False, cons=False):
+        # Check for negative or invalid values in the grid
+        for i in range(self.Nx + 2 * self.Nghost):
+            for j in range(self.Ny + 2 * self.Nghost):
+                if prim:
+                    # Check for negative pressure
+                    if self.grid[constants.PCOMP, i, j] <= 0:
+                        print(f"Negative Pressure - Bad cell: ({i}, {j})")
+                        assert False
+
+                    # Check for negative density
+                    if self.grid[constants.RHOCOMP, i, j] <= 0:
+                        print(f"Negative Density - Bad cell: ({i}, {j})")
+                        assert False
+
+                if cons:
+                    # Check for negative energy
+                    if self.grid[constants.ECOMP, i, j] <= 0:
+                        print(f"Negative Energy - Bad cell: ({i}, {j})")
+                        assert False
+
+                # Check for NaN values
+                for icomp in range(constants.NUMQ):
+                    if np.isnan(self.grid[icomp, i, j]):
+                        print(f"NaN value - Bad cell: ({i}, {j}), component: {icomp}")
+                        assert False
+                        
