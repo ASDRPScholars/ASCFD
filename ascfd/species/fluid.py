@@ -19,24 +19,7 @@ class FluidSpecies:
 
         self.grid_data = Grid2D(self.inp.xlim, self.inp.ylim, self.inp.nx, self.inp.ny, self.inp.numghosts, self.c.NUMQ)
         
-        if self.inp.system == "euler2d":
-            if self.inp.ics == "diagonal_advection":
-                self.grid_data.fill_grid(ics.diagonal_advection_2d)
-            elif self.inp.ics == "kelvin_helmholtz":
-                self.grid_data.fill_grid(ics.kelvin_helmholtz_2d)
-            elif self.inp.ics == "double_mach_reflection":
-                self.grid_data.fill_grid(ics.double_mach_reflection_2d)
-            elif self.inp.ics == "riemann_problem":
-                self.grid_data.fill_grid(ics.riemann_2d)
-            else:
-                raise RuntimeError("[FLUID] ICS not valid.")
-           
-        elif self.inp.system == "mhd2d":
-            if self.inp.ics == "orszag_tang":
-                self.grid_data.fill_grid(ics.orszag_tang_2d)
-           
-        else:
-            raise RuntimeError("[FLUID] ICS not valid.")
+        self.apply_ics()
         
         
     def update(self):
@@ -57,3 +40,23 @@ class FluidSpecies:
     
     def get_charge_density(self):
         pass
+    
+    def apply_ics(self):
+        if self.inp.system == "euler2d":
+            if self.inp.ics == "diagonal_advection":
+                self.grid_data.fill_grid(ics.diagonal_advection_2d)
+            elif self.inp.ics == "kelvin_helmholtz":
+                self.grid_data.fill_grid(ics.kelvin_helmholtz_2d)
+            elif self.inp.ics == "double_mach_reflection":
+                self.grid_data.fill_grid(ics.double_mach_reflection_2d)
+            elif self.inp.ics == "riemann_problem":
+                self.grid_data.fill_grid(ics.riemann_2d)
+            else:
+                raise RuntimeError("[FLUID] ICS not valid.")
+           
+        elif self.inp.system == "mhd2d":
+            if self.inp.ics == "orszag_tang":
+                self.grid_data.fill_grid(ics.orszag_tang_2d)
+           
+        else:
+            raise RuntimeError("[FLUID] ICS not valid.")
