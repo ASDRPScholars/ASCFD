@@ -1,8 +1,6 @@
 from ascfd.constants import *
 import numpy as np
 
-
-
 def diagonal_advection_2d(a_x, a_y, a_var, t=0):
     """
     Diagonal advection test case for 2D Euler equations.
