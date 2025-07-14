@@ -1,10 +1,10 @@
-from ascfd.constants import Constants
-from ascfd.bcs import BoundaryConditions
+from ascfd.logistics.constants import Constants
+from ascfd.boundaries.bcs import BoundaryConditions
 from ascfd.species.params import SpeciesParams
 from ascfd.species.fluid import FluidSpecies
 from ascfd.species.particles import ParticleSpecies
-from ascfd.inputs import Inputs
-from ascfd.fields import Fields
+from ascfd.logistics.inputs import Inputs
+from ascfd.fields.fields import Fields
 
 import numpy as np
 import matplotlib.pyplot as plt

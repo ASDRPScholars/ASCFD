@@ -1,4 +1,4 @@
-from ascfd.constants import *
+from ascfd.logistics.constants import *
 import numpy as np
 
 def diagonal_advection_2d(a_x, a_y, a_var, t=0):

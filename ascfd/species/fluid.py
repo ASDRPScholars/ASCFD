@@ -1,12 +1,12 @@
-from ascfd.constants import Constants
-from ascfd.euler import Euler
-from ascfd.inputs import Inputs
+from ascfd.logistics.constants import Constants
+from ascfd.fluid.euler import Euler
+from ascfd.logistics.inputs import Inputs
 from ascfd.species.params import SpeciesParams
-from ascfd.bcs import BoundaryConditions
-from ascfd.flux import Flux
-from ascfd.fields import Fields
+from ascfd.boundaries.bcs import BoundaryConditions
+from ascfd.fluid.flux import Flux
+from ascfd.fields.fields import Fields
 
-import ascfd.ics as ics
+import ascfd.logistics.ics as ics
 
 import numpy as np
 
@@ -32,7 +32,7 @@ class FluidSpecies:
         
         self.check_grid(self.c)
         
-        # boring logistics stuff for apply_ics()
+        # boring ascfd.logistics stuff for apply_ics()
         self.dx = (self.inp.xlim[1] - self.inp.xlim[0]) / (self.inp.nx - 1)
         self.dy = (self.inp.ylim[1] - self.inp.ylim[0]) / (self.inp.ny - 1)
         self.grid_x = np.linspace(self.inp.xlim[0] - self.dx * self.inp.numghosts, self.inp.xlim[1] + self.dx * self.inp.numghosts, self.inp.nx + 2 * self.inp.numghosts)

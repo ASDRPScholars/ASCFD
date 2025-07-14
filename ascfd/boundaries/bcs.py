@@ -1,5 +1,5 @@
-from ascfd.inputs import Inputs
-from ascfd.constants import Constants
+from ascfd.logistics.inputs import Inputs
+from ascfd.logistics.constants import Constants
 from typing import Callable
 import numpy as np
 

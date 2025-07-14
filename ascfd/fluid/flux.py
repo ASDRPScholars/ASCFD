@@ -1,7 +1,7 @@
-from ascfd.euler import Euler
+from ascfd.fluid.euler import Euler
 # from ascfd.reconstruct import weno5_reconstruction
-from ascfd.constants import *
-from ascfd.constants import Constants
+from ascfd.logistics.constants import *
+from ascfd.logistics.constants import Constants
 
 import numpy as np
 import sys

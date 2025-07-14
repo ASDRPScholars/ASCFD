@@ -1,5 +1,5 @@
 import numpy as np
-from ascfd.constants import Constants
+from ascfd.logistics.constants import Constants
 
 class Euler:
 

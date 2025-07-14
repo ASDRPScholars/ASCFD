@@ -1,4 +1,4 @@
-from ascfd.inputs import Inputs
+from ascfd.logistics.inputs import Inputs
 
 
 

@@ -1,7 +1,7 @@
-from ascfd.constants import Constants
-from ascfd.inputs import Inputs
+from ascfd.logistics.constants import Constants
+from ascfd.logistics.inputs import Inputs
 from ascfd.species.params import SpeciesParams
-from ascfd.fields import Fields
+from ascfd.fields.fields import Fields
 
 import numpy as np
 
