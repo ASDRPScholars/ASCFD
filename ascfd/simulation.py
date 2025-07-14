@@ -1,36 +1,45 @@
 from ascfd.constants import Constants
 from ascfd.bcs import BoundaryConditions
 from ascfd.species.params import SpeciesParams
+from ascfd.species.fluid import FluidSpecies
+from ascfd.species.particles import ParticleSpecies
+from ascfd.inputs import Inputs
+from ascfd.fields import Fields
 
 import numpy as np
 import matplotlib.pyplot as plt
 import os
 
 class Simulation:
-    def __init__(self, a_inputs):
+    def __init__(self, a_inputs: Inputs):
         self.inp = a_inputs
         self.c = Constants(a_inputs)
         
-        self.bcs = BoundaryConditions(self.grid, self.inp.bcs_lo, self.inp.bcs_hi)
-
-        self.bcs.apply_bcs()
-        self.grid.check_grid(self.c)
+        self.fields = Fields(self.inp)
         
-        self.dt = self.get_dt()
+        # TODO: verify params
+        e_params = SpeciesParams(-1.6e-19, 9.1e-31, 5/3, "e")
+        xe_i_params = SpeciesParams(1.6e-19, 2.18e-25, 5/3, "xe_i")
+        xe_n_params = SpeciesParams(0, 2.18e-25, 5/3, "xe_n")
         
-        self.fluid_species = {}
-        self.particle_species = {}
+        self.electrons = FluidSpecies(e_params, self.inp, self.fields)
+        self.neutrals = ParticleSpecies(xe_n_params, self.inp, self.fields)
+        self.ions = ParticleSpecies(xe_i_params, self.inp, self.fields)
         
-        e_params = SpeciesParams(-1.6e-19, 9.1e-31, 5/3, "electrons")
-        
-        #TODO: find correct params
-        i_params = SpeciesParams(1.6e-19, 1.67e-27, 5/3, "ions")
-        Xe_params = SpeciesParams(0, 2.18e-25, 5/3, "xenon_neutrals")
+        # loop through this list if you need to do something to all 3 species
+        self.all_species = [self.electrons, self.neutrals, self.ions]
         
         #setup initial time to be the starting time from the inputs file.
         #The starting timestep will always be 0.
+        
         self.t = self.inp.t0
         self.timestep = 0
+        
+        self.dt = self.get_dt()
+        
+        # TODO: use diff timestep for particles?
+        for species in self.all_species:
+            species.dt = self.dt
  
         #-1 is no output. Always output ICs if we are outputting.
         if self.inp.output_freq >= 0:
@@ -39,23 +48,18 @@ class Simulation:
 
     def run(self):
         while (self.t < self.inp.t_finish) and self.timestep < self.inp.nt:
-            print(f"Timestep: {self.timestep}, Current time: {self.t}")
-
-            self.bcs.apply_bcs()
-
-            self.grid.assert_variable_type("prim")
+            print("\033[1m" + f"Timestep: {self.timestep}, Current time: {self.t}" + "\033[0m")
             
             if self.inp.timeStepper == "RK1":
-                # TODO: FLUID.update()
+                self.electrons.update()
+                self.ions.update()
+                self.neutrals.update()
                 
             else:
                 raise RuntimeError("Timestepping method not supported.")
 
-
-            self.bcs.apply_bcs()
-
-            # assert np.all(np.isfinite(self.grid.grid)), f"Invalid values in grid at timestep {self.timestep}"
-            # assert np.all(self.grid.grid[self.c.PCOMP] > 0), f"Negative pressure detected at timestep {self.timestep}"
+            # assert np.all(np.isfinite(self.electrons.grid)), f"Invalid values in grid at timestep {self.timestep}"
+            # assert np.all(self.electrons.grid[self.c.PCOMP] > 0), f"Negative pressure detected at timestep {self.timestep}"
 
             self.timestep += 1
             self.t += self.dt
@@ -64,56 +68,24 @@ class Simulation:
             if (self.timestep % self.inp.output_freq == 0) or (self.timestep == self.inp.nt-1):
                 self.output()
  
-            self.grid.check_grid(self.c)
+            self.electrons.check_grid(self.c)
 
         if self.inp.make_movie:
             self.generate_movie()
     
         print("SUCCESS!")
         return self.grid
- 
- 
-    def plot(self):
-        if not os.path.exists(self.inp.output_dir):
-            os.makedirs(self.inp.output_dir)
-
-        if self.inp.system == "euler2d":
-            fig, axs = plt.subplots(3, 1, figsize=(10, 15))
-            axs[0].scatter(self.grid.x, self.grid.grid[self.c.RHOCOMP, :], c="black")
-            axs[0].set_ylabel("Density")
- 
-            axs[1].scatter(self.grid.x, self.grid.grid[self.c.UCOMP, :],  c="black")
-            axs[1].set_ylabel("Velocity")
- 
-            axs[2].scatter(self.grid.x, self.grid.grid[self.c.PCOMP, :],  c="black")
-            axs[2].set_ylabel("Pressure")
- 
-        elif self.inp.system == "mhd2d":
-            fig, axs = plt.subplots(3, 1, figsize=(10, 15))
-            axs[0].scatter(self.grid.x, self.grid.grid[self.c.RHOCOMP, :], c="black")
-            axs[0].set_ylabel("Density")
- 
-            axs[1].scatter(self.grid.x, self.grid.grid[self.c.UCOMP, :],  c="black")
-            axs[1].set_ylabel("Velocity")
- 
-            axs[2].scatter(self.grid.x, self.grid.grid[self.c.PCOMP, :],  c="black")
-            axs[2].set_ylabel("Pressure")
-            
-            axs[3].scatter(self.grid.x, self.grid.grid[self.c.B_XCOMP, :],  c="black")
-            axs[3].set_ylabel("Magnetic Field")
- 
-        axs[0].set_title(f"Time: {self.t:.4f}")
-        plt.savefig(f"{self.inp.output_dir}/plot_dt{str(self.timestep).zfill(6)}")
-        plt.close()
         
         
     def get_dt(self):
+        # TODO: consider particles + fields as well when calculating dt
+        
         # Determine timestep dt based on CFL condition
         if self.inp.system == "euler2d":
-            density = self.grid.grid[self.c.RHOCOMP]
-            pressure = self.grid.grid[self.c.PCOMP]
-            u = self.grid.grid[self.c.UCOMP]
-            v = self.grid.grid[self.c.VCOMP]
+            density = self.electrons.grid[self.c.RHOCOMP]
+            pressure = self.electrons.grid[self.c.PCOMP]
+            u = self.electrons.grid[self.c.UCOMP]
+            v = self.electrons.grid[self.c.VCOMP]
             # Ensure pressure and density are positive before sqrt
             pressure = np.maximum(pressure, 1e-12)
             density = np.maximum(density, 1e-12)
@@ -123,12 +95,12 @@ class Simulation:
             max_speed = max(max_speed_x, max_speed_y) # More robust estimate
         
         elif self.inp.system == "mhd2d":
-            density = self.grid.grid[self.c.RHOCOMP]
-            pressure = self.grid.grid[self.c.PCOMP]
-            u = self.grid.grid[self.c.UCOMP]
-            v = self.grid.grid[self.c.VCOMP]
-            Bx = self.grid.grid[self.c.BXCOMP]
-            By = self.grid.grid[self.c.BYCOMP]
+            density = self.electrons.grid[self.c.RHOCOMP]
+            pressure = self.electrons.grid[self.c.PCOMP]
+            u = self.electrons.grid[self.c.UCOMP]
+            v = self.electrons.grid[self.c.VCOMP]
+            Bx = self.electrons.grid[self.c.BXCOMP]
+            By = self.electrons.grid[self.c.BYCOMP]
             
             # Ensure pressure and density are positive
             pressure = np.maximum(pressure, 1e-12)
@@ -159,19 +131,12 @@ class Simulation:
             raise RuntimeError(f"System {self.inp.system} not supported for dt calculation.")
 
         # Calculate dt, ensuring it doesn't overshoot t_finish
-        dt = min(self.inp.cfl * min(self.grid.dx, self.grid.dy) / max_speed, self.inp.t_finish - self.t)
+        dt = min(self.inp.cfl * min(self.electrons.dx, self.electrons.dy) / max_speed, self.inp.t_finish - self.t)
         
         if dt <= 0: 
             raise ValueError(f"Calculated dt is zero or negative ({dt}). Check simulation parameters or state.")
         
         return dt
-
-
-    def applyParticles(self):
-        """Particle Setup"""
-        # I assume this should function similar to apply ics?
-        # check if self.inp.particle_ic = ... 
-        pass
         
 
     def output(self):
@@ -192,15 +157,14 @@ class Simulation:
             frames_dir, f"output_{str(self.timestep).zfill(6)}.png")
 
         with open(output_filename, 'w') as f:
-            # Write header
             f.write(f"# Time: {self.t:.4f}\n")
             f.write("# x, y, density, x-velocity, y-velocity, pressure\n")
 
-            for i in range(self.grid.Nghost, self.grid.Nx - self.grid.Nghost):
-                for j in range(self.grid.Nghost, self.grid.Ny - self.grid.Nghost):
-                    x = self.grid.x[i]
-                    y = self.grid.y[j]
-                    components = [self.grid.grid[q, i, j] for q in range(self.c.NUMQ)]
+            for i in range(self.inp.numghosts, self.inp.nx - self.inp.numghosts):
+                for j in range(self.inp.numghosts, self.inp.ny - self.inp.numghosts):
+                    x = self.electrons.grid_x[i]
+                    y = self.electrons.grid_y[j]
+                    components = [self.electrons.grid[q, i, j] for q in range(self.c.NUMQ)]
                     f.write(f"{x:.12f}, {y:.12f}, " + ", ".join(f"{comp:.8f}" for comp in components) + "\n")
 
         if self.inp.system == "euler2d":
@@ -211,11 +175,11 @@ class Simulation:
         
         for q in range(self.c.NUMQ):
             # Exclude ghost cells from the plot
-            plot_data = self.grid.grid[q, self.grid.Nghost:-self.grid.Nghost, self.grid.Nghost:-self.grid.Nghost].T # TODO: why transpose?
-            # plot_data = self.grid.grid[q, :, :].T
+            plot_data = self.electrons.grid[q, self.inp.numghosts:-self.inp.numghosts, self.inp.numghosts:-self.inp.numghosts].T # TODO: why transpose?
+            # plot_data = self.electrons.grid[q, :, :].T
             
-            extent = [self.grid.x[self.grid.Nghost], self.grid.x[-self.grid.Nghost-1],
-                    self.grid.y[self.grid.Nghost], self.grid.y[-self.grid.Nghost-1]]
+            extent = [self.electrons.grid_x[self.inp.numghosts], self.electrons.grid_y[-self.inp.numghosts-1],
+                      self.electrons.grid_y[self.inp.numghosts], self.electrons.grid_y[-self.inp.numghosts-1]]
 
             im = axs[q].imshow(plot_data, origin='lower', extent=extent, cmap='magma')
             
