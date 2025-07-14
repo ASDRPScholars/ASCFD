@@ -1,4 +1,3 @@
-from ascfd.grid import Grid2D
 from ascfd.constants import Constants
 from ascfd.inputs import Inputs
 from ascfd.species.params import SpeciesParams

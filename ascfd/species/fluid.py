@@ -1,4 +1,3 @@
-from ascfd.grid import Grid2D
 from ascfd.constants import Constants
 from ascfd.euler import Euler
 from ascfd.inputs import Inputs

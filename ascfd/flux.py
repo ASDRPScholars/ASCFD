@@ -1,7 +1,6 @@
 from ascfd.euler import Euler
 # from ascfd.reconstruct import weno5_reconstruction
 from ascfd.constants import *
-from ascfd.grid import Grid2D
 from ascfd.constants import Constants
 
 import numpy as np
