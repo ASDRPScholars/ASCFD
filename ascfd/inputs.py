@@ -91,25 +91,33 @@ class Inputs:
         )
 
 
-    def get_config_value(
-        self, config, section, option, type_func=str, mandatory=True, default=None
-    ):
+    def get_config_value(self, config, section, option, type_func=str, mandatory=True, default=None):
         try:
-            # Attempt to get the value with type conversion; if not found or conversion fails, it will raise an error
+            # Get raw value from config
             value = config.get(
                 section, option, fallback=default if not mandatory else None
             )
+
+            # If the value is literally the string "None", treat it as Python None
+            if isinstance(value, str) and value.strip().lower() == "none":
+                value = None
+
+            # Raise error if still None and mandatory
             if value is None and mandatory:
                 raise ValueError(
                     f"Missing mandatory argument: '{option}' in section '{section}'"
                 )
-            return type_func(value)
+
+            # Apply type conversion
+            return type_func(value) if value is not None else None
+
         except (configparser.NoSectionError, configparser.NoOptionError) as e:
             if mandatory:
                 raise ValueError(
                     f"Missing mandatory argument: '{option}' in section '{section}'"
                 ) from e
             return default
+
         except ValueError as e:
             raise ValueError(
                 f"Type conversion error for '{option}' in section '{section}': {e}"
