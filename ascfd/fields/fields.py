@@ -1,4 +1,4 @@
-import ascfd.logistics.ics as ics
+import ascfd.fluid.ics as ics
 import ascfd.logistics.inputs as Inputs
 import numpy as np
 
