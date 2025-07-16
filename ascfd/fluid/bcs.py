@@ -1,5 +1,5 @@
 from ascfd.logistics.inputs import Inputs
-from ascfd.logistics.constants import Constants
+from ascfd.fluid.constants import FluidConstants
 from typing import Callable
 import numpy as np
 
@@ -10,7 +10,7 @@ Notes:
         - dirichlet boundary -> the value in the bcs is constant
         - neumann boundaries -> derivative at bcs is zero
 """
-class BoundaryConditions:
+class FluidBoundaryConditions:
     
     def __init__(self, grid, types_lo: tuple[str, str], types_hi: tuple[str, str], a_inputs: Inputs) -> None:
         # store boundary condition types and associate grid object
@@ -18,7 +18,7 @@ class BoundaryConditions:
         self.types_hi = types_hi
         self.grid = grid
         self.inp = a_inputs
-        self.c = Constants(a_inputs)
+        self.c = FluidConstants(a_inputs)
 
         # boundary condition function mappings
         self.f_lo = [self.null_bcs, self.null_bcs]

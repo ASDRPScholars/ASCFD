@@ -1,20 +1,20 @@
-from ascfd.fluid.euler import Euler
+from ascfd.fluid.euler import FluidEuler
 # from ascfd.reconstruct import weno5_reconstruction
-from ascfd.logistics.constants import *
-from ascfd.logistics.constants import Constants
+from ascfd.fluid.constants import *
+from ascfd.fluid.constants import FluidConstants
 
 import numpy as np
 import sys
 
 
-class Flux:
+class FluidFlux:
 
-    def __init__(self, a_constants: Constants, a_type: str):
+    def __init__(self, a_constants: FluidConstants, a_type: str):
 
         self.type = a_type
         self.c = a_constants
 
-        self.euler = Euler(self.c) # initialize the euler solver
+        self.euler = FluidEuler(self.c) # initialize the euler solver
 
         # select the flux method based on the type
         if self.type == "rusanov":

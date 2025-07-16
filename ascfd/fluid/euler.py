@@ -1,9 +1,9 @@
 import numpy as np
-from ascfd.logistics.constants import Constants
+from ascfd.fluid.constants import FluidConstants
 
-class Euler:
+class FluidEuler:
 
-    def __init__(self, a_constants : Constants):
+    def __init__(self, a_constants : FluidConstants):
         # store constants and system parameters
         self.c = a_constants
 
