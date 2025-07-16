@@ -1,8 +1,9 @@
-from ascfd.logistics.constants import Constants
-from ascfd.boundaries.bcs import BoundaryConditions
+from ascfd.fluid.constants import FluidConstants
+from ascfd.particle.constants import ParticleConstants
+from ascfd.fluid.bcs import FluidBoundaryConditions
 from ascfd.species.params import SpeciesParams
-from ascfd.species.fluid import FluidSpecies
-from ascfd.species.particles import ParticleSpecies
+from ascfd.fluid.species import FluidSpecies
+from ascfd.particle.species import ParticleSpecies
 from ascfd.logistics.inputs import Inputs
 from ascfd.fields.fields import Fields
 
@@ -13,7 +14,8 @@ import os
 class Simulation:
     def __init__(self, a_inputs: Inputs):
         self.inp = a_inputs
-        self.c = Constants(a_inputs)
+        self.c = FluidConstants(a_inputs)
+        self.pc = ParticleConstants()
         
         self.fields = Fields(self.inp)
         
@@ -184,6 +186,9 @@ class Simulation:
             im = axs[q].imshow(plot_data, origin='lower', extent=extent, cmap='magma')
             
             plt.colorbar(im, ax=axs[q])
+            
+            print(self.ions.particles[self.pc.XCOMP])
+            axs[q].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=50, color='blue')
             
             axs[q].set_title(self.c.variable_names[q])
             axs[q].set_xlabel('x')
