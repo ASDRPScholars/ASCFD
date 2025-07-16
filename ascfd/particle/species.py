@@ -1,4 +1,5 @@
-from ascfd.logistics.constants import Constants
+from ascfd.particle.constants import ParticleConstants
+from ascfd.particle.ics import ParticleInitialConditions
 from ascfd.logistics.inputs import Inputs
 from ascfd.species.params import SpeciesParams
 from ascfd.fields.fields import Fields
@@ -7,20 +8,19 @@ import numpy as np
 
 class ParticleSpecies:
     def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields):
+        self.pc = ParticleConstants()
         self.fields = Fields(a_inputs)
         
         self.inp = a_inputs
         self.params = params
         self.dt = None
         
-        self.x = np.zeros((self.inp.n_particles, 2))
-        self.v = np.zeros((self.inp.n_particles, 2))
+        self.particles = np.zeros((self.pc.NUMQ, self.inp.n_particles))
         
+        self.ics = ParticleInitialConditions(self.particles, self.inp)
         
-    # TODO: ics_particles.py stuff goes in here
-    def apply_ics(self):
-        pass
-    
+        self.particles = self.ics.apply_ics()
+        print("PARTICLES X POS INIT:", self.particles[self.pc.XCOMP])
     
     # TODO: particles.py stuff goes in here
     def update(self):
