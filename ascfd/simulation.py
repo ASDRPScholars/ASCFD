@@ -1,10 +1,10 @@
 from ascfd.fluid.constants import FluidConstants
 from ascfd.particle.constants import ParticleConstants
 from ascfd.fluid.bcs import FluidBoundaryConditions
-from ascfd.species.params import SpeciesParams
+from ascfd.params import SpeciesParams
 from ascfd.fluid.species import FluidSpecies
 from ascfd.particle.species import ParticleSpecies
-from ascfd.logistics.inputs import Inputs
+from ascfd.inputs import Inputs
 from ascfd.fields.fields import Fields
 
 import numpy as np
@@ -25,12 +25,17 @@ class Simulation:
         xe_n_params = SpeciesParams(0, 2.18e-25, 5/3, "xe_n")
         
         self.electrons = FluidSpecies(e_params, self.inp, self.fields)
-        self.neutrals = ParticleSpecies(xe_n_params, self.inp, self.fields)
-        self.ions = ParticleSpecies(xe_i_params, self.inp, self.fields)
+        
+        if self.inp.particle_ics is not None:
+            self.neutrals = ParticleSpecies(xe_n_params, self.inp, self.fields)
+            self.ions = ParticleSpecies(xe_i_params, self.inp, self.fields)
         
         # loop through this list if you need to do something to all 3 species
-        self.all_species = [self.electrons, self.neutrals, self.ions]
-        
+        if self.inp.particle_ics is not None:
+            self.all_species = [self.electrons, self.neutrals, self.ions]
+        else:
+            self.all_species = [self.electrons]
+                    
         #setup initial time to be the starting time from the inputs file.
         #The starting timestep will always be 0.
         
@@ -53,9 +58,8 @@ class Simulation:
             print("\033[1m" + f"Timestep: {self.timestep}, Current time: {self.t}" + "\033[0m")
             
             if self.inp.timeStepper == "RK1":
-                self.electrons.update()
-                self.ions.update()
-                self.neutrals.update()
+                for species in self.all_species:
+                    species.update()
                 
             else:
                 raise RuntimeError("Timestepping method not supported.")
@@ -187,8 +191,8 @@ class Simulation:
             
             plt.colorbar(im, ax=axs[q])
             
-            print(self.ions.particles[self.pc.XCOMP])
-            axs[q].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=50, color='blue')
+            if self.inp.particle_ics is not None:
+                axs[q].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=50, color='blue')
             
             axs[q].set_title(self.c.variable_names[q])
             axs[q].set_xlabel('x')
