@@ -10,15 +10,20 @@ class ParticleInitialConditions:
         
         
     def apply_ics(self):
-        # if self.inp.particle_ics == "random_particles_no_condition":
-        self.particles = self.random_particles_no_condition()
         
         # TODO: MAKE IT DIRECTLY MUTATE SPECIES.PARTICLES IDK WHY IT DOESN RN
-        return self.random_particles_no_condition()
+        if self.inp.particle_ics == "random":
+            return self.random()
+        if self.inp.particle_ics == "random_left_wall":
+            return self.random_left_wall()
+    
+        if self.inp.particle_ics == "random_particles_no_condition":
+            self.particles = self.random()
+            
         print(self.particles[self.pc.XCOMP])
             
             
-    def random_particles_no_condition(self):
+    def random(self):
         ic_particles = np.zeros_like(self.particles)
         
         for n in range (self.inp.n_particles):
@@ -30,5 +35,17 @@ class ParticleInitialConditions:
             # TODO: add random maxwellian velocity distribution logic
         
         print(ic_particles[self.pc.XCOMP])
+        return ic_particles
+    
+    
+    def random_left_wall(self):
+        ic_particles = np.zeros_like(self.particles)
+
+        for n in range (self.inp.n_particles):
+            x, y = 0, np.random.rand()
+            
+            ic_particles[self.pc.XCOMP, n] = x
+            ic_particles[self.pc.YCOMP, n] = y
+        
         return ic_particles
     
