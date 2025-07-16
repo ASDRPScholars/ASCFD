@@ -8,11 +8,7 @@ class FluidInitialConditions:
         self.inp = a_inputs
         self.grid = grid
         
-        self.dx = (self.inp.xlim[1] - self.inp.xlim[0]) / (self.inp.nx - 1)
-        self.dy = (self.inp.ylim[1] - self.inp.ylim[0]) / (self.inp.ny - 1)
-        self.grid_x = np.linspace(self.inp.xlim[0] - self.dx * self.inp.numghosts, self.inp.xlim[1] + self.dx * self.inp.numghosts, self.inp.nx + 2 * self.inp.numghosts)
-        self.grid_y = np.linspace(self.inp.ylim[0] - self.dy * self.inp.numghosts, self.inp.ylim[1] + self.dy * self.inp.numghosts, self.inp.ny + 2 * self.inp.numghosts)
-        self.mesh_x, self.mesh_y = np.meshgrid(self.grid_x, self.grid_y)
+        self.mesh_x, self.mesh_y = np.meshgrid(self.inp.grid_x, self.inp.grid_y)
         
     def apply_ics(self):
         if self.inp.system == "euler2d":

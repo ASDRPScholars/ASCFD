@@ -24,15 +24,7 @@ class FluidSpecies:
         self.params = params
         self.dt = None
         
-        self.dx = (self.inp.xlim[1] - self.inp.xlim[0]) / (self.inp.nx - 1)
-        self.dy = (self.inp.ylim[1] - self.inp.ylim[0]) / (self.inp.ny - 1)
-        self.grid_x = np.linspace(self.inp.xlim[0] - self.dx * self.inp.numghosts, self.inp.xlim[1] + self.dx * self.inp.numghosts, self.inp.nx + 2 * self.inp.numghosts)
-        self.grid_y = np.linspace(self.inp.ylim[0] - self.dy * self.inp.numghosts, self.inp.ylim[1] + self.dy * self.inp.numghosts, self.inp.ny + 2 * self.inp.numghosts)
-        
-        self.nx_with_ghosts = self.inp.nx + 2 * self.inp.numghosts
-        self.ny_with_ghosts = self.inp.ny + 2 * self.inp.numghosts
-        
-        self.grid = np.zeros((self.c.NUMQ, self.nx_with_ghosts, self.ny_with_ghosts))
+        self.grid = np.zeros((self.c.NUMQ, self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
         
         self.bcs = FluidBoundaryConditions(self.grid, self.inp.bcs_lo, self.inp.bcs_hi, self.inp)
         self.ics = FluidInitialConditions(self.grid, self.inp)
@@ -60,8 +52,8 @@ class FluidSpecies:
             for j in range(self.inp.numghosts, self.inp.ny + self.inp.numghosts):
                 for icomp in range(self.c.NUMQ):
                     consU_new[icomp, i, j] = consU[icomp, i, j] - (
-                        (self.dt / self.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
-                        (self.dt / self.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
+                        (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
+                        (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
                     
         self.bcs.apply_bcs()
         
@@ -74,6 +66,7 @@ class FluidSpecies:
     
     
     def get_charge_density(self):
+        
         pass
     
     
