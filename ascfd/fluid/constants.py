@@ -1,4 +1,4 @@
-from ascfd.logistics.inputs import Inputs
+from ascfd.inputs import Inputs
 
 class FluidConstants:
 

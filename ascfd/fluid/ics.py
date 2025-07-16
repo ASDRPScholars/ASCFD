@@ -1,5 +1,5 @@
 from ascfd.fluid.constants import FluidConstants
-from ascfd.logistics.inputs import Inputs
+from ascfd.inputs import Inputs
 import numpy as np
 
 class FluidInitialConditions:
