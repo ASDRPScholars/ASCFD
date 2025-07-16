@@ -1,4 +1,4 @@
-from ascfd.logistics.inputs import Inputs
+from ascfd.inputs import Inputs
 from ascfd.simulation import Simulation
 import time
 

@@ -1,5 +1,5 @@
 from ascfd.particle.constants import ParticleConstants
-from ascfd.logistics.inputs import Inputs
+from ascfd.inputs import Inputs
 import numpy as np
 
 class ParticleInitialConditions:

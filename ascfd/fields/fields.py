@@ -1,5 +1,5 @@
 import ascfd.fluid.ics as ics
-import ascfd.logistics.inputs as Inputs
+import ascfd.inputs as Inputs
 import numpy as np
 
 # TODO: write all the logic lol

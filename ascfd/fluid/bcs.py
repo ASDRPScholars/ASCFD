@@ -1,4 +1,4 @@
-from ascfd.logistics.inputs import Inputs
+from ascfd.inputs import Inputs
 from ascfd.fluid.constants import FluidConstants
 from typing import Callable
 import numpy as np
