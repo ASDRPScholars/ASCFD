@@ -1,70 +1,50 @@
-from ascfd.logistics.constants import Constants
-from ascfd.fluid.euler import Euler
+from ascfd.fluid.constants import FluidConstants
+from ascfd.fluid.euler import FluidEuler
+from ascfd.fluid.ics import FluidInitialConditions
 from ascfd.logistics.inputs import Inputs
 from ascfd.species.params import SpeciesParams
-from ascfd.boundaries.bcs import BoundaryConditions
-from ascfd.fluid.flux import Flux
+from ascfd.fluid.bcs import FluidBoundaryConditions
+from ascfd.fluid.flux import FluidFlux
 from ascfd.fields.fields import Fields
 
-import ascfd.logistics.ics as ics
+import ascfd.fluid.ics as ics
 
 import numpy as np
 
 
 class FluidSpecies:
     def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields):
-        self.c = Constants(a_inputs)
-        self.euler = Euler(self.c)
-        self.flux = Flux(self.c, a_inputs.flux)
+        self.c = FluidConstants(a_inputs)
+        self.euler = FluidEuler(self.c)
+        self.flux = FluidFlux(self.c, a_inputs.flux)
+        
         self.fields = Fields(a_inputs)
         
         self.inp = a_inputs
         self.params = params
         self.dt = None
-
-        # TODO: move Grid2D functionality into each species class? or Grid -> FluidGrid, FieldGrid polymorphism?
-        # self.grid = Grid2D(self.inp.xlim, self.inp.ylim, self.inp.nx, self.inp.ny, self.inp.numghosts, self.c.NUMQ)
         
-        self.grid = np.zeros((self.c.NUMQ, self.inp.nx + 2 * self.inp.numghosts, self.inp.nx + 2 * self.inp.numghosts))
-        self.bcs = BoundaryConditions(self.grid, self.inp.bcs_lo, self.inp.bcs_hi, self.inp)
+        self.dx = (self.inp.xlim[1] - self.inp.xlim[0]) / (self.inp.nx - 1)
+        self.dy = (self.inp.ylim[1] - self.inp.ylim[0]) / (self.inp.ny - 1)
+        self.grid_x = np.linspace(self.inp.xlim[0] - self.dx * self.inp.numghosts, self.inp.xlim[1] + self.dx * self.inp.numghosts, self.inp.nx + 2 * self.inp.numghosts)
+        self.grid_y = np.linspace(self.inp.ylim[0] - self.dy * self.inp.numghosts, self.inp.ylim[1] + self.dy * self.inp.numghosts, self.inp.ny + 2 * self.inp.numghosts)
+        
+        self.nx_with_ghosts = self.inp.nx + 2 * self.inp.numghosts
+        self.ny_with_ghosts = self.inp.ny + 2 * self.inp.numghosts
+        
+        self.grid = np.zeros((self.c.NUMQ, self.nx_with_ghosts, self.ny_with_ghosts))
+        
+        self.bcs = FluidBoundaryConditions(self.grid, self.inp.bcs_lo, self.inp.bcs_hi, self.inp)
+        self.ics = FluidInitialConditions(self.grid, self.inp)
         
         self.bcs.apply_bcs()
         
         self.check_grid(self.c)
         
+        # TODO: DELETE UNNECESSARY VALUES HERE LATER WHEN ICS.APPLY_ICS() IS DONE
         # boring ascfd.logistics stuff for apply_ics()
-        self.dx = (self.inp.xlim[1] - self.inp.xlim[0]) / (self.inp.nx - 1)
-        self.dy = (self.inp.ylim[1] - self.inp.ylim[0]) / (self.inp.ny - 1)
-        self.grid_x = np.linspace(self.inp.xlim[0] - self.dx * self.inp.numghosts, self.inp.xlim[1] + self.dx * self.inp.numghosts, self.inp.nx + 2 * self.inp.numghosts)
-        self.grid_y = np.linspace(self.inp.ylim[0] - self.dy * self.inp.numghosts, self.inp.ylim[1] + self.dy * self.inp.numghosts, self.inp.ny + 2 * self.inp.numghosts)
-        self.mesh_x, self.mesh_y = np.meshgrid(self.grid_x, self.grid_y)
         
-        self.apply_ics()
-        
-        
-    def apply_ics(self):
-            
-        if self.inp.system == "euler2d":
-            if self.inp.fluid_ics == "diagonal_advection":
-                f = ics.diagonal_advection_2d
-            elif self.inp.fluid_ics == "kelvin_helmholtz":
-                f = ics.kelvin_helmholtz_2d
-            elif self.inp.fluid_ics == "double_mach_reflection":
-                f = ics.double_mach_reflection_2d
-            elif self.inp.fluid_ics == "riemann_problem":
-                f = ics.riemann_2d
-            else:
-                raise RuntimeError("[FLUID] ICS not valid.")
-           
-        elif self.inp.system == "mhd2d":
-            if self.inp.fluid_ics == "orszag_tang":
-                f = ics.orszag_tang_2d
-           
-        else:
-            raise RuntimeError("[FLUID] ICS not valid.")
-        
-        for var in range(self.c.NUMQ):
-            self.grid[var] = f(self.mesh_x, self.mesh_y, var)
+        self.ics.apply_ics()
         
         
     def update(self):
