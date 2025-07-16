@@ -53,8 +53,6 @@ class Inputs:
         # Fluid
         self.fluid_ics = self.get_config_value(config, "Fluid", "fluid_ics")
         self.system = self.get_config_value(config, "Fluid", "system")
-
-        #if self.system == "euler1DNS2":
         self.gammas = self.get_config_value(config, "Fluid", "gammas", type_func=lambda s: [float(item) for item in s.strip('[]').split(',')])
         self.mW = self.get_config_value(config, "Fluid", "mW", type_func=lambda s: [float(item) for item in s.strip('[]').split(',')])
 
@@ -66,6 +64,7 @@ class Inputs:
         # Particle
         self.particle_ics = self.get_config_value(config, "Particle", "particle_ics", mandatory = False, default=None)
         self.n_particles = self.get_config_value(config, "Particle", "n_particles", mandatory = False, default = 0, type_func = int)
+        self.flow_tye = self.get_config_value(config, "Particle", "flow_type", mandatory = False, default = None)
         self.seeding_per_timestep = self.get_config_value(config, "Particle", "seeding_per_timestep", mandatory = False, default = 0, type_func = int)
         self.bounce_back_multiplier = self.get_config_value(config, "Particle", "bounce_back_multiplier", mandatory = False, default = 1.0, type_func = float)
         self.max_number_of_bounces = self.get_config_value(config, "Particle", "max_number_of_bounces", mandatory = False, default = 3, type_func = int)
