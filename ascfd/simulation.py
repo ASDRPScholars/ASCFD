@@ -57,12 +57,14 @@ class Simulation:
         while (self.t < self.inp.t_finish) and self.timestep < self.inp.nt:
             print("\033[1m" + f"Timestep: {self.timestep}, Current time: {self.t}" + "\033[0m")
             
+            # SPECIES UPDATE
             if self.inp.timeStepper == "RK1":
                 for species in self.all_species:
                     species.update()
-                
+            
             else:
                 raise RuntimeError("Timestepping method not supported.")
+            
 
             # assert np.all(np.isfinite(self.electrons.grid)), f"Invalid values in grid at timestep {self.timestep}"
             # assert np.all(self.electrons.grid[self.c.PCOMP] > 0), f"Negative pressure detected at timestep {self.timestep}"
@@ -137,7 +139,7 @@ class Simulation:
             raise RuntimeError(f"System {self.inp.system} not supported for dt calculation.")
 
         # Calculate dt, ensuring it doesn't overshoot t_finish
-        dt = min(self.inp.cfl * min(self.electrons.dx, self.electrons.dy) / max_speed, self.inp.t_finish - self.t)
+        dt = min(self.inp.cfl * min(self.inp.dx, self.inp.dy) / max_speed, self.inp.t_finish - self.t)
         
         if dt <= 0: 
             raise ValueError(f"Calculated dt is zero or negative ({dt}). Check simulation parameters or state.")
@@ -168,8 +170,8 @@ class Simulation:
 
             for i in range(self.inp.numghosts, self.inp.nx - self.inp.numghosts):
                 for j in range(self.inp.numghosts, self.inp.ny - self.inp.numghosts):
-                    x = self.electrons.grid_x[i]
-                    y = self.electrons.grid_y[j]
+                    x = self.inp.grid_x[i]
+                    y = self.inp.grid_y[j]
                     components = [self.electrons.grid[q, i, j] for q in range(self.c.NUMQ)]
                     f.write(f"{x:.12f}, {y:.12f}, " + ", ".join(f"{comp:.8f}" for comp in components) + "\n")
 
@@ -184,8 +186,8 @@ class Simulation:
             plot_data = self.electrons.grid[q, self.inp.numghosts:-self.inp.numghosts, self.inp.numghosts:-self.inp.numghosts].T # TODO: why transpose?
             # plot_data = self.electrons.grid[q, :, :].T
             
-            extent = [self.electrons.grid_x[self.inp.numghosts], self.electrons.grid_y[-self.inp.numghosts-1],
-                      self.electrons.grid_y[self.inp.numghosts], self.electrons.grid_y[-self.inp.numghosts-1]]
+            extent = [self.inp.grid_x[self.inp.numghosts], self.electrons.grid_y[-self.inp.numghosts-1],
+                      self.inp.grid_y[self.inp.numghosts], self.electrons.grid_y[-self.inp.numghosts-1]]
 
             im = axs[q].imshow(plot_data, origin='lower', extent=extent, cmap='magma')
             
