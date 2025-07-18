@@ -1,18 +1,16 @@
 from ascfd.inputs import Inputs
 
-
-
 class Constants:
 
-    def __init__(self, inputs: Inputs):
+    def __init__(self, a_inputs: Inputs):
 
         # Default ratio of specific heats (gamma)
         self.gamma = 1.4
         self.g = 9.81
-        self.system = inputs.system
+        self.system = a_inputs.system
 
         # Define constants and variables for the Euler 2D system
-        if inputs.system == "euler2d":
+        if a_inputs.system == "euler2d":
             
             #primitive variables (Density, X-Velocity, Y-Velocity, Pressure)
             self.RHOCOMP = 0 # Density
@@ -30,14 +28,14 @@ class Constants:
 
             self.system = "euler2d"
 
-            self.gamma = inputs.gammas[0] #gammas
+            self.gamma = a_inputs.gammas[0] #gammas
 
 
             self.variable_names = ["Density", "X-Velocity", "Y-Velocity", "Pressure"]
 
             self.NS = 1 
             
-        elif inputs.system == "mhd2d":
+        elif a_inputs.system == "mhd2d":
             # Primitive variables (Density, u, v, p, Bx, By)
             self.RHOCOMP = 0 # Density
             self.UCOMP = 1   # X-velocity
@@ -56,7 +54,7 @@ class Constants:
             self.system = "mhd2d"
             
             # Assuming gamma is still relevant for MHD pressure equation
-            self.gamma = inputs.gammas[0] # Use first gamma if provided
+            self.gamma = a_inputs.gammas[0] # Use first gamma if provided
             
             self.variable_names = ["Density", "X-Velocity", "Y-Velocity", "Pressure", "Bx", "By"]
             
@@ -65,4 +63,4 @@ class Constants:
 
         else:
             #error for unsupported systems
-            raise RuntimeError(f"system in inputs file is not supported: {inputs.system}")
+            raise RuntimeError(f"system in inputs file is not supported: {a_inputs.system}")

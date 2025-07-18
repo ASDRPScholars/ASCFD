@@ -22,12 +22,20 @@ class Inputs:
         # Mesh
         self.nx = self.get_config_value(config, "Mesh", "nx", type_func=int)
         self.ny = self.get_config_value(config, "Mesh", "ny", type_func=int)
-        self.numghosts = self.get_config_value(
-            config, "Mesh", "numghosts", type_func=int
-        )
+        self.numghosts = self.get_config_value(config, "Mesh", "numghosts", type_func=int)
         self.xlim = self.get_config_value(config, "Mesh", "xlim", type_func=self.parse_bounds)
         self.ylim = self.get_config_value(config, "Mesh", "ylim", type_func=self.parse_bounds)
 
+
+        ## computed mesh properties
+        self.nx_with_ghosts = self.nx + 2 * self.numghosts
+        self.ny_with_ghosts = self.ny + 2 * self.numghosts
+        
+        self.dx = (self.xlim[1] - self.xlim[0]) / (self.nx - 1)
+        self.dy = (self.ylim[1] - self.ylim[0]) / (self.ny - 1)
+        
+        self.grid_x = np.linspace(self.xlim[0] - self.dx * self.numghosts, self.xlim[1] + self.dx * self.numghosts, self.nx + 2 * self.numghosts)
+        self.grid_y = np.linspace(self.ylim[0] - self.dy * self.numghosts, self.ylim[1] + self.dy * self.numghosts, self.ny + 2 * self.numghosts)
 
         # Time
         self.nt = self.get_config_value(
@@ -47,15 +55,12 @@ class Inputs:
             )
         self.cfl = self.get_config_value(config, "Time", "cfl", type_func=float)
 
-
         if self.t0 >= self.t_finish:
             raise RuntimeError("Initial time is >= to the final time.")
 
         # Fluid
-        self.ics = self.get_config_value(config, "Fluid", "ics")
+        self.fluid_ics = self.get_config_value(config, "Fluid", "fluid_ics")
         self.system = self.get_config_value(config, "Fluid", "system")
-
-        #if self.system == "euler1DNS2":
         self.gammas = self.get_config_value(config, "Fluid", "gammas", type_func=lambda s: [float(item) for item in s.strip('[]').split(',')])
         self.mW = self.get_config_value(config, "Fluid", "mW", type_func=lambda s: [float(item) for item in s.strip('[]').split(',')])
 
@@ -65,12 +70,17 @@ class Inputs:
         self.bcs_hi = self.get_config_value(config, "Method", "bcs_hi", type_func=self.parse_bcs)
 
         # Particle
-
-        self.particle_ic = self.get_config_value(config, "Particle", "particle_ic", mandatory = False, default=None)
-        self.number_of_particles = self.get_config_value(config, "Particle", "number_of_particles", mandatory = False, default = 0, type_func = int)
+        self.particle_ics = self.get_config_value(config, "Particle", "particle_ics", mandatory = False, default=None)
+        self.n_particles = self.get_config_value(config, "Particle", "n_particles", mandatory = False, default = 0, type_func = int)
+        self.particle_flow_type = self.get_config_value(config, "Particle", "flow_type", mandatory = False, default = None)
         self.seeding_per_timestep = self.get_config_value(config, "Particle", "seeding_per_timestep", mandatory = False, default = 0, type_func = int)
         self.bounce_back_multiplier = self.get_config_value(config, "Particle", "bounce_back_multiplier", mandatory = False, default = 1.0, type_func = float)
         self.max_number_of_bounces = self.get_config_value(config, "Particle", "max_number_of_bounces", mandatory = False, default = 3, type_func = int)
+        
+        # Electric Field
+        self.E_ics = self.get_config_value(config, "Fields", "E_ics")
+        self.B_ics = self.get_config_value(config, "Fields", "B_ics")
+        
 
         # Output
         self.output_freq = self.get_config_value(
@@ -89,25 +99,33 @@ class Inputs:
         )
 
 
-    def get_config_value(
-        self, config, section, option, type_func=str, mandatory=True, default=None
-    ):
+    def get_config_value(self, config, section, option, type_func=str, mandatory=True, default=None):
         try:
-            # Attempt to get the value with type conversion; if not found or conversion fails, it will raise an error
+            # Get raw value from config
             value = config.get(
                 section, option, fallback=default if not mandatory else None
             )
+
+            # If the value is literally the string "None", treat it as Python None
+            if isinstance(value, str) and value.strip().lower() == "none":
+                value = None
+
+            # Raise error if still None and mandatory
             if value is None and mandatory:
                 raise ValueError(
                     f"Missing mandatory argument: '{option}' in section '{section}'"
                 )
-            return type_func(value)
+
+            # Apply type conversion
+            return type_func(value) if value is not None else None
+
         except (configparser.NoSectionError, configparser.NoOptionError) as e:
             if mandatory:
                 raise ValueError(
                     f"Missing mandatory argument: '{option}' in section '{section}'"
                 ) from e
             return default
+
         except ValueError as e:
             raise ValueError(
                 f"Type conversion error for '{option}' in section '{section}': {e}"
