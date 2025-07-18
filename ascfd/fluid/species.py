@@ -18,7 +18,7 @@ class FluidSpecies:
         self.euler = FluidEuler(self.c)
         self.flux = FluidFlux(self.c, a_inputs.flux)
         
-        self.fields = Fields(a_inputs)
+        self.fields = fields
         
         self.inp = a_inputs
         self.params = params
@@ -41,6 +41,9 @@ class FluidSpecies:
         
     def update(self):
         
+        E = self.fields.E
+        B = self.fields.B
+        
         consU = self.euler.prim_to_cons(self.grid)
         consU_new = self.euler.prim_to_cons(self.grid)
         
@@ -58,7 +61,10 @@ class FluidSpecies:
         self.bcs.apply_bcs()
         
         charge_density = self.get_charge_density()
-        self.fields.update_E(charge_density)
+        
+        # ELECTRIC FIELD UPDATE
+        self.fields.add_charge_density(charge_density)
+        self.fields.update_E()
         
         # TODO: call self.ebs.apply_ebs() once embedded boundaries are brought in
         
@@ -68,6 +74,11 @@ class FluidSpecies:
     def get_charge_density(self):
         
         pass
+    
+    
+    def get_number_density(self):
+        number_density = self.grid[self.c.RHOCOMP] / 9.109e-31
+        return number_density
     
     
     # TODO: make assert_variable_type -> prim or cons work
