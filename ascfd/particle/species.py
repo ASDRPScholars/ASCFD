@@ -1,5 +1,6 @@
 from ascfd.particle.constants import ParticleConstants
 from ascfd.particle.ics import ParticleInitialConditions
+from ascfd.fluid.species import FluidSpecies
 from ascfd.inputs import Inputs
 from ascfd.params import SpeciesParams
 from ascfd.fields.fields import Fields
@@ -7,9 +8,10 @@ from ascfd.fields.fields import Fields
 import numpy as np
 
 class ParticleSpecies:
-    def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields):
+    def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields, electrons: FluidSpecies):
         self.pc = ParticleConstants()
         self.fields = fields
+        self.electrons = electrons
         
         self.inp = a_inputs
         self.params = params
@@ -76,8 +78,8 @@ class ParticleSpecies:
     def ionize(self):
         for n in range (self.inp.n_particles):
             # make methods to find these values depending on position (could use grid also similar to how particle cell calculation was originally done)
-            electron_density = ... 
-            neutral_density = ...
+            electrons_density = self.electrons.get_number_density()
+            neutral_density = self.fields.neutrals()
 
             ionization_rate = ... # another method to calculuate
 

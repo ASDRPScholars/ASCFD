@@ -2,13 +2,16 @@ from ascfd.inputs import Inputs
 import numpy as np
 from scipy.sparse import diags
 from scipy.sparse.linalg import spsolve
+from ascfd.fields.ics import FieldInitialConditions
 
 # TODO: write all the logic lol
 class Fields:
     def __init__(self, a_inputs: Inputs):
         self.inp = a_inputs
-        self.apply_B_ics()
-        self.apply_E_ics()
+        self.ics = FieldInitialConditions(self.inp)
+        
+        self.ics.apply_B_ics()
+        self.ics.apply_E_ics()
         
         self.E = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts, 3))
         self.B = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts, 3))
@@ -21,6 +24,7 @@ class Fields:
         
         self.eps0 = 8.854e-12  # Permittivity of free space
                 
+    
     def update_E(self, species_charge_density):
         self.add_charge_density(species_charge_density)
         self.solve_poisson()
@@ -112,4 +116,3 @@ class Fields:
     
     def check_E_field(self):
         pass
-    

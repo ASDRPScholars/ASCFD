@@ -27,8 +27,8 @@ class Simulation:
         self.electrons = FluidSpecies(e_params, self.inp, self.fields)
         
         if self.inp.particle_ics is not None:
-            self.neutrals = ParticleSpecies(xe_n_params, self.inp, self.fields)
-            self.ions = ParticleSpecies(xe_i_params, self.inp, self.fields)
+            self.neutrals = ParticleSpecies(xe_n_params, self.inp, self.fields, self.electrons)
+            self.ions = ParticleSpecies(xe_i_params, self.inp, self.fields, self.electrons)
         
         # loop through this list if you need to do something to all 3 species
         if self.inp.particle_ics is not None:
@@ -186,8 +186,8 @@ class Simulation:
             plot_data = self.electrons.grid[q, self.inp.numghosts:-self.inp.numghosts, self.inp.numghosts:-self.inp.numghosts].T # TODO: why transpose?
             # plot_data = self.electrons.grid[q, :, :].T
             
-            extent = [self.inp.grid_x[self.inp.numghosts], self.electrons.grid_y[-self.inp.numghosts-1],
-                      self.inp.grid_y[self.inp.numghosts], self.electrons.grid_y[-self.inp.numghosts-1]]
+            extent = [self.inp.grid_x[self.inp.numghosts], self.inp.grid_y[-self.inp.numghosts-1],
+                      self.inp.grid_y[self.inp.numghosts], self.inp.grid_y[-self.inp.numghosts-1]]
 
             im = axs[q].imshow(plot_data, origin='lower', extent=extent, cmap='magma')
             
