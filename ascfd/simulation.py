@@ -1,226 +1,143 @@
-from ascfd.fluid.constants import FluidConstants
-from ascfd.particle.constants import ParticleConstants
-from ascfd.fluid.bcs import FluidBoundaryConditions
-from ascfd.params import SpeciesParams
-from ascfd.fluid.species import FluidSpecies
-from ascfd.particle.species import ParticleSpecies
-from ascfd.inputs import Inputs
-from ascfd.fields.fields import Fields
+from ascfd.grid import Grid2D
+from ascfd.constants import Constants
+import ascfd.ics as ics
+import glob
+import matplotlib.animation as animation
+import matplotlib.ticker as ticker
+import copy
+
+import sys
+from ascfd.flux import Flux
+
+
+from ascfd.euler import Euler
+
+from ascfd.bcs import BoundaryConditions
 
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-
 class Simulation:
-    def __init__(self, a_inputs: Inputs):
+    def __init__(self, a_inputs):
         self.inp = a_inputs
-        self.c = FluidConstants(a_inputs)
-        self.pc = ParticleConstants()
+        self.c = Constants(a_inputs)
         
-        self.fields = Fields(self.inp)
-        
-        # TODO: verify params
-        e_params = SpeciesParams(-1.6e-19, 9.1e-31, 5/3, "e")
-        xe_i_params = SpeciesParams(1.6e-19, 2.18e-25, 5/3, "i")
-        xe_n_params = SpeciesParams(0, 2.18e-25, 5/3, "n")
-        
-        self.electrons = FluidSpecies(e_params, self.inp, self.fields)
-        
-        if self.inp.particle_ics is not None:
-            self.neutrals = ParticleSpecies(xe_n_params, self.inp, self.fields)
-            self.ions = ParticleSpecies(xe_i_params, self.inp, self.fields)
-        
-        # loop through this list if you need to do something to all 3 species
-        if self.inp.particle_ics is not None:
-            self.all_species = [self.electrons, self.neutrals, self.ions]
-        else:
-            self.all_species = [self.electrons]
-                    
+
+        self.grid = Grid2D(self.inp.xlim, self.inp.ylim, self.inp.nx, self.inp.ny, self.inp.numghosts, self.c.NUMQ)
+        self.flux = Flux(self.c, self.inp.flux)
+
+        self.applyICS()
+
+        self.bcs.apply_bcs()
+        self.grid.check_grid(self.c)
         #setup initial time to be the starting time from the inputs file.
         #The starting timestep will always be 0.
-        
         self.t = self.inp.t0
-        self.timestep = 0
-        
-        self.dt = self.get_dt()
-        
-        # TODO: use diff timestep for particles?
-        for species in self.all_species:
-            species.dt = self.dt
+        self.timestepNum = 0
+
  
         #-1 is no output. Always output ICs if we are outputting.
         if self.inp.output_freq >= 0:
             self.output()
-        
 
     def run(self):
-        while (self.t < self.inp.t_finish) and self.timestep < self.inp.nt:
-            print("\033[1m" + f"Timestep: {self.timestep}, Current time: {self.t}" + "\033[0m")
-            
-            # SPECIES UPDATE
-            if self.inp.timeStepper == "RK1":
-                for species in self.all_species:
-                    species.update()
-            
-            else:
-                raise RuntimeError("Timestepping method not supported.")
-            
+        while (self.t < self.inp.t_finish) and self.timestepNum < self.inp.nt:
+            print(f"Timestep: {self.timestepNum}, Current time: {self.t:.5e}")
 
-            # assert np.all(np.isfinite(self.electrons.grid)), f"Invalid values in grid at timestep {self.timestep}"
-            # assert np.all(self.electrons.grid[self.c.PCOMP] > 0), f"Negative pressure detected at timestep {self.timestep}"
 
-            self.timestep += 1
-            self.t += self.dt
+            self.grid.assert_variable_type("prim")
             
-            #always output the last timestep.
-            if (self.timestep % self.inp.output_freq == 0) or (self.timestep == self.inp.nt-1):
+            # Parameters
+            dt = self.inp.dt if hasattr(self.inp, "dt") else 1e-6 #fixed small dt or small timestep
+
+            density - self.grid.grid[self.c.RHOCOMP]
+            vx = self.grid.grid[self.c.UCOMP]
+            vy = self.grid.grid[self.c.VCOMP]
+            pressure = self.grid.grid[self.c.PCOMP]
+
+            #Electric field, Magnetic field, collision frequency
+            Ex = getattr(self.inp, "Ex", 0.0)
+            Ey = getattr(self.inp, "Ey", 0.0)
+            Bz = getattr(self.inp, "Bz", 0.1)
+            collision_freq = getattr(self.inp, "collision_freq", 1e5)
+
+            #Ionization Parameters
+            k_ion = getattr(self.inp, "k_ion", 1e-14) #ionization rate coefficient
+            nn = getattr(self.inp, "nn", 1e19) #neutral density (m^-3)
+            
+            #Ionization rate 
+            S_ion = k_ion * nn * density #rate of ion creation
+
+            #Update ion density
+            density += dt * S_ion 
+
+            #Lorentz Force + E-field + collisions 
+            q_i = 1.0 #unit ion charge
+
+            JxB_x = q_i * density * vx * Bz
+            JxB_y = -q_i * density * vx * Bz
+
+            Eforce_x = q_i * density * Ex
+            Eforce_y = q_i * density * Ey
+
+            collision_drag_x = -collision_freq * density * vx #applies collisional momentum drag
+            collision_drag_y = -collision_freq * density * vy
+
+              # Momentum update, no convective derivative
+            self.grid.grid[self.c.UCOMP] += dt * (Eforce_x + JxB_x + collision_drag_x) / density
+            self.grid.grid[self.c.VCOMP] += dt * (Eforce_y + JxB_y + collision_drag_y) / density
+
+            self.bcs.apply_bcs()
+            self.timestepNum += 1
+            self.t += dt
+
+            if (self.timestepNum % self.inp.output_freq == 0) or (self.t >= self.inp.t_finish):
                 self.output()
- 
-            self.electrons.check_grid(self.c)
 
-        if self.inp.make_movie:
-            self.generate_movie()
-    
-        print("SUCCESS!")
-        return self.grid
-        
-        
-    def get_dt(self):
-        # TODO: consider particles + fields as well when calculating dt
-        
-        # Determine timestep dt based on CFL condition
-        if self.inp.system == "euler2d":
-            density = self.electrons.grid[self.c.RHOCOMP]
-            pressure = self.electrons.grid[self.c.PCOMP]
-            u = self.electrons.grid[self.c.UCOMP]
-            v = self.electrons.grid[self.c.VCOMP]
-            # Ensure pressure and density are positive before sqrt
-            pressure = np.maximum(pressure, 1e-12)
-            density = np.maximum(density, 1e-12)
-            a = np.sqrt(self.c.gamma * pressure / density) # Sound speed
-            max_speed_x = np.max(np.abs(u) + a)
-            max_speed_y = np.max(np.abs(v) + a)
-            max_speed = max(max_speed_x, max_speed_y) # More robust estimate
-        
-        elif self.inp.system == "mhd2d":
-            density = self.electrons.grid[self.c.RHOCOMP]
-            pressure = self.electrons.grid[self.c.PCOMP]
-            u = self.electrons.grid[self.c.UCOMP]
-            v = self.electrons.grid[self.c.VCOMP]
-            Bx = self.electrons.grid[self.c.BXCOMP]
-            By = self.electrons.grid[self.c.BYCOMP]
-            
-            # Ensure pressure and density are positive
-            pressure = np.maximum(pressure, 1e-12)
-            density = np.maximum(density, 1e-12)
-            
-            a = np.sqrt(self.c.gamma * pressure / density) # Sound speed
-            # Alfven speed squared components
-            ca_sq_x = Bx**2 / density
-            ca_sq_y = By**2 / density
-            ca_sq_tot = ca_sq_x + ca_sq_y
-            
-            # Fast magnetosonic speed squared (cf^2)
-            # cf^2 = 0.5 * ( (a^2 + ca_tot^2) + sqrt( max( (a^2 + ca_tot^2)^2 - 4*a^2*ca_x^2 , 0.0 ) ) )
-            term_under_sqrt = (a**2 + ca_sq_tot)**2 - 4 * a**2 * ca_sq_x
-            cf_sq_x = 0.5 * ( (a**2 + ca_sq_tot) + np.sqrt(np.maximum(term_under_sqrt, 0.0)) )
-            cf_x = np.sqrt(cf_sq_x)
-            
-            term_under_sqrt = (a**2 + ca_sq_tot)**2 - 4 * a**2 * ca_sq_y # Use ca_sq_y for y-direction cf
-            cf_sq_y = 0.5 * ( (a**2 + ca_sq_tot) + np.sqrt(np.maximum(term_under_sqrt, 0.0)) )
-            cf_y = np.sqrt(cf_sq_y)
-            
-            # Max signal speed is max(|u|+cf_x, |v|+cf_y)
-            max_signal_x = np.max(np.abs(u) + cf_x)
-            max_signal_y = np.max(np.abs(v) + cf_y)
-            max_speed = max(max_signal_x, max_signal_y)
-        
-        else:
-            raise RuntimeError(f"System {self.inp.system} not supported for dt calculation.")
+            self.grid.check_grid(self.c)
 
-        # Calculate dt, ensuring it doesn't overshoot t_finish
-        dt = min(self.inp.cfl * min(self.inp.dx, self.inp.dy) / max_speed, self.inp.t_finish - self.t)
-        
-        if dt <= 0: 
-            raise ValueError(f"Calculated dt is zero or negative ({dt}). Check simulation parameters or state.")
-        
-        return dt
-        
+        print("Simulation completed successfully.")
+           
+    def applyICS(self):
+        # default uniform conditions suitable for Hall thruster test
+        density_ic = 1e18    # m^-3
+        vx_ic = 0.0
+        vy_ic = 0.0
+        pressure_ic = 0.1
+
+        X, Y = np.meshgrid(self.grid.x, self.grid.y, indexing='ij')
+
+        self.grid.grid[self.c.RHOCOMP, :, :] = density_ic
+        self.grid.grid[self.c.UCOMP, :, :] = vx_ic
+        self.grid.grid[self.c.VCOMP, :, :] = vy_ic
+        self.grid.grid[self.c.PCOMP, :, :] = pressure_ic
+
+        self.grid.variables = "prim"
 
     def output(self):
-        # Ensure the base output directory exists
-        os.makedirs(self.inp.output_dir, exist_ok=True)
-
-        # Ensure the frames subdirectory exists
         frames_dir = os.path.join(self.inp.output_dir, "frames")
         os.makedirs(frames_dir, exist_ok=True)
-        
-        data_dir = os.path.join(self.inp.output_dir, "raw data")
-        os.makedirs(data_dir, exist_ok=True)
 
-        # File naming convention: output_timestepNum.txt
-        output_filename = os.path.join(
-            data_dir, f"output_{str(self.timestep).zfill(6)}.txt")
-        output_plotname = os.path.join(
-            frames_dir, f"output_{str(self.timestep).zfill(6)}.png")
+        output_plotname = os.path.join(frames_dir, f"output_{str(self.timestepNum).zfill(6)}.png")
 
-        with open(output_filename, 'w') as f:
-            f.write(f"# Time: {self.t:.4f}\n")
-            f.write("# x, y, density, x-velocity, y-velocity, pressure\n")
+        fig, axs = plt.subplots(1, 3, figsize=(18, 5))
+        titles = ["Density", "X-Velocity", "Y-Velocity"]
+        comps = [self.c.RHOCOMP, self.c.UCOMP, self.c.VCOMP]
 
-            for i in range(self.inp.numghosts, self.inp.nx - self.inp.numghosts):
-                for j in range(self.inp.numghosts, self.inp.ny - self.inp.numghosts):
-                    x = self.inp.grid_x[i]
-                    y = self.inp.grid_y[j]
-                    components = [self.electrons.grid[q, i, j] for q in range(self.c.NUMQ)]
-                    f.write(f"{x:.12f}, {y:.12f}, " + ", ".join(f"{comp:.8f}" for comp in components) + "\n")
+        for ax, comp, title in zip(axs, comps, titles):
+            data = self.grid.grid[comp, self.grid.Nghost:-self.grid.Nghost, self.grid.Nghost:-self.grid.Nghost].T
+            extent = [self.grid.x[self.grid.Nghost], self.grid.x[-self.grid.Nghost - 1],
+                      self.grid.y[self.grid.Nghost], self.grid.y[-self.grid.Nghost - 1]]
+            im = ax.imshow(data, origin='lower', extent=extent, aspect='auto')
+            plt.colorbar(im, ax=ax)
+            ax.set_title(f"{title} at t={self.t:.5e}")
+            ax.set_xlabel("x")
+            ax.set_ylabel("y")
 
-        if self.inp.system == "euler2d":
-            fig, axs = plt.subplots(2, 2, figsize=(15, 15))
-        elif self.inp.system == "mhd2d":
-            fig, axs = plt.subplots(2, 4, figsize=(36, 18))
-        axs = axs.ravel()  # Flatten the array to index by i
-        
-        for q in range(self.c.NUMQ):
-            # Exclude ghost cells from the plot
-            plot_data = self.electrons.grid[q, self.inp.numghosts:-self.inp.numghosts, self.inp.numghosts:-self.inp.numghosts].T # TODO: why transpose?
-            # plot_data = self.electrons.grid[q, :, :].T
-            
-            extent = [self.inp.grid_x[self.inp.numghosts], self.electrons.grid_y[-self.inp.numghosts-1],
-                      self.inp.grid_y[self.inp.numghosts], self.electrons.grid_y[-self.inp.numghosts-1]]
-
-            im = axs[q].imshow(plot_data, origin='lower', extent=extent, cmap='magma')
-            
-            plt.colorbar(im, ax=axs[q])
-            
-            if self.inp.particle_ics is not None:
-                axs[q].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=50, color='blue')
-            
-            axs[q].set_title(self.c.variable_names[q])
-            axs[q].set_xlabel('x')
-            axs[q].set_ylabel('y')
-
-        fig.suptitle(f"Time: {self.t:.4f}, Timestep: {self.timestep}")
         plt.tight_layout()
         fig.savefig(output_plotname)
         plt.close()
-        
- 
-    def generate_movie(self):
-        # Create a directory for the frames if it doesn't exist
-        frames_dir = os.path.join(self.inp.output_dir, "frames")
-        # if not os.path.exists(frames_dir):
-        #     os.makedirs(frames_dir)
-
-        # List all the output files and sort them
-        #output_files = sorted(glob.glob(os.path.join(self.inp.output_dir, "output_*.png")))
-            
-        #movie_filename = os.path.join(self.inp.output_dir, "simulation_movie.mp4")
-
-
-        ffmpeg_command = f"ffmpeg -y -framerate 24 -i {frames_dir}/output_%06d.png -c:v libx264 -pix_fmt yuv420p {self.inp.output_dir}/movie.mp4"
-        os.system(ffmpeg_command)
-
+       
 
 
         # if self.c.NUMQ == 3:
