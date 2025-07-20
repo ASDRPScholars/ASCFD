@@ -6,7 +6,7 @@ class ParticleConstants:
         self.VCOMP = 3
         self.WCOMP = 4
         
-        self.NUMQ = 4
+        self.NUMQ = 5
         
         # macroparticle statistical weight
         self.QCOMP = 5

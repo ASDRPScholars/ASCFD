@@ -25,8 +25,7 @@ class Fields:
         self.eps0 = 8.854e-12  # Permittivity of free space
                 
     
-    def update_E(self, species_charge_density):
-        self.add_charge_density(species_charge_density)
+    def update_E(self):
         self.solve_poisson()
         self.compute_electric_field()
         self.clear_calculation_grids()

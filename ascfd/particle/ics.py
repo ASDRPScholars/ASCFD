@@ -13,11 +13,11 @@ class ParticleInitialConditions:
         
         # TODO: MAKE IT DIRECTLY MUTATE SPECIES.PARTICLES IDK WHY IT DOESN RN
         if self.inp.particle_ics == "origin":
-            return self.origin()
+            np.copyto(self.particles, self.origin())
         if self.inp.particle_ics == "random":
-            return self.random()
+            np.copyto(self.particles, self.random())
         if self.inp.particle_ics == "random_left_wall":
-            return self.random_left_wall()
+            np.copyto(self.particles, self.random_left_wall())
     
         if self.inp.particle_ics == "random_particles_no_condition":
             self.particles = self.random()
