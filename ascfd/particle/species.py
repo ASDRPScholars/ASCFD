@@ -23,8 +23,30 @@ class ParticleSpecies:
         self.ics = ParticleInitialConditions(self.particles, self.inp)
 
         self.particles = self.ics.apply_ics()
-        
+
         print("PARTICLES X POS INIT:", self.particles[self.pc.XCOMP])
+
+    # edited from ashita's code
+    def get_local_density(self, species_type, position, size=1.0):
+        density = 0.0
+        for i in range(self.particles.shape[1]):
+            if self.params.type != species_type:
+                continue
+            dist = np.linalg.norm(np.array([
+                self.particles[self.pc.XCOMP, i],
+                self.particles[self.pc.YCOMP, i]
+            ]) - position)
+            if dist < size:
+                density += self.particles[self.WEIGHT, i]
+        volume = size**2  # assuming 2D
+        return density / volume if volume > 0 else 0
+    
+    data = np.loadtxt("Xe_e_ionization.txt", comments="#")
+    energies = data[:, 0]
+    cross_sections = data[:, 1]
+
+    def cross_section(E):
+        return np.interp(E, energies, cross_sections)
 
     def estimate_initial_weight(self):
         Vc = self.inp.dx * self.inp.dy  
@@ -95,34 +117,67 @@ class ParticleSpecies:
 
     def ionize(self):
         new_ions = []
+        deleted_indices = []
+
+        if self.params.type != "n":
+            return new_ions  # only neutrals ionize
+
         for n in range(self.particles.shape[1]):
             x = self.particles[self.pc.XCOMP, n]
             y = self.particles[self.pc.YCOMP, n]
+            pos = np.array([x, y])
+
             ix = int((x - self.inp.grid_x[0]) / self.inp.dx)
             iy = int((y - self.inp.grid_y[0]) / self.inp.dy)
-
             if not (0 <= ix < self.inp.nx_with_ghosts and 0 <= iy < self.inp.ny_with_ghosts):
                 continue
 
-            # Dummy model (you can replace this with fluid-based lookup later)
-            electron_density = 1e18
-            neutral_density = 1e20
-            ionization_rate = 1e6
+            vx = self.particles[self.pc.UCOMP, n]
+            vy = self.particles[self.pc.VCOMP, n]
+            v_rel = np.sqrt(vx**2 + vy**2)
 
-            p_ionize = 1 - np.exp(-ionization_rate * self.dt)
-            if np.random.rand() > p_ionize:
-                continue
+            # kinetic energy in eV for cross-section
+            Ep = 0.5 * self.params.mass * v_rel**2 / self.pc.E_CHARGE
+            sigma_T = self.cross_section(Ep)
 
-            ion = np.zeros(self.pc.NUMQ)
-            ion[self.pc.XCOMP] = x
-            ion[self.pc.YCOMP] = y
-            ion[self.pc.UCOMP] = self.particles[self.pc.UCOMP, n]
-            ion[self.pc.VCOMP] = self.particles[self.pc.VCOMP, n]
+            electron_density = self.get_local_density("e", pos)
+            neutral_density = self.get_local_density("n", pos)
 
-            new_ions.append(ion)
-            self.particles[:, n] = np.nan
+            # ionization frequency from villafana 2021 (pg 60)
+            nu_T = electron_density * sigma_T * v_rel
 
-        self.particles = self.particles[:, ~np.isnan(self.particles[self.pc.XCOMP])]
+            P_T = 1 - np.exp(-nu_T * self.dt) #monte carlo
+            if np.random.rand() < P_T:
+                # mark the neutrals that should be deleted
+                deleted_indices.append(n)
+
+                # create ion
+                ion = np.zeros(self.pc.NUMQ + 1)
+                ion[self.pc.XCOMP] = x
+                ion[self.pc.YCOMP] = y
+                ion[self.pc.UCOMP] = vx
+                ion[self.pc.VCOMP] = vy
+                ion[self.WEIGHT] = self.particles[self.WEIGHT, n]
+                ion[self.pc.ZCOMP] = 0.0  # if needed
+
+                # create electron
+                electron = np.zeros(self.pc.NUMQ + 1)
+                electron[self.pc.XCOMP] = x
+                electron[self.pc.YCOMP] = y
+                electron[self.pc.UCOMP] = 0.0
+                electron[self.pc.VCOMP] = 0.0
+                electron[self.WEIGHT] = self.particles[self.WEIGHT, n]
+                electron[self.pc.ZCOMP] = 0.0  # if needed
+
+                new_ions.append(ion)
+                new_ions.append(electron)
+
+        # delete the neutrals
+        if deleted_indices:
+            keep_mask = np.ones(self.particles.shape[1], dtype=bool)
+            keep_mask[deleted_indices] = False
+            self.particles = self.particles[:, keep_mask]
+
         return new_ions
 
     def get_charge_density(self):
