@@ -58,8 +58,10 @@ class Simulation:
             
             # SPECIES UPDATE
             if self.inp.timeStepper == "RK1":
-                for species in self.all_species:
-                    species.update()
+                # for species in self.all_species:
+                #     species.update()
+                
+                self.electrons.update()
             
             else:
                 raise RuntimeError("Timestepping method not supported.")
