@@ -20,7 +20,7 @@ class ParticleSpecies:
 
         self.particles[self.WEIGHT, :] = self.estimate_initial_weight()
 
-        self.ics = ParticleInitialConditions(self.particles, self.inp)
+        self.ics = ParticleInitialConditions(self.particles, self.inp, self.params)
 
         self.particles = self.ics.apply_ics()
 

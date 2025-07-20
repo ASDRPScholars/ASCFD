@@ -24,9 +24,10 @@ class Simulation:
         #xe_i_params = SpeciesParams(1.6e-19, 2.18e-25, 5/3, "i")
         #xe_n_params = SpeciesParams(0, 2.18e-25, 5/3, "n")
 
-        e_params    = SpeciesParams(-1.6e-19, 9.1e-31, 5/3, "e", density=1e18)  
-        xe_i_params = SpeciesParams( 1.6e-19, 2.18e-25, 5/3, "i", density=1e18)  
-        xe_n_params = SpeciesParams( 0.0,     2.18e-25, 5/3, "n", density=1e20)  
+        e_params    = SpeciesParams(-1.6e-19, 9.1e-31, 5/3, "e", density=1e18, temperature=1.0)  # placeholders
+        xe_i_params = SpeciesParams( 1.6e-19, 2.18e-25, 5/3, "i", density=1e18, temperature=1.0)
+        xe_n_params = SpeciesParams( 0.0,     2.18e-25, 5/3, "n", density=1e20, temperature=1.0)
+
         #dummy densities
         
         self.electrons = FluidSpecies(e_params, self.inp, self.fields)
