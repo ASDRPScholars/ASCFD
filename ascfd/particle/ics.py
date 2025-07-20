@@ -64,9 +64,9 @@ class ParticleInitialConditions:
         R1, R2 = np.random.rand(2)
         R3, R4 = np.random.rand(2)
 
-        vx = v_th * np.sqrt(-np.log(R1)) * np.cos(2 * np.pi * R2)
-        vy = v_th * np.sqrt(-np.log(R1)) * np.sin(2 * np.pi * R2)
-        vz = v_th * np.sqrt(-np.log(R3)) * np.cos(2 * np.pi * R4)
+        vx = v_th * np.sqrt(-1 * np.log(R1)) * np.cos(2 * np.pi * R2)
+        vy = v_th * np.sqrt(-1 * np.log(R1)) * np.sin(2 * np.pi * R2)
+        vz = v_th * np.sqrt(-1 * np.log(R3)) * np.cos(2 * np.pi * R4)   
 
         if self.params.temperature <= 0:
             return 0.0, 0.0, 0.0
