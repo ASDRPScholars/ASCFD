@@ -72,12 +72,12 @@ class FluidSpecies:
     
     
     def get_charge_density(self):
-        
-        pass
+        charge_density = self.params.charge * self.get_number_density()
+        return charge_density
     
     
     def get_number_density(self):
-        number_density = self.grid[self.c.RHOCOMP] / 9.109e-31
+        number_density = self.grid[self.c.RHOCOMP] / self.params.mass
         return number_density
     
     
