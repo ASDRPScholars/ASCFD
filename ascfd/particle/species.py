@@ -55,9 +55,13 @@ class ParticleSpecies:
     def update(self):
         new_ions, new_electrons = [], []
 
-        # only neutrals ionize
         if self.params.type == "n":
             new_ions, new_electrons = self.ionize()
+            # Add new particles to respective species
+            for ion in new_ions:
+                self.simulation.ions.add_particle(ion)
+            for electron in new_electrons:
+                self.simulation.electrons.add_particle(electron)
 
         # particle per cell enforcement
         self.enforce_ppc()
