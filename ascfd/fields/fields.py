@@ -26,9 +26,14 @@ class Fields:
                 
     
     def update_E(self):
-        self.solve_poisson()
-        self.compute_electric_field()
-        self.clear_calculation_grids()
+        # For hall thruster, E field is computed by electron solver
+        # Keep legacy Poisson solver for other systems
+        if hasattr(self.inp, 'system') and self.inp.system == "hall_thruster":
+            pass  # E field updated by electron solver
+        else:
+            self.solve_poisson()
+            self.compute_electric_field()
+            self.clear_calculation_grids()
                 
     def add_charge_density(self, species_charge_density):
         self.charge_density += species_charge_density

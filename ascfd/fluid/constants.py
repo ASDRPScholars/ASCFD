@@ -61,6 +61,24 @@ class FluidConstants:
             # Number of species? (Assuming 1 for now for MHD)
             self.NS = 1
 
+        elif a_inputs.system == "hall_thruster":
+            # Electron fluid variables for quasineutral + quasistatic solver
+            self.N_E_COMP = 0      # electron density
+            self.E_PAR_COMP = 1    # parallel electric field
+            self.E_PERP_COMP = 2   # perpendicular electric field  
+            self.J_E_PAR_COMP = 3  # parallel electron current
+            self.J_E_PERP_COMP = 4 # perpendicular electron current
+            self.T_E_COMP = 5      # electron temperature
+            
+            self.NUMQ = 6 # Number of electron variables
+            
+            self.system = "hall_thruster"
+            
+            self.variable_names = ["Electron_Density", "E_Parallel", "E_Perpendicular", 
+                                 "J_e_Parallel", "J_e_Perpendicular", "Electron_Temperature"]
+            
+            self.NS = 1
+
         else:
             #error for unsupported systems
             raise RuntimeError(f"system in inputs file is not supported: {a_inputs.system}")

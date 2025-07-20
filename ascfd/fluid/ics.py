@@ -34,6 +34,18 @@ class FluidInitialConditions:
         elif self.inp.system == "mhd2d":
             if self.inp.fluid_ics == "orszag_tang":
                 self.grid = self.orszag_tang_2d()
+        
+        elif self.inp.system == "hall_thruster":
+            if self.inp.fluid_ics == "uniform":
+                # Simple uniform initial conditions for hall thruster
+                self.grid[self.c.N_E_COMP, :, :] = 1e18     # n_e = 1e18 m^-3
+                self.grid[self.c.E_PAR_COMP, :, :] = 0      # E_par = 0
+                self.grid[self.c.E_PERP_COMP, :, :] = 0     # E_perp = 0  
+                self.grid[self.c.J_E_PAR_COMP, :, :] = 0    # j_e_par = 0
+                self.grid[self.c.J_E_PERP_COMP, :, :] = 0   # j_e_perp = 0
+                self.grid[self.c.T_E_COMP, :, :] = 5.0      # T_e = 5 eV
+            else:
+                raise RuntimeError("[FLUID] ICS for hall_thruster not valid.")
            
         else:
             raise RuntimeError("[FLUID] ICS not valid.")

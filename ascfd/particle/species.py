@@ -9,11 +9,11 @@ import numpy as np
 from scipy.spatial import cKDTree
 
 class ParticleSpecies:
-    def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields, electrons: FluidSpecies, neutrals: "ParticleSpecies"):
+    def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields, electrons: FluidSpecies):
         self.pc = ParticleConstants()
         self.fields = fields
         self.electrons = electrons
-        self.neutrals = neutrals
+        # self.neutrals = neutrals
         
         self.inp = a_inputs
         self.params = params
@@ -88,14 +88,16 @@ class ParticleSpecies:
     
     
     def ionize(self):
+        return
+    
         for n in range (self.inp.n_particles):
             # make methods to find these values depending on position (could use grid also similar to how particle cell calculation was originally done)
             electrons_density = self.electrons.get_number_density()
-            neutrals_density = self.neutrals.get_number_density()
+            # neutrals_density = self.neutrals.get_number_density()
             
             c = 1e-13
 
-            ionization_rate = c * electrons_density * neutrals_density # another method to calculuate
+            # ionization_rate = c * electrons_density * neutrals_density # another method to calculuate
 
             # statistics now !!!!
 
