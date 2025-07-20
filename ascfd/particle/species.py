@@ -6,12 +6,14 @@ from ascfd.params import SpeciesParams
 from ascfd.fields.fields import Fields
 
 import numpy as np
+from scipy.spatial import cKDTree
 
 class ParticleSpecies:
-    def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields, electrons: FluidSpecies):
+    def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields, electrons: FluidSpecies, neutrals: "ParticleSpecies"):
         self.pc = ParticleConstants()
         self.fields = fields
         self.electrons = electrons
+        self.neutrals = neutrals
         
         self.inp = a_inputs
         self.params = params
@@ -21,14 +23,19 @@ class ParticleSpecies:
         
         self.ics = ParticleInitialConditions(self.particles, self.inp)
         
-        self.particles = self.ics.apply_ics()
+        self.ics.apply_ics()
+        
         print("PARTICLES X POS INIT:", self.particles[self.pc.XCOMP])
     
     
     # TODO: particles.py stuff goes in here
     def update(self):
 
-        self.V = np.array(self.particles[self.pc.UCOMP], self.particles[self.pc.VCOMP], self.particles[self.pc.WCOMP])
+        self.V = np.array([
+                    self.particles[self.pc.UCOMP], 
+                    self.particles[self.pc.VCOMP], 
+                    self.particles[self.pc.WCOMP]
+                    ])
         
         # this acc doesn't fit very well with the new multispecies structure lol...
         if self.inp.particle_flow_type == "passive":
@@ -55,6 +62,11 @@ class ParticleSpecies:
         self.fields.update_E()
         
         
+    # TODO: PLACEHOLDER ADD PARTICLE (before we migrate to lists idk)
+    def add_particle(self):
+        pass
+        
+        
     def calculate_mom_source_terms(self, i, j, n):
         s_lorentz = (self.params.charge / self.params.mass) * (self.fields.E[i, j] + np.cross(self.V[n], self.fields.B[i, j])) # q/m * (E + VxB)
         self.V[n] += s_lorentz
@@ -79,9 +91,11 @@ class ParticleSpecies:
         for n in range (self.inp.n_particles):
             # make methods to find these values depending on position (could use grid also similar to how particle cell calculation was originally done)
             electrons_density = self.electrons.get_number_density()
-            neutral_density = self.fields.neutrals()
+            neutrals_density = self.neutrals.get_number_density()
+            
+            c = 1e-13
 
-            ionization_rate = ... # another method to calculuate
+            ionization_rate = c * electrons_density * neutrals_density # another method to calculuate
 
             # statistics now !!!!
 
@@ -91,6 +105,9 @@ class ParticleSpecies:
 
             if rand > p_ionize: # quick exit case: we will NOT ionize
                 continue
+            
+            # TODO: PLACEHOLDER
+            self.add_particle()
         
             # self.particles.
             # particles.pop(neutral_particle_index)
@@ -100,7 +117,38 @@ class ParticleSpecies:
             # create_particle()
     
     def get_charge_density(self):
-        pass
+        charge_density = self.params.charge * self.get_number_density()
+        return charge_density
+    
+    
+    #this might be a bit faster but idk
+    def get_number_density(self):
+        positions = self.particles[self.c.XCOMP:self.c.YCOMP]
+        tree = cKDTree(positions)
+        
+        #TODO: adjust local radius as necessary
+        radius = 0.01
+        
+        counts = tree.query_ball_point(positions, r=radius, return_length=True)
+        area = np.pi * (radius ** 2)
+        
+        number_density = counts / area
+        return number_density
+    
+
+    def get_number_density_linear_search(self):
+        count = 0
+        radius = 0.01
+        
+        for n in range(self.inp.n_particles):
+            dist = np.linalg.norm(self.particles[self.c.XCOMP:self.c.YCOMP, n])
+            if dist < radius:
+                count += 1
+                
+        area = np.pi * (radius ** 2)
+        
+        number_density = count / area
+        return number_density
     
     
     def check_particles(self):
