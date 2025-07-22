@@ -1,7 +1,8 @@
 from ascfd.inputs import Inputs
 import numpy as np
 from scipy.sparse import diags
-from scipy.sparse.linalg import spsolve
+from scipy.sparse import csc_array
+from scipy.sparse.linalg import cg
 from ascfd.fields.ics import FieldInitialConditions
 
 # TODO: write all the logic lol
@@ -58,8 +59,10 @@ class Fields:
         y_diag = (1.0/self.dy**2) * np.ones(N-nx)
         
         # Construct sparse matrix
-        A = diags([y_diag, x_diag, main_diag, x_diag, y_diag], 
+        P = diags([y_diag, x_diag, main_diag, x_diag, y_diag], 
                   [-nx, -1, 0, 1, nx], shape=(N, N), format='csr')
+        
+        A = csc_array(P)
         
         # Right-hand side: -rho/eps0
         rhs = (-self.charge_density / self.eps0).flatten()
@@ -86,8 +89,12 @@ class Fields:
             rhs[idx] = 0
         
         # Solve the system
-        phi_flat = spsolve(A, rhs)
+        phi_flat, exit_code = cg(A, rhs, atol=1e-5)
+        
+        print(exit_code) # 0 means convergence was successful
+        
         self.potential = phi_flat.reshape((nx, ny))
+        
         
     def compute_electric_field(self):
         """Compute E = -grad(phi) using central differences"""
