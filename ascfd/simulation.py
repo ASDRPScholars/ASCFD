@@ -51,7 +51,19 @@ class Simulation:
         #-1 is no output. Always output ICs if we are outputting.
         if self.inp.output_freq >= 0:
             self.output()
+
+    def add_particle(self, particle_data):
+        particle_charge = particle_data[self.pc.NUMQ - 1] if hasattr(self.pc, 'CHARGE') else 0.0
+        particle_mass = getattr(particle_data, 'mass', None)
         
+        if hasattr(self, 'ions') and particle_charge > 0 and self.ions is not None:
+            self.ions.add_particle(particle_data)
+        elif hasattr(self, 'electrons') and particle_charge < 0 and self.electrons is not None:
+            pass
+            # Not entirely sure how the electrons are done but I assume electron team has better idea
+            # self.electrons.add_particle(particle_data) This doesnt do anything I just created it in FluidSpecies
+        elif hasattr(self, 'neutrals') and abs(particle_charge) < 1e-20 and self.neutrals is not None:
+            self.neutrals.add_particle(particle_data)      
 
     def run(self):
         while (self.t < self.inp.t_finish) and self.timestep < self.inp.nt:
@@ -60,8 +72,19 @@ class Simulation:
             # SPECIES UPDATE
             if self.inp.timeStepper == "RK1":
                 for species in self.all_species:
+<<<<<<< Updated upstream
                     species.update()
             
+=======
+                    new_particles_from_species = species.update()
+                    if new_particles_from_species:
+                        new_particles.extend(new_particles_from_species)
+                
+                for particle in new_particles:
+                    if hasattr(particle, '__len__') and len(particle) == self.pc.NUMQ + 1:
+                        self.add_particle(particle)
+
+>>>>>>> Stashed changes
             else:
                 raise RuntimeError("Timestepping method not supported.")
             

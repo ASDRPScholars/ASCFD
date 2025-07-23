@@ -74,6 +74,14 @@ class FluidSpecies:
     def get_charge_density(self):
         
         pass
+
+    def add_particle(self):
+
+
+        # Not 100% what to do here
+        # I assume you update density, mom comps, P and E
+
+        pass
     
     
     def get_number_density(self):
