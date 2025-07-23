@@ -71,20 +71,15 @@ class Simulation:
             
             # SPECIES UPDATE
             if self.inp.timeStepper == "RK1":
+                new_particles = []
                 for species in self.all_species:
-<<<<<<< Updated upstream
-                    species.update()
-            
-=======
                     new_particles_from_species = species.update()
                     if new_particles_from_species:
                         new_particles.extend(new_particles_from_species)
-                
                 for particle in new_particles:
                     if hasattr(particle, '__len__') and len(particle) == self.pc.NUMQ + 1:
                         self.add_particle(particle)
 
->>>>>>> Stashed changes
             else:
                 raise RuntimeError("Timestepping method not supported.")
             
