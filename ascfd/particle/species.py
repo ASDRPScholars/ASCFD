@@ -105,4 +105,7 @@ class ParticleSpecies:
         pass
     
     
-    
+    def add_particle(self):
+        pass
+    # Not 100% what to do here
+    # I assume you update density, mom comps, P and E
