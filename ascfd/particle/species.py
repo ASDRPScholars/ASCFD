@@ -6,28 +6,86 @@ from ascfd.fields.fields import Fields
 
 import numpy as np
 
-class IonizationEvent:
-    neutral_idx: int
-    ion_particle: np.ndarray
-    electron_particle: np.ndarray
-    energy_deposited: float
+class CollisionEvent:
+    def __init__(self, event_type: str, particle1_idx: int, particle2_idx: int = None, 
+                 products: list = None, energy_change: float = 0.0):
+        self.event_type = event_type  # "elastic", "excitation", "ionization"
+        self.particle1_idx = particle1_idx
+        self.particle2_idx = particle2_idx
+        self.products = products or []  # new particles created
+        self.energy_change = energy_change
 
-class CrossSectionData:
-    def __init__(self, filename: str = "Xe_e_ionization.txt"):
-        self.energies = None
-        self.cross_sections = None
-        self.ionization_threshold = 12.13  # eV for Xenon
-        self.load_data(filename)
-
-    def load_data(self, filename):
-        data = np.loadtxt(filename, comments="#")
-        self.energies = data[:, 0]
-        self.cross_sections = data[:, 1]
-
-    def get_cross_section(self, energy_ev: float) -> float:
-        if energy_ev < self.ionization_threshold:
+class XenonCollisionData:
+    def __init__(self):
+        # xenon collision thresholds and cross-sections based on the table
+        self.E_CHARGE = 1.602176e-19  
+        
+        # Electron-Xenon collision data
+        self.electron_collisions = {
+            "elastic": {
+                "threshold": 0.0,  
+                "cross_section_func": self._elastic_cross_section
+            },
+            "first_excitation": {
+                "threshold": 19.82,  # eV
+                "cross_section_func": self._excitation_cross_section_1
+            },
+            "second_excitation": {
+                "threshold": 20.61,  # eV  
+                "cross_section_func": self._excitation_cross_section_2
+            },
+            "ionization": {
+                "threshold": 24.59,  # eV
+                "cross_section_func": self._ionization_cross_section
+            }
+        }
+        
+        # ion-Xenon collision data
+        self.ion_collisions = {
+            "elastic_isotropic": {
+                "threshold": 0.0,
+                "cross_section_func": self._ion_elastic_cross_section
+            },
+            "elastic_backward": {
+                "threshold": 0.0,
+                "cross_section_func": self._ion_backward_cross_section
+            }
+        }
+    
+    def _elastic_cross_section(self, energy_ev):
+        # 
+        if energy_ev < 0.1:
+            return 5e-16  # cm^2 at very low energy
+        return 3e-16 * (1 + 1/np.sqrt(energy_ev))  # rough approx
+    
+    def _excitation_cross_section_1(self, energy_ev):
+        if energy_ev < 19.82:
             return 0.0
-        return float(np.interp(energy_ev, self.energies, self.cross_sections))
+        peak_energy = 25.0
+        if energy_ev < peak_energy:
+            return 2e-16 * (energy_ev - 19.82) / (peak_energy - 19.82)
+        else:
+            return 2e-16 * np.exp(-(energy_ev - peak_energy) / 10.0)
+    
+    def _excitation_cross_section_2(self, energy_ev):
+        if energy_ev < 20.61:
+            return 0.0
+        peak_energy = 26.0
+        if energy_ev < peak_energy:
+            return 1e-16 * (energy_ev - 20.61) / (peak_energy - 20.61)
+        else:
+            return 1e-16 * np.exp(-(energy_ev - peak_energy) / 10.0)
+    
+    def _ionization_cross_section(self, energy_ev):
+        if energy_ev < 24.59:
+            return 0.0
+        return 1.5e-16 * np.log(energy_ev / 24.59) if energy_ev > 24.59 else 0.0
+    
+    def _ion_elastic_cross_section(self, energy_ev):
+        return 1e-15  
+    
+    def _ion_backward_cross_section(self, energy_ev):
+        return 5e-16
 
 class ParticleSpecies:
     def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields):
@@ -36,6 +94,7 @@ class ParticleSpecies:
         self.inp = a_inputs
         self.params = params
         self.dt = None
+        self.simulation = None 
 
         self.particles = np.zeros((self.pc.NUMQ + 1, self.inp.n_particles))
         self.WEIGHT = self.pc.NUMQ
@@ -44,8 +103,58 @@ class ParticleSpecies:
         self.ics = ParticleInitialConditions(self.particles, self.inp, self.params)
         self.particles = self.ics.apply_ics()
 
-        self.cross_section_data = CrossSectionData() if params.type == "n" else None
-        self.ionization_events = []
+        # initialize collision system for Xenon
+        if params.type in ["e", "i"]:  # electrons and ions collide with neutrals
+            self.collision_data = XenonCollisionData()
+        else:
+            self.collision_data = None
+        
+        self.collision_events = []
+
+    def set_simulation(self, simulation):
+        """Allow access to other species through simulation reference"""
+        self.simulation = simulation
+
+    def get_species_density_field(self, species_type: str):
+        """Get density field of another species"""
+        if self.simulation is None:
+            return np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
+        
+        if species_type == "e" and hasattr(self.simulation, 'electrons'):
+            return self._compute_particle_density_field(self.simulation.electrons)
+        elif species_type == "i" and hasattr(self.simulation, 'ions'):
+            return self._compute_particle_density_field(self.simulation.ions)
+        elif species_type == "n" and hasattr(self.simulation, 'neutrals'):
+            return self._compute_particle_density_field(self.simulation.neutrals)
+        
+        return np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
+
+    def _compute_particle_density_field(self, species):
+        """Compute number density field from particle positions"""
+        if not hasattr(species, 'particles') or species.particles.shape[1] == 0:
+            return np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
+        
+        density_field = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
+        
+        for i in range(species.particles.shape[1]):
+            x = species.particles[self.pc.XCOMP, i]
+            y = species.particles[self.pc.YCOMP, i]
+            weight = species.particles[self.WEIGHT, i]
+            
+            ix = int((x - self.inp.grid_x[0]) / self.inp.dx)
+            iy = int((y - self.inp.grid_y[0]) / self.inp.dy)
+            
+            if 0 <= ix < self.inp.nx_with_ghosts and 0 <= iy < self.inp.ny_with_ghosts:
+                density_field[ix, iy] += weight / (self.inp.dx * self.inp.dy)
+        
+        return density_field
+
+    def add_particle(self, particle_data):
+        if isinstance(particle_data, np.ndarray) and particle_data.shape[0] == self.pc.NUMQ + 1:
+            # add as new column
+            self.particles = np.hstack([self.particles, particle_data.reshape(-1, 1)])
+        else:
+            print(f"Warning: Invalid particle data format for species {self.params.type}")
 
     def estimate_initial_weight(self):
         Vc = self.inp.dx * self.inp.dy
@@ -53,52 +162,52 @@ class ParticleSpecies:
         return (self.params.density * Vc) / target_ppc
 
     def update(self):
-        new_ions, new_electrons = [], []
+        new_particles = []
 
-        if self.params.type == "n":
-            new_ions, new_electrons = self.ionize()
-            # Add new particles to respective species
-            for ion in new_ions:
-                self.simulation.ions.add_particle(ion)
-            for electron in new_electrons:
-                self.simulation.electrons.add_particle(electron)
+        if self.params.type in ["e", "i"] and self.collision_data is not None:
+            new_particles = self.process_collisions()
 
         # particle per cell enforcement
         self.enforce_ppc()
 
         # update electric field with current charge distribution
-        charge_density = self.get_charge_density()
-        self.fields.update_E(charge_density)
+        if hasattr(self, 'get_charge_density'):
+            charge_density = self.get_charge_density()
+            self.fields.update_E(charge_density)
 
-        return new_ions + new_electrons
+        return new_particles
 
-    def ionize(self):
-        if self.params.type != "n":
-            return [], []
+    def process_collisions(self):
+        if self.params.type not in ["e", "i"] or self.collision_data is None:
+            return []
 
-        new_ions = []
-        new_electrons = []
-        ionization_events = []
-        electron_density_field = self._compute_electron_density_field()
+        new_particles = []
+        collision_events = []
+        
+        neutral_density_field = self.get_species_density_field("n")
+        
+        particles_to_remove = []
 
         for n in range(self.particles.shape[1]):
-            event = self._attempt_ionization(n, electron_density_field)
-            if event is not None:
-                ionization_events.append(event)
-                new_ions.append(event.ion_particle)
-                new_electrons.append(event.electron_particle)
+            events = self._attempt_collisions(n, neutral_density_field)
+            
+            for event in events:
+                collision_events.append(event)
+                
+                if event.event_type == "ionization":
+                    new_particles.extend(event.products)
+                elif event.event_type in ["first_excitation", "second_excitation"]:
+                    self._apply_energy_loss(n, event.energy_change)
+                elif event.event_type.startswith("elastic"):
+                    self._apply_elastic_scattering(n, event)
 
-        if ionization_events:
-            self._remove_ionized_neutrals([event.neutral_idx for event in ionization_events])
-            self.ionization_events.extend(ionization_events)
+        if particles_to_remove:
+            self._remove_particles(particles_to_remove)
 
-        return new_ions, new_electrons
+        self.collision_events.extend(collision_events)
+        return new_particles
 
-    def _compute_electron_density_field(self):
-        # placeholder - override with actual species lookup if needed
-        return np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
-
-    def _attempt_ionization(self, particle_idx: int, electron_density_field: np.ndarray):
+    def _attempt_collisions(self, particle_idx: int, neutral_density_field: np.ndarray):
         x = self.particles[self.pc.XCOMP, particle_idx]
         y = self.particles[self.pc.YCOMP, particle_idx]
         vx = self.particles[self.pc.UCOMP, particle_idx]
@@ -108,40 +217,186 @@ class ParticleSpecies:
 
         grid_coords = self._get_grid_coordinates(x, y)
         if grid_coords is None:
-            return None
+            return []
 
-        ix, iy = grid_coords
         v_rel = np.sqrt(vx**2 + vy**2 + vz**2)
         if v_rel < 1e-10:
+            return []
+
+        energy_ev = 0.5 * self.params.mass * v_rel**2 / self.collision_data.E_CHARGE
+
+        neutral_density = self._interpolate_density(x, y, neutral_density_field)
+        if neutral_density <= 0:
+            return []
+
+        events = []
+        
+        if self.params.type == "e":
+            collision_types = self.collision_data.electron_collisions
+        elif self.params.type == "i":
+            collision_types = self.collision_data.ion_collisions
+        else:
+            return []
+
+        for collision_type, collision_data in collision_types.items():
+            if energy_ev < collision_data["threshold"]:
+                continue
+                
+            sigma = collision_data["cross_section_func"](energy_ev)
+            if sigma <= 0:
+                continue
+
+            # nu = n * sigma * v
+            nu_collision = neutral_density * sigma * v_rel
+            P_collision = 1.0 - np.exp(-nu_collision * self.dt)
+
+            # monte carlo
+            if np.random.rand() < P_collision:
+                event = self._create_collision_event(
+                    collision_type, particle_idx, x, y, vx, vy, vz, 
+                    weight, energy_ev
+                )
+                if event:
+                    events.append(event)
+                # only allow one collision per timestep per particle
+                break
+
+        return events
+
+    def _create_collision_event(self, collision_type: str, particle_idx: int, 
+                               x: float, y: float, vx: float, vy: float, vz: float,
+                               weight: float, energy_ev: float):
+        
+        if collision_type == "ionization" and self.params.type == "e":
+            return self._create_ionization_event(particle_idx, x, y, vx, vy, vz, weight, energy_ev)
+        elif collision_type in ["first_excitation", "second_excitation"] and self.params.type == "e":
+            return self._create_excitation_event(collision_type, particle_idx, energy_ev)
+        elif collision_type.startswith("elastic"):
+            return self._create_elastic_event(collision_type, particle_idx)
+        
+        return None
+
+    def _create_ionization_event(self, particle_idx: int, x: float, y: float, 
+                                vx: float, vy: float, vz: float, weight: float, energy_ev: float):
+        """ e + Xe -> e + e + Xe+"""
+        ionization_threshold = 24.59  # eV
+        available_energy_ev = energy_ev - ionization_threshold
+        
+        if available_energy_ev <= 0:
             return None
 
-        energy_ev = 0.5 * self.params.mass * v_rel**2 / self.pc.E_CHARGE
-        sigma = self.cross_section_data.get_cross_section(energy_ev)
-        if sigma <= 0:
-            return None
+        available_energy_j = available_energy_ev * self.collision_data.E_CHARGE
+        
+        ion = np.zeros(self.pc.NUMQ + 1)
+        ion[self.pc.XCOMP] = x
+        ion[self.pc.YCOMP] = y
+        ion[self.WEIGHT] = weight
+        
+        electron = np.zeros(self.pc.NUMQ + 1)
+        electron[self.pc.XCOMP] = x
+        electron[self.pc.YCOMP] = y
+        electron[self.WEIGHT] = weight
 
-        electron_density = self._interpolate_density(x, y, electron_density_field)
-        if electron_density <= 0:
-            return None
+        if available_energy_ev > 0:
+            electron_energy_fraction = 0.8
+            electron_energy_j = available_energy_j * electron_energy_fraction
+            electron_mass = 9.1e-31  # kg
+            electron_speed = np.sqrt(2 * electron_energy_j / electron_mass)
+            
+            theta = np.random.uniform(0, 2 * np.pi)
+            phi = np.random.uniform(0, np.pi)
+            electron[self.pc.UCOMP] = electron_speed * np.sin(phi) * np.cos(theta)
+            electron[self.pc.VCOMP] = electron_speed * np.sin(phi) * np.sin(theta)
+            if self.pc.WCOMP < self.pc.NUMQ:
+                electron[self.pc.WCOMP] = electron_speed * np.cos(phi)
 
-        # Villafana 2021 (pg 60): nu = ne * sigma * v
-        nu_ionization = electron_density * sigma * v_rel
-        P_ionization = 1.0 - np.exp(-nu_ionization * self.dt)
+            ion_energy_j = available_energy_j * (1 - electron_energy_fraction)
+            xenon_mass = 2.18e-25
+            ion_speed = np.sqrt(2 * ion_energy_j / xenon_mass)
+            ion_theta = np.random.uniform(0, 2 * np.pi)
+            ion[self.pc.UCOMP] = ion_speed * np.cos(ion_theta) * 0.1
+            ion[self.pc.VCOMP] = ion_speed * np.sin(ion_theta) * 0.1
+            if self.pc.WCOMP < self.pc.NUMQ:
+                ion[self.pc.WCOMP] = vz * 0.1
 
-        # monte carlo sampling
-        if np.random.rand() >= P_ionization:
-            return None
-
-        ion_particle, electron_particle, energy_cost = self._create_ionization_products(
-            x, y, vx, vy, vz, weight, energy_ev
+        products = [ion, electron]
+        
+        return CollisionEvent(
+            event_type="ionization",
+            particle1_idx=particle_idx,
+            products=products,
+            energy_change=ionization_threshold
         )
 
-        return IonizationEvent(
-            neutral_idx=particle_idx,
-            ion_particle=ion_particle,
-            electron_particle=electron_particle,
-            energy_deposited=energy_cost
+    def _create_excitation_event(self, collision_type: str, particle_idx: int, energy_ev: float):
+        if collision_type == "first_excitation":
+            energy_loss = 19.82  # eV
+        else:  # second_excitation
+            energy_loss = 20.61  # eV
+            
+        return CollisionEvent(
+            event_type=collision_type,
+            particle1_idx=particle_idx,
+            energy_change=energy_loss
         )
+
+    def _create_elastic_event(self, collision_type: str, particle_idx: int):
+        return CollisionEvent(
+            event_type=collision_type,
+            particle1_idx=particle_idx,
+            energy_change=0.0
+        )
+
+    def _apply_energy_loss(self, particle_idx: int, energy_loss_ev: float):
+        vx = self.particles[self.pc.UCOMP, particle_idx]
+        vy = self.particles[self.pc.VCOMP, particle_idx]
+        vz = self.particles[self.pc.WCOMP, particle_idx] if self.pc.WCOMP < self.pc.NUMQ else 0.0
+        
+        v_current = np.sqrt(vx**2 + vy**2 + vz**2)
+        if v_current < 1e-10:
+            return
+            
+        ke_current_j = 0.5 * self.params.mass * v_current**2
+        ke_current_ev = ke_current_j / self.collision_data.E_CHARGE
+        
+        ke_new_ev = max(0.0, ke_current_ev - energy_loss_ev)
+        ke_new_j = ke_new_ev * self.collision_data.E_CHARGE
+        
+        if ke_new_j > 0:
+            v_new = np.sqrt(2 * ke_new_j / self.params.mass)
+            scale_factor = v_new / v_current
+            
+            self.particles[self.pc.UCOMP, particle_idx] *= scale_factor
+            self.particles[self.pc.VCOMP, particle_idx] *= scale_factor
+            if self.pc.WCOMP < self.pc.NUMQ:
+                self.particles[self.pc.WCOMP, particle_idx] *= scale_factor
+        else:
+            self.particles[self.pc.UCOMP, particle_idx] = 0.0
+            self.particles[self.pc.VCOMP, particle_idx] = 0.0
+            if self.pc.WCOMP < self.pc.NUMQ:
+                self.particles[self.pc.WCOMP, particle_idx] = 0.0
+
+    def _apply_elastic_scattering(self, particle_idx: int, event: CollisionEvent):
+        """elastic scattering"""
+        vx = self.particles[self.pc.UCOMP, particle_idx]
+        vy = self.particles[self.pc.VCOMP, particle_idx]
+        vz = self.particles[self.pc.WCOMP, particle_idx] if self.pc.WCOMP < self.pc.NUMQ else 0.0
+        
+        v_magnitude = np.sqrt(vx**2 + vy**2 + vz**2)
+        if v_magnitude < 1e-10:
+            return
+        
+        if event.event_type == "elastic_backward":
+            theta = np.random.uniform(np.pi * 0.8, np.pi * 1.2) 
+        else:
+            theta = np.random.uniform(0, 2 * np.pi)
+            
+        phi = np.random.uniform(0, np.pi)
+        
+        self.particles[self.pc.UCOMP, particle_idx] = v_magnitude * np.sin(phi) * np.cos(theta)
+        self.particles[self.pc.VCOMP, particle_idx] = v_magnitude * np.sin(phi) * np.sin(theta)
+        if self.pc.WCOMP < self.pc.NUMQ:
+            self.particles[self.pc.WCOMP, particle_idx] = v_magnitude * np.cos(phi)
 
     def _get_grid_coordinates(self, x: float, y: float):
         ix = int((x - self.inp.grid_x[0]) / self.inp.dx)
@@ -167,52 +422,7 @@ class ParticleSpecies:
         )
         return max(density, 0.0)
 
-    def _create_ionization_products(self, x: float, y: float, vx: float, vy: float, vz: float, weight: float, energy_ev: float):
-        ionization_energy = self.cross_section_data.ionization_threshold
-        available_energy_ev = energy_ev - ionization_energy
-        available_energy_j = available_energy_ev * self.pc.E_CHARGE
-
-        ion = np.zeros(self.pc.NUMQ + 1)
-        ion[self.pc.XCOMP] = x
-        ion[self.pc.YCOMP] = y
-        ion[self.WEIGHT] = weight
-
-        electron = np.zeros(self.pc.NUMQ + 1)
-        electron[self.pc.XCOMP] = x
-        electron[self.pc.YCOMP] = y
-        electron[self.WEIGHT] = weight
-
-        if available_energy_ev > 0:
-            electron_energy_fraction = 0.8  # most excess energy goes to electron
-            electron_energy_j = available_energy_j * electron_energy_fraction
-            electron_speed = np.sqrt(2 * electron_energy_j / self.pc.ELECTRON_MASS)
-            theta = np.random.uniform(0, 2 * np.pi)
-            phi = np.random.uniform(0, np.pi)
-            electron[self.pc.UCOMP] = electron_speed * np.sin(phi) * np.cos(theta)
-            electron[self.pc.VCOMP] = electron_speed * np.sin(phi) * np.sin(theta)
-            if self.pc.WCOMP < self.pc.NUMQ:
-                electron[self.pc.WCOMP] = electron_speed * np.cos(phi)
-
-            ion_energy_j = available_energy_j * (1 - electron_energy_fraction)
-            ion_speed = np.sqrt(2 * ion_energy_j / self.params.mass)
-            ion_theta = np.random.uniform(0, 2 * np.pi)
-            ion[self.pc.UCOMP] = vx + ion_speed * np.cos(ion_theta) * 0.1
-            ion[self.pc.VCOMP] = vy + ion_speed * np.sin(ion_theta) * 0.1
-            if self.pc.WCOMP < self.pc.NUMQ:
-                ion[self.pc.WCOMP] = vz * 0.9
-        else:
-            # not enough energy
-            ion[self.pc.UCOMP] = vx
-            ion[self.pc.VCOMP] = vy
-            electron[self.pc.UCOMP] = 0.0
-            electron[self.pc.VCOMP] = 0.0
-            if self.pc.WCOMP < self.pc.NUMQ:
-                ion[self.pc.WCOMP] = vz
-                electron[self.pc.WCOMP] = 0.0
-
-        return ion, electron, ionization_energy
-
-    def _remove_ionized_neutrals(self, indices_to_remove: list[int]):
+    def _remove_particles(self, indices_to_remove: list[int]):
         if not indices_to_remove:
             return
         keep_mask = np.ones(self.particles.shape[1], dtype=bool)
@@ -220,7 +430,6 @@ class ParticleSpecies:
         self.particles = self.particles[:, keep_mask]
 
     def split_particle(self, idx):
-        # duplicate particle with half weight and slight offset
         particle = self.particles[:, idx]
         new_weight = particle[self.WEIGHT] / 2
         p1 = particle.copy()
@@ -237,7 +446,6 @@ class ParticleSpecies:
         self.particles = np.hstack((self.particles, p2.reshape(-1, 1)))
 
     def merge_particles(self, idx1, idx2):
-        # weighted average merge
         p1 = self.particles[:, idx1]
         p2 = self.particles[:, idx2]
         w_total = p1[self.WEIGHT] + p2[self.WEIGHT]
@@ -249,7 +457,6 @@ class ParticleSpecies:
         self.particles = np.delete(self.particles, idx2, axis=1)
 
     def enforce_ppc(self, min_ppc=100, max_ppc=200):
-        # maintain consistent PPC in each grid cell
         cell_map = {}
         for i in range(self.particles.shape[1]):
             x = self.particles[self.pc.XCOMP, i]
@@ -273,7 +480,6 @@ class ParticleSpecies:
                         self.merge_particles(idx1, idx2)
 
     def get_charge_density(self):
-        # deposit particle charge to grid
         rho = np.zeros_like(self.fields.E[0])
         for i in range(self.particles.shape[1]):
             x = self.particles[self.pc.XCOMP, i]

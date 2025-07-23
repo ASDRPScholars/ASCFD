@@ -10,3 +10,6 @@ class ParticleConstants:
             self.NUMQ = 6
         else:
             self.NUMQ = 5  # 2D position + 3D velocity
+
+        E_CHARGE = 1.602176e-19  
+        ELECTRON_MASS = 9.1093837e-31
