@@ -20,6 +20,7 @@ class FluidInitialConditions:
                     self.grid[var] = f(self.mesh_x, self.mesh_y, var)
                     
                 # self.grid = self.diagonal_advection_2d()
+            
                 
             elif self.inp.fluid_ics == "kelvin_helmholtz":
                 self.grid = self.kelvin_helmholtz_2d()

@@ -1,10 +1,12 @@
 from ascfd.particle.constants import ParticleConstants
 from ascfd.particle.ics import ParticleInitialConditions
+from ascfd.fluid.species import FluidSpecies
 from ascfd.inputs import Inputs
 from ascfd.params import SpeciesParams
 from ascfd.fields.fields import Fields
 
 import numpy as np
+from scipy.spatial import cKDTree
 
 class CollisionEvent:
     def __init__(self, event_type: str, particle1_idx: int, particle2_idx: int = None, 
@@ -88,9 +90,10 @@ class XenonCollisionData:
         return 5e-16
 
 class ParticleSpecies:
-    def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields):
+    def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields, electrons: FluidSpecies, neutrals: "ParticleSpecies"):
         self.pc = ParticleConstants()
         self.fields = fields
+
         self.inp = a_inputs
         self.params = params
         self.dt = None

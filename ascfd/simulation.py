@@ -10,7 +10,6 @@ from ascfd.fields.fields import Fields
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-
 class Simulation:
     def __init__(self, a_inputs: Inputs):
         self.inp = a_inputs
@@ -189,8 +188,8 @@ class Simulation:
             plot_data = self.electrons.grid[q, self.inp.numghosts:-self.inp.numghosts, self.inp.numghosts:-self.inp.numghosts].T # TODO: why transpose?
             # plot_data = self.electrons.grid[q, :, :].T
             
-            extent = [self.inp.grid_x[self.inp.numghosts], self.electrons.grid_y[-self.inp.numghosts-1],
-                      self.inp.grid_y[self.inp.numghosts], self.electrons.grid_y[-self.inp.numghosts-1]]
+            extent = [self.inp.grid_x[self.inp.numghosts], self.inp.grid_y[-self.inp.numghosts-1],
+                      self.inp.grid_y[self.inp.numghosts], self.inp.grid_y[-self.inp.numghosts-1]]
 
             im = axs[q].imshow(plot_data, origin='lower', extent=extent, cmap='magma')
             
@@ -207,23 +206,7 @@ class Simulation:
         plt.tight_layout()
         fig.savefig(output_plotname)
         plt.close()
-        
- 
-    def generate_movie(self):
-        # Create a directory for the frames if it doesn't exist
-        frames_dir = os.path.join(self.inp.output_dir, "frames")
-        # if not os.path.exists(frames_dir):
-        #     os.makedirs(frames_dir)
-
-        # List all the output files and sort them
-        #output_files = sorted(glob.glob(os.path.join(self.inp.output_dir, "output_*.png")))
-            
-        #movie_filename = os.path.join(self.inp.output_dir, "simulation_movie.mp4")
-
-
-        ffmpeg_command = f"ffmpeg -y -framerate 24 -i {frames_dir}/output_%06d.png -c:v libx264 -pix_fmt yuv420p {self.inp.output_dir}/movie.mp4"
-        os.system(ffmpeg_command)
-
+       
 
 
         # if self.c.NUMQ == 3:
