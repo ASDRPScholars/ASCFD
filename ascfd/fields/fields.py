@@ -39,7 +39,7 @@ class Fields:
         self.potential.fill(0)
     
     def solve_poisson(self):
-        """Solve Laplacian(phi) = -rho/eps0 using finite differences"""
+        """Solve Laplacian(phi) = -rho/eps0 using finite differences with resymmetrization"""
         nx, ny = self.inp.nx_with_ghosts, self.inp.ny_with_ghosts
         
         # Create coefficient matrix for 2D finite difference Laplacian
@@ -67,6 +67,25 @@ class Fields:
         # Right-hand side: -rho/eps0
         rhs = (-self.charge_density / self.eps0).flatten()
         
+        # Identify boundary nodes for resymmetrization
+        boundary_nodes = set()
+        
+        # Bottom and top boundaries
+        for i in range(nx):
+            boundary_nodes.add(i)  # Bottom
+            boundary_nodes.add(N-1-i)  # Top
+            
+        # Left and right boundaries  
+        for j in range(ny):
+            boundary_nodes.add(j * nx)  # Left
+            boundary_nodes.add(j * nx + nx - 1)  # Right
+            
+        boundary_nodes = list(boundary_nodes)
+        
+        # Apply boundary conditions and perform resymmetrization
+        # First store the original matrix before boundary modifications
+        A_orig = A.copy()
+        
         # Apply boundary conditions (Dirichlet: phi = 0 on boundaries)
         for i in range(nx):  # Bottom and top boundaries
             A[i, :] = 0
@@ -88,13 +107,71 @@ class Fields:
             A[idx, idx] = 1
             rhs[idx] = 0
         
+        # Resymmetrization correction
+        A, rhs = self._apply_resymmetrization(A, A_orig, rhs, boundary_nodes)
+        
         # Solve the system
         phi_flat, exit_code = cg(A, rhs, atol=1e-5)
         
         print(exit_code) # 0 means convergence was successful
         
         self.potential = phi_flat.reshape((nx, ny))
+    
+    def _apply_resymmetrization(self, A, A_orig, rhs, boundary_nodes, boundary_potential=0.0):
+        """
+        Apply resymmetrization correction to maintain matrix symmetry after boundary conditions.
         
+        Based on the paper methodology:
+        1. Identify asymmetric terms in columns corresponding to Dirichlet boundary nodes
+        2. Remove these terms from A and add their contribution to the RHS via correction matrix B
+        3. Final system: A' * x = b' where A' is resymmetrized and b' = b + B * boundary_values
+        """
+        import scipy.sparse as sp
+        
+        # Convert to lil_matrix for efficient modification
+        A = A.tolil()
+        A_orig = A_orig.tolil() 
+        
+        # Create correction matrix B (initially zero)
+        N = A.shape[0]
+        B = sp.lil_matrix((N, N))
+        
+        # Boundary values vector 
+        boundary_values = np.zeros(N)
+        for idx in boundary_nodes:
+            boundary_values[idx] = boundary_potential
+        
+        # For each boundary node, find all non-zero entries in its column
+        # and move them to the correction matrix
+        for boundary_idx in boundary_nodes:
+            # Find all rows that have non-zero entries in this boundary column
+            # We need to check the original matrix (before boundary conditions were applied)
+            col_data = A_orig.getcol(boundary_idx)
+            rows, _ = col_data.nonzero()
+            
+            for row in rows:
+                # Skip if this is a boundary row (already set to identity)
+                if row in boundary_nodes:
+                    continue
+                    
+                # Get the original matrix entry
+                entry_value = A_orig[row, boundary_idx]
+                
+                if abs(entry_value) > 1e-14:  # Only process non-zero entries
+                    # Remove this entry from the main matrix
+                    A[row, boundary_idx] = 0
+                    
+                    # Add the opposite to the correction matrix
+                    B[row, boundary_idx] = -entry_value
+        
+        # Convert back to csc_matrix for efficient operations
+        A = A.tocsc()
+        B = B.tocsc()
+        
+        # Apply correction to RHS: b' = b + B * boundary_values
+        corrected_rhs = rhs + B.dot(boundary_values)
+        
+        return A, corrected_rhs
         
     def compute_electric_field(self):
         """Compute E = -grad(phi) using central differences"""
