@@ -2,15 +2,38 @@ from ascfd.inputs import Inputs
 
 class FluidConstants:
 
-    def __init__(self, a_inputs: Inputs):
+    def __init__(self, a_inputs: Inputs, dimensions=2):
 
         # Default ratio of specific heats (gamma)
         self.gamma = 1.4
         self.g = 9.81
         self.system = a_inputs.system
+        
+        if a_inputs.system == "hallthruster_rz":
+            self.RHOCOMP = 0 # Density
+            self.UCOMP = 1 # X-component of velocity
+            self.VCOMP = 2 # Y-component of velocity
+            self.WCOMP = 3
+            self.PCOMP = 4 # Pressure
+            
+             #conserved variables (Density, Momentum-X, Momentum-Y, Energy)
+            self.MUCOMP = 1 # X-component of momentum
+            self.MVCOMP = 2 # Y-component of momentum
+            self.MWCOMP = 3 # Y-component of momentum
+            self.ECOMP = 4 # Total energy (thermal + kinetic)
+
+            # number of variables in the system
+            self.NUMQ = 5
+
+            self.system = "hallthruster_rz"
+
+            self.gamma = a_inputs.gammas[0] #gammas
+
+            self.variable_names = ["Density", "X-Velocity", "Y-Velocity", "Z-Velocity", "Pressure"]
+
 
         # Define constants and variables for the Euler 2D system
-        if a_inputs.system == "euler2d":
+        elif a_inputs.system == "euler2d":
             
             #primitive variables (Density, X-Velocity, Y-Velocity, Pressure)
             self.RHOCOMP = 0 # Density
