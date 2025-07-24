@@ -90,7 +90,7 @@ class XenonCollisionData:
         return 5e-16
 
 class ParticleSpecies:
-    def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields, electrons: FluidSpecies, neutrals: "ParticleSpecies"):
+    def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields):
         self.pc = ParticleConstants()
         self.fields = fields
 
@@ -176,7 +176,11 @@ class ParticleSpecies:
         # update electric field with current charge distribution
         if hasattr(self, 'get_charge_density'):
             charge_density = self.get_charge_density()
-            self.fields.update_E(charge_density)
+            self.fields.add_charge_density(charge_density)
+            
+            print("IONS ADDED CHARGE DENSITY:", charge_density)
+            
+            self.fields.update_E
 
         return new_particles
 
@@ -408,6 +412,7 @@ class ParticleSpecies:
             return ix, iy
         return None
 
+    # go from bulk/field density -> density at a specific particle's (x, y)
     def _interpolate_density(self, x: float, y: float, density_field: np.ndarray):
         x_grid = (x - self.inp.grid_x[0]) / self.inp.dx
         y_grid = (y - self.inp.grid_y[0]) / self.inp.dy

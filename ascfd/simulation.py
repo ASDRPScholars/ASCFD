@@ -198,8 +198,8 @@ class Simulation:
             
             plt.colorbar(im, ax=axs[q])
             
-            if self.inp.particle_ics is not None:
-                axs[q].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=50, color='blue')
+            # if self.inp.particle_ics is not None:
+            #     axs[q].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=50, color='blue')
             
             axs[q].set_title(self.c.variable_names[q])
             axs[q].set_xlabel('x')

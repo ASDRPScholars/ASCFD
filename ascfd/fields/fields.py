@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 from ascfd.inputs import Inputs
 from ascfd.fields.ics import FieldInitialConditions
 import numpy as np
@@ -28,9 +29,37 @@ class Fields:
                 
                 
     def update_E(self):
+        print("UPDATE E")
         self.solve_poisson()
         self._compute_electric_field()
+        
+        
+        print("THIS IS CHARGE DENSITY TAKEN IN BY POISSON:", self.charge_density)
+        print("NEW CALCULATED EX IS:", self.E[:, :, 0])
+        print("NEW CALCULATED EY IS:", self.E[:, :, 1])
+
+        fig, axs = plt.subplots(1, 3, figsize=(15, 5))  # 1 row, 3 columns
+
+        # Plot charge density
+        im0 = axs[0].imshow(self.charge_density, cmap="viridis")
+        axs[0].set_title("Charge Density")
+        fig.colorbar(im0, ax=axs[0])
+
+        # Plot Ex
+        im1 = axs[1].imshow(self.E[:, :, 0], cmap="viridis")
+        axs[1].set_title("Electric Field Ex")
+        fig.colorbar(im1, ax=axs[1])
+
+        # Plot Ey
+        im2 = axs[2].imshow(self.E[:, :, 1], cmap="viridis")
+        axs[2].set_title("Electric Field Ey")
+        fig.colorbar(im2, ax=axs[2])
+
+        plt.tight_layout()
+        plt.show()
+        
         self._clear_calculation_grids()
+        
                 
                 
     def add_charge_density(self, species_charge_density):
@@ -49,16 +78,12 @@ class Fields:
         rhs = - self.charge_density / self.eps0
         
         mask = np.ones_like(rhs)
-        rect = ((0, self.inp.xlim), (0, self.inp.ylim))
+        rect = ((self.inp.xlim[0], self.inp.ylim[0]), (self.inp.xlim[1], self.inp.ylim[1]))
         
-        boundary = {
-            "left": (lambda x, y: 0.0, "neumann_x"),
-            "right": (lambda x, y: 0.0, "neumann_x"),
-            "top": (lambda x, y: 0.0, "neumann_y"),
-            "bottom": (lambda x, y: 0.0, "neumann_y")
-        }
+        # For Poisson2DRegion, boundary should be a numpy array, not a dict
+        boundary_values = np.zeros_like(rhs)  # Zero potential on boundaries
         
-        solver = solvers.Poisson2DRegion(mask, rhs, boundary, rect)
+        solver = solvers.Poisson2DRegion(mask, rhs, boundary_values, rect)
         
         self.potential = solver.solve()
         

@@ -66,6 +66,9 @@ class FluidSpecies:
         
         # ELECTRIC FIELD UPDATE
         self.fields.add_charge_density(charge_density)
+        
+        print("ELECTRONS ADDED CHARGE DENSITY:", charge_density)
+        
         self.fields.update_E()
         
         # TODO: call self.ebs.apply_ebs() once embedded boundaries are brought in
