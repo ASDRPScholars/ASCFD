@@ -15,39 +15,37 @@ class Simulation:
         self.inp = a_inputs
         self.c = FluidConstants(a_inputs)
         self.pc = ParticleConstants()
-        
         self.fields = Fields(self.inp)
         
-        # TODO: verify params
-        e_params = SpeciesParams(-1.6e-19, 9.1e-31, 5/3, "e")
-        xe_i_params = SpeciesParams(1.6e-19, 2.18e-25, 5/3, "i")
-        xe_n_params = SpeciesParams(0, 2.18e-25, 5/3, "n")
+        # xenon species parameters
+        e_params = SpeciesParams(-1.6e-19, 9.1e-31, 5/3, "e", density=1e18, temperature=1.0)  # electrons
+        xe_i_params = SpeciesParams(1.6e-19, 2.18e-25, 5/3, "i", density=1e18, temperature=1.0)  # Xe+ ions
+        xe_n_params = SpeciesParams(0.0, 2.18e-25, 5/3, "n", density=1e20, temperature=1.0)  # Xe neutrals
         
         self.electrons = FluidSpecies(e_params, self.inp, self.fields)
         
         if self.inp.particle_ics is not None:
-            self.neutrals = ParticleSpecies(xe_n_params, self.inp, self.fields, self.electrons)
-            self.ions = ParticleSpecies(xe_i_params, self.inp, self.fields, self.electrons)
-        
-        # loop through this list if you need to do something to all 3 species
-        if self.inp.particle_ics is not None:
+            self.neutrals = ParticleSpecies(xe_n_params, self.inp, self.fields)
+            self.ions = ParticleSpecies(xe_i_params, self.inp, self.fields)
+            
+            # simulation reference so species can access each other
+            self.neutrals.set_simulation(self)
+            self.ions.set_simulation(self)
+            
             self.all_species = [self.electrons, self.neutrals, self.ions]
         else:
             self.all_species = [self.electrons]
-                    
-        #setup initial time to be the starting time from the inputs file.
-        #The starting timestep will always be 0.
         
+        # setup initial time to be the starting time from the inputs file.
         self.t = self.inp.t0
         self.timestep = 0
-        
         self.dt = self.get_dt()
         
-        # TODO: use diff timestep for particles?
+        # Set timestep for all species
         for species in self.all_species:
             species.dt = self.dt
- 
-        #-1 is no output. Always output ICs if we are outputting.
+        
+        # -1 is no output. Always output ICs if we are outputting.
         if self.inp.output_freq >= 0:
             self.output()
         
@@ -56,32 +54,37 @@ class Simulation:
         while (self.t < self.inp.t_finish) and self.timestep < self.inp.nt:
             print("\033[1m" + f"Timestep: {self.timestep}, Current time: {self.t}" + "\033[0m")
             
-            # SPECIES UPDATE
             if self.inp.timeStepper == "RK1":
+                new_particles = []
                 for species in self.all_species:
-                    species.update()
-            
+                    new_particles_from_species = species.update()
+                    if new_particles_from_species:
+                        new_particles.extend(new_particles_from_species)
+                
+                for particle in new_particles:
+                    if hasattr(particle, '__len__') and len(particle) == self.pc.NUMQ + 1:
+                        particle_charge = particle[self.pc.NUMQ - 1] if hasattr(self.pc, 'CHARGE') else 0.0
+                        particle_mass = getattr(particle, 'mass', None)
+                        
+                        if hasattr(self, 'ions') and particle_charge > 0:
+                            self.ions.add_particle(particle)
+                        elif hasattr(self, 'electrons') and particle_charge < 0:
+                            pass
+                        elif hasattr(self, 'neutrals') and abs(particle_charge) < 1e-20:
+                            self.neutrals.add_particle(particle)      
             else:
-                raise RuntimeError("Timestepping method not supported.")
+                raise ValueError(f"Unknown time stepper: {self.inp.timeStepper}")
             
-
-            # assert np.all(np.isfinite(self.electrons.grid)), f"Invalid values in grid at timestep {self.timestep}"
-            # assert np.all(self.electrons.grid[self.c.PCOMP] > 0), f"Negative pressure detected at timestep {self.timestep}"
-
-            self.timestep += 1
             self.t += self.dt
+            self.timestep += 1
             
-            #always output the last timestep.
-            if (self.timestep % self.inp.output_freq == 0) or (self.timestep == self.inp.nt-1):
+            if self.inp.output_freq > 0 and self.timestep % self.inp.output_freq == 0:
                 self.output()
- 
-            self.electrons.check_grid(self.c)
-
-        if self.inp.make_movie:
-            self.generate_movie()
-    
-        print("SUCCESS!")
-        return self.grid
+        
+        if self.inp.output_freq >= 0:
+            self.output()
+        
+        print(f"\nSimulation completed at time {self.t} after {self.timestep} timesteps")
         
         
     def get_dt(self):
