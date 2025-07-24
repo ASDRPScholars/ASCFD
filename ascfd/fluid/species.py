@@ -85,19 +85,25 @@ class FluidSpecies:
     
     def add_particles(self, new_particles_data):
         """Adds new particles from ionization to grid by adding conserved quantity fields."""
+        
         if isinstance(new_particles_data, np.ndarray):
+            
+            consU = self.euler.prim_to_cons(self.grid)
+            
             # Add mass density (rho)
             density_field = self._compute_bulk_quantity_field(new_particles_data, self.c.RHOCOMP)
-            self.grid[self.c.RHOCOMP] += density_field
+            consU[self.c.RHOCOMP] += density_field
 
             # Add momentum densities (rho*u, rho*v, rho*w)
             for momentum_component in [self.c.MUCOMP, self.c.MVCOMP, self.c.MWCOMP]:
                 momentum_field = self._compute_bulk_quantity_field(new_particles_data, momentum_component)
-                self.grid[momentum_component] += momentum_field
+                consU[momentum_component] += momentum_field
 
             # Add total energy density
             energy_field = self._compute_bulk_quantity_field(new_particles_data, self.c.ECOMP)
-            self.grid[self.c.ECOMP] += energy_field
+            consU[self.c.ECOMP] += energy_field
+            
+            self.grid = self.euler.cons_to_prim(consU)
             
             
     def _compute_bulk_quantity_field(self, particles_data, var):
