@@ -1,11 +1,12 @@
 from ascfd.inputs import Inputs
-import numpy as np
-from scipy.sparse import diags
-from scipy.sparse import csc_array
-from scipy.sparse.linalg import cg
 from ascfd.fields.ics import FieldInitialConditions
+import numpy as np
+# from sympy import sin, cos
+# from sympy.abc import x, y
 
-# TODO: write all the logic lol
+from poissonpy import solvers
+
+
 class Fields:
     def __init__(self, a_inputs: Inputs):
         self.inp = a_inputs
@@ -14,188 +15,107 @@ class Fields:
         self.ics.apply_B_ics()
         self.ics.apply_E_ics()
         
-        self.E = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts, 3))
-        self.B = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts, 3))
+        self.E = np.zeros((self.inp.nx, self.inp.ny, 3))
+        self.B = np.zeros((self.inp.nx, self.inp.ny, 3))
         
-        self.charge_density = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
-        self.potential = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
+        self.charge_density = np.zeros((self.inp.nx, self.inp.ny))
+        self.potential = np.zeros((self.inp.nx, self.inp.ny))
 
         self.dx = (self.inp.xlim[1] - self.inp.xlim[0]) / (self.inp.nx - 1)
         self.dy = (self.inp.ylim[1] - self.inp.ylim[0]) / (self.inp.ny - 1)
         
-        self.eps0 = 8.854e-12  # Permittivity of free space
+        self.eps0 = 8.854e-12  # TODO: CHECK — Permittivity of free space
                 
-    
+                
     def update_E(self):
         self.solve_poisson()
-        self.compute_electric_field()
-        self.clear_calculation_grids()
+        self._compute_electric_field()
+        self._clear_calculation_grids()
+                
                 
     def add_charge_density(self, species_charge_density):
-        self.charge_density += species_charge_density
+        ng = self.inp.numghosts
         
-    def clear_calculation_grids(self):
+        if ng != 0:
+            self.charge_density += species_charge_density[ng:-ng, ng:-ng]
+        
+        
+    def _clear_calculation_grids(self):
         self.charge_density.fill(0)
         self.potential.fill(0)
     
-    def solve_poisson(self):
-        """Solve Laplacian(phi) = -rho/eps0 using finite differences with resymmetrization"""
-        nx, ny = self.inp.nx_with_ghosts, self.inp.ny_with_ghosts
-        
-        # Create coefficient matrix for 2D finite difference Laplacian
-        # Using 5-point stencil: (phi[i+1,j] + phi[i-1,j] + phi[i,j+1] + phi[i,j-1] - 4*phi[i,j])
-        N = nx * ny
-        
-        # Main diagonal: -4/(dx^2) - 4/(dy^2)
-        main_diag = -2.0 * (1.0/self.dx**2 + 1.0/self.dy**2) * np.ones(N)
-        
-        # Off-diagonals for x-direction: 1/(dx^2)
-        x_diag = (1.0/self.dx**2) * np.ones(N-1)
-        # Remove connections across x-boundaries
-        for i in range(nx-1, N-1, nx):
-            x_diag[i] = 0
-            
-        # Off-diagonals for y-direction: 1/(dy^2)
-        y_diag = (1.0/self.dy**2) * np.ones(N-nx)
-        
-        # Construct sparse matrix
-        P = diags([y_diag, x_diag, main_diag, x_diag, y_diag], 
-                  [-nx, -1, 0, 1, nx], shape=(N, N), format='csr')
-        
-        A = csc_array(P)
-        
-        # Right-hand side: -rho/eps0
-        rhs = (-self.charge_density / self.eps0).flatten()
-        
-        # Identify boundary nodes for resymmetrization
-        boundary_nodes = set()
-        
-        # Bottom and top boundaries
-        for i in range(nx):
-            boundary_nodes.add(i)  # Bottom
-            boundary_nodes.add(N-1-i)  # Top
-            
-        # Left and right boundaries  
-        for j in range(ny):
-            boundary_nodes.add(j * nx)  # Left
-            boundary_nodes.add(j * nx + nx - 1)  # Right
-            
-        boundary_nodes = list(boundary_nodes)
-        
-        # Apply boundary conditions and perform resymmetrization
-        # First store the original matrix before boundary modifications
-        A_orig = A.copy()
-        
-        # Apply boundary conditions (Dirichlet: phi = 0 on boundaries)
-        for i in range(nx):  # Bottom and top boundaries
-            A[i, :] = 0
-            A[i, i] = 1
-            rhs[i] = 0
-            
-            A[N-1-i, :] = 0
-            A[N-1-i, N-1-i] = 1
-            rhs[N-1-i] = 0
-            
-        for j in range(ny):  # Left and right boundaries
-            idx = j * nx
-            A[idx, :] = 0
-            A[idx, idx] = 1
-            rhs[idx] = 0
-            
-            idx = j * nx + nx - 1
-            A[idx, :] = 0
-            A[idx, idx] = 1
-            rhs[idx] = 0
-        
-        # Resymmetrization correction
-        A, rhs = self._apply_resymmetrization(A, A_orig, rhs, boundary_nodes)
-        
-        # Solve the system
-        phi_flat, exit_code = cg(A, rhs, atol=1e-5)
-        
-        print(exit_code) # 0 means convergence was successful
-        
-        self.potential = phi_flat.reshape((nx, ny))
     
-    def _apply_resymmetrization(self, A, A_orig, rhs, boundary_nodes, boundary_potential=0.0):
-        """
-        Apply resymmetrization correction to maintain matrix symmetry after boundary conditions.
+    def solve_poisson(self):
+        rhs = - self.charge_density / self.eps0
         
-        Based on the paper methodology:
-        1. Identify asymmetric terms in columns corresponding to Dirichlet boundary nodes
-        2. Remove these terms from A and add their contribution to the RHS via correction matrix B
-        3. Final system: A' * x = b' where A' is resymmetrized and b' = b + B * boundary_values
-        """
-        import scipy.sparse as sp
+        mask = np.ones_like(rhs)
+        rect = ((0, self.inp.xlim), (0, self.inp.ylim))
         
-        # Convert to lil_matrix for efficient modification
-        A = A.tolil()
-        A_orig = A_orig.tolil() 
+        boundary = {
+            "left": (lambda x, y: 0.0, "neumann_x"),
+            "right": (lambda x, y: 0.0, "neumann_x"),
+            "top": (lambda x, y: 0.0, "neumann_y"),
+            "bottom": (lambda x, y: 0.0, "neumann_y")
+        }
         
-        # Create correction matrix B (initially zero)
-        N = A.shape[0]
-        B = sp.lil_matrix((N, N))
+        solver = solvers.Poisson2DRegion(mask, rhs, boundary, rect)
         
-        # Boundary values vector 
-        boundary_values = np.zeros(N)
-        for idx in boundary_nodes:
-            boundary_values[idx] = boundary_potential
+        self.potential = solver.solve()
         
-        # For each boundary node, find all non-zero entries in its column
-        # and move them to the correction matrix
-        for boundary_idx in boundary_nodes:
-            # Find all rows that have non-zero entries in this boundary column
-            # We need to check the original matrix (before boundary conditions were applied)
-            col_data = A_orig.getcol(boundary_idx)
-            rows, _ = col_data.nonzero()
             
-            for row in rows:
-                # Skip if this is a boundary row (already set to identity)
-                if row in boundary_nodes:
-                    continue
-                    
-                # Get the original matrix entry
-                entry_value = A_orig[row, boundary_idx]
-                
-                if abs(entry_value) > 1e-14:  # Only process non-zero entries
-                    # Remove this entry from the main matrix
-                    A[row, boundary_idx] = 0
-                    
-                    # Add the opposite to the correction matrix
-                    B[row, boundary_idx] = -entry_value
-        
-        # Convert back to csc_matrix for efficient operations
-        A = A.tocsc()
-        B = B.tocsc()
-        
-        # Apply correction to RHS: b' = b + B * boundary_values
-        corrected_rhs = rhs + B.dot(boundary_values)
-        
-        return A, corrected_rhs
-        
-    def compute_electric_field(self):
-        """Compute E = -grad(phi) using central differences"""
+    def _compute_electric_field(self):
+        """Compute E = -grad(phi) using central differences with ghost cells"""
+        ng = self.inp.numghosts
         nx, ny = self.inp.nx_with_ghosts, self.inp.ny_with_ghosts
         
-        # Initialize E field components
+        # Create potential array with ghost cells
+        phi_ext = np.zeros((nx, ny))
+        phi_ext[ng:-ng, ng:-ng] = self.potential  # Interior domain
+        
+        # Apply Neumann BCs to ghost cells: ∂φ/∂n = 0
+        # This means ghost cells mirror interior values across boundary
+        
+        # Left boundary ghost cells
+        for i in range(ng):
+            phi_ext[i, ng:-ng] = phi_ext[2*ng-1-i, ng:-ng]
+        
+        # Right boundary ghost cells  
+        for i in range(ng):
+            phi_ext[-1-i, ng:-ng] = phi_ext[-2*ng+i, ng:-ng]
+        
+        # Bottom boundary ghost cells
+        for j in range(ng):
+            phi_ext[ng:-ng, j] = phi_ext[ng:-ng, 2*ng-1-j] 
+        
+        # Top boundary ghost cells
+        for j in range(ng):
+            phi_ext[ng:-ng, -1-j] = phi_ext[ng:-ng, -2*ng+j]
+        
+        # Handle corner ghost cells (simple averaging)
+        for i in range(ng):
+            for j in range(ng):
+                # Bottom-left corner
+                phi_ext[i, j] = 0.5 * (phi_ext[i, ng] + phi_ext[ng, j])
+                # Bottom-right corner  
+                phi_ext[i, -1-j] = 0.5 * (phi_ext[i, -1-ng] + phi_ext[ng, -1-j])
+                # Top-left corner
+                phi_ext[-1-i, j] = 0.5 * (phi_ext[-1-i, ng] + phi_ext[-1-ng, j])
+                # Top-right corner
+                phi_ext[-1-i, -1-j] = 0.5 * (phi_ext[-1-i, -1-ng] + phi_ext[-1-ng, -1-j])
+        
+        # Central differences everywhere (interior + boundaries)
         Ex = np.zeros((nx, ny))
         Ey = np.zeros((nx, ny))
         
-        # Central differences for interior points
-        Ex[1:-1, :] = -(self.potential[2:, :] - self.potential[:-2, :]) / (2 * self.dx)
-        Ey[:, 1:-1] = -(self.potential[:, 2:] - self.potential[:, :-2]) / (2 * self.dy)
+        # Can now use central differences for all interior points including boundaries
+        Ex[1:-1, :] = -(phi_ext[2:, :] - phi_ext[:-2, :]) / (2 * self.dx)
+        Ey[:, 1:-1] = -(phi_ext[:, 2:] - phi_ext[:, :-2]) / (2 * self.dy)
         
-        # Forward/backward differences for boundaries
-        Ex[0, :] = -(self.potential[1, :] - self.potential[0, :]) / self.dx
-        Ex[-1, :] = -(self.potential[-1, :] - self.potential[-2, :]) / self.dx
-        Ey[:, 0] = -(self.potential[:, 1] - self.potential[:, 0]) / self.dy
-        Ey[:, -1] = -(self.potential[:, -1] - self.potential[:, -2]) / self.dy
-        
-        # Store magnitude for now (you can modify to store components)
-        self.E = np.sqrt(Ex**2 + Ey**2)
-        self.Ex = Ex
-        self.Ey = Ey
+        # Extract interior domain for storage
+        self.E[:, :, 0] = Ex[ng:-ng, ng:-ng]
+        self.E[:, :, 1] = Ey[ng:-ng, ng:-ng]
     
     
     def check_E_field(self):
         pass
+    

@@ -4,11 +4,13 @@ fonttools==4.56.0
 kiwisolver==1.4.8
 matplotlib==3.10.1
 numpy==2.2.4
+sympy
 packaging==24.2
 pillow==11.1.0
 pyparsing==3.2.3
 python-dateutil==2.9.0.post0
 six==1.17.0
+git+https://github.com/bchao1/poissonpy.git
 
 
 # Just import numpy, matplotlib and have ffmpeg on your system - Michael
