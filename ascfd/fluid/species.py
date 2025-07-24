@@ -1,4 +1,5 @@
 from ascfd.fluid.constants import FluidConstants
+from ascfd.particle.constants import ParticleConstants
 from ascfd.fluid.euler import FluidEuler
 from ascfd.fluid.ics import FluidInitialConditions
 from ascfd.inputs import Inputs
@@ -15,6 +16,7 @@ import numpy as np
 class FluidSpecies:
     def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields):
         self.c = FluidConstants(a_inputs)
+        self.pc = ParticleConstants()
         self.euler = FluidEuler(self.c)
         self.flux = FluidFlux(self.c, a_inputs.flux)
         
@@ -79,6 +81,59 @@ class FluidSpecies:
     def get_number_density(self):
         number_density = self.grid[self.c.RHOCOMP] / self.params.mass
         return number_density
+    
+    
+    def add_particles(self, new_particles_data):
+        """Adds new particles from ionization to grid by adding conserved quantity fields."""
+        if isinstance(new_particles_data, np.ndarray):
+            # Add mass density (rho)
+            density_field = self._compute_bulk_quantity_field(new_particles_data, self.c.RHOCOMP)
+            self.grid[self.c.RHOCOMP] += density_field
+
+            # Add momentum densities (rho*u, rho*v, rho*w)
+            for momentum_component in [self.c.MUCOMP, self.c.MVCOMP, self.c.MWCOMP]:
+                momentum_field = self._compute_bulk_quantity_field(new_particles_data, momentum_component)
+                self.grid[momentum_component] += momentum_field
+
+            # Add total energy density
+            energy_field = self._compute_bulk_quantity_field(new_particles_data, self.c.ECOMP)
+            self.grid[self.c.ECOMP] += energy_field
+            
+            
+    def _compute_bulk_quantity_field(self, particles_data, var):
+        """Compute a conserved quantity field (mass, momentum, or energy) from particle data."""
+        if particles_data.shape[1] == 0:
+            return np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
+
+        field = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
+        cell_area = self.inp.dx * self.inp.dy
+        m = self.params.mass
+
+        for i in range(particles_data.shape[1]):
+            x = particles_data[self.pc.XCOMP, i]
+            y = particles_data[self.pc.YCOMP, i]
+            u = particles_data[self.pc.UCOMP, i]
+            v = particles_data[self.pc.VCOMP, i]
+            w = particles_data[self.pc.WCOMP, i]
+            weight = particles_data[self.WEIGHT, i]
+
+            ix = int((x - self.inp.grid_x[0]) / self.inp.dx)
+            iy = int((y - self.inp.grid_y[0]) / self.inp.dy)
+
+            if 0 <= ix < self.inp.nx_with_ghosts and 0 <= iy < self.inp.ny_with_ghosts:
+                if var == self.c.RHOCOMP:
+                    field[ix, iy] += m * weight / cell_area
+                elif var == self.c.MUCOMP:
+                    field[ix, iy] += m * u * weight / cell_area
+                elif var == self.c.MVCOMP:
+                    field[ix, iy] += m * v * weight / cell_area
+                elif var == self.c.MWCOMP:
+                    field[ix, iy] += m * w * weight / cell_area
+                elif var == self.c.ECOMP:
+                    kinetic_energy = 0.5 * m * (u**2 + v**2 + w**2)
+                    field[ix, iy] += kinetic_energy * weight / cell_area
+
+        return field
     
     
     # TODO: make assert_variable_type -> prim or cons work

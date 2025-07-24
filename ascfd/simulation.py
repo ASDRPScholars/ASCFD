@@ -72,6 +72,9 @@ class Simulation:
                             pass
                         elif hasattr(self, 'neutrals') and abs(particle_charge) < 1e-20:
                             self.neutrals.add_particle(particle)      
+                
+                self.electrons.add_particles(new_particles)
+                
             else:
                 raise ValueError(f"Unknown time stepper: {self.inp.timeStepper}")
             
