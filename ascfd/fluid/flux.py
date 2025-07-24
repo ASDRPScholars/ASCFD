@@ -190,7 +190,7 @@ class FluidFlux:
         """
         Calculates the numerical flux using the HLLC approximate Riemann solver.
         """
-        if self.c.system != "euler2d":
+        if self.c.system not in ["euler2d", "hallthruster_rz"]:
             raise NotImplementedError("HLLC flux is only implemented for euler2d system.")
 
         # Get primitive variables (rho, u, v, p)

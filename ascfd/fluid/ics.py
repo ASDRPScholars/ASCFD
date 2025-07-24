@@ -34,6 +34,13 @@ class FluidInitialConditions:
         elif self.inp.system == "mhd2d":
             if self.inp.fluid_ics == "orszag_tang":
                 self.grid = self.orszag_tang_2d()
+        
+        elif self.inp.system == "hallthruster_rz":
+            if self.inp.fluid_ics == "poisson_validation":
+                f = self.poisson_validation_charge_density
+                
+                for var in range(self.c.NUMQ):
+                    self.grid[var] = f(self.mesh_x, self.mesh_y, var)
            
         else:
             raise RuntimeError("[FLUID] ICS not valid.")
@@ -162,3 +169,14 @@ class FluidInitialConditions:
             return np.sin(4 * np.pi * a_x)
         else:
             raise ValueError(f"Unexpected variable: {a_var}")
+    
+    def poisson_validation_charge_density(self, a_x, a_y, a_var):
+        """
+        Poisson validation test: charge density = -sin(x) - cos(y)
+        This should produce electric field corresponding to sin(x) + cos(y)
+        """
+        if a_var == 0:  # Charge density component
+            return -np.sin(a_x) - np.cos(a_y)
+        else:
+            # Set all other components to zero
+            return np.zeros_like(a_x)

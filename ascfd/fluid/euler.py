@@ -11,7 +11,17 @@ class FluidEuler:
     def prim_to_cons(self, a_prim):
         cons = np.zeros_like(a_prim)
 
-        if self.c.system == "euler2d":
+        if self.c.system == "hallthruster_rz":
+            cons[self.c.RHOCOMP] = a_prim[self.c.RHOCOMP] # density stays the same
+            cons[self.c.MUCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.UCOMP] # momentum components x & y
+            cons[self.c.MVCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.VCOMP]
+            cons[self.c.MWCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.WCOMP]
+             # compute total energy
+            E = (a_prim[self.c.PCOMP] / ((self.c.gamma - 1) * a_prim[self.c.RHOCOMP]) + 
+                 0.5 * (a_prim[self.c.UCOMP]**2 + a_prim[self.c.VCOMP]**2))
+            cons[self.c.ECOMP] = E * a_prim[self.c.RHOCOMP]
+              
+        elif self.c.system == "euler2d":
             cons[self.c.RHOCOMP] = a_prim[self.c.RHOCOMP] # density stays the same
             cons[self.c.MUCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.UCOMP] # momentum components x & y
             cons[self.c.MVCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.VCOMP]
@@ -42,7 +52,20 @@ class FluidEuler:
     def cons_to_prim(self, a_cons):
         prim = np.zeros_like(a_cons)
 
-        if self.c.system == "euler2d":
+        if self.c.system == "hallthruster_rz":
+            # copy density
+            prim[self.c.RHOCOMP] = a_cons[self.c.RHOCOMP]
+            # compute velocity components
+            prim[self.c.UCOMP] = a_cons[self.c.MUCOMP] / a_cons[self.c.RHOCOMP]
+            prim[self.c.VCOMP] = a_cons[self.c.MVCOMP] / a_cons[self.c.RHOCOMP]
+            prim[self.c.WCOMP] = a_cons[self.c.MWCOMP] / a_cons[self.c.RHOCOMP]
+            # compute pressure using kinetic energy
+            kinetic_energy = 0.5 * (prim[self.c.UCOMP]**2 + prim[self.c.VCOMP]**2)
+            prim[self.c.PCOMP] = (self.c.gamma - 1) * (
+                a_cons[self.c.ECOMP] - a_cons[self.c.RHOCOMP] * kinetic_energy
+            )
+            
+        elif self.c.system == "euler2d":
             # copy density
             prim[self.c.RHOCOMP] = a_cons[self.c.RHOCOMP]
             # compute velocity components
@@ -81,7 +104,7 @@ class FluidEuler:
         flux_x = np.zeros_like(a_prim) # flux in x-direction
         flux_y = np.zeros_like(a_prim) # flux in y-direction
 
-        if self.c.system == "euler2d":
+        if self.c.system in ["euler2d", "hallthruster_rz"]:
             # extract primitive variables
             rho = a_prim[self.c.RHOCOMP] # density
             u = a_prim[self.c.UCOMP] # x-velocity
