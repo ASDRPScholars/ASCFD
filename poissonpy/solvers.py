@@ -114,6 +114,8 @@ class Poisson2DRectangle:
             #     b[bd_pos] = bd_func(self.xs[bd_ids], self.ys[bd_ids])
             # elif isinstance(bd_func, (int, float)):
             #     b[bd_pos] = bd_func
+            
+            b[bd_pos] = 1
 
             if mode == "dirichlet":
                 A[bd_pos, bd_pos] = 1
