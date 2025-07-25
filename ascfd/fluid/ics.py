@@ -41,6 +41,9 @@ class FluidInitialConditions:
                 
                 for var in range(self.c.NUMQ):
                     self.grid[var] = f(self.mesh_x, self.mesh_y, var)
+                    
+            elif self.inp.fluid_ics == "static":
+                self.grid = self.static()
            
         else:
             raise RuntimeError("[FLUID] ICS not valid.")
@@ -180,3 +183,8 @@ class FluidInitialConditions:
         else:
             # Set all other components to zero
             return np.zeros_like(a_x)
+        
+        
+    def static(self):
+        return np.zeros_like(self.grid)
+    
