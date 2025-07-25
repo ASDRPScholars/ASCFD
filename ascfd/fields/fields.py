@@ -135,11 +135,18 @@ class Fields:
             4: (0.0, "neumann_x")       # Outflow: Neumann
         }
         
+        # boundary = {
+        #     "left": (1, "dirichlet"),
+        #     "right": (1, "dirichlet"),
+        #     "top": (1, "dirichlet"),
+        #     "bottom": (1, "dirichlet")
+        # }
+        
         boundary = {
-            "left": "dirichlet",
-            "right": "dirichlet",
-            "top": "dirichlet",
-            "bottom": "dirichlet"
+            "left": (300, "dirichlet"),
+            "right": (0, "dirichlet"),
+            "top": (0, "neumann_y"),
+            "bottom": (0, "neumann_y")
         }
         
         solver = solvers.Poisson2DRectangle(rect=rect, interior=rhs, boundary=boundary)
@@ -151,7 +158,10 @@ class Fields:
         # )
         
         self.potential = solver.solve()
+        
+        print("POTENTIAL FROM SOLVED POISSON IS:", self.potential)
         print(np.shape(self.potential))
+        
     
     
     # def _create_hall_thruster_mask(self, shape):

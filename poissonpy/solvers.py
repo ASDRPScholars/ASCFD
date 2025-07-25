@@ -40,7 +40,7 @@ class Poisson2DRectangle:
 
         self.interior = interior
         self.boundary = boundary
-        for bd, mode in self.boundary.items():
+        for bd, (_, mode) in self.boundary.items():
             assert bd in ["left", "right", "top", "bottom"] 
             assert mode in ["dirichlet", "neumann_x", "neumann_y"]
         
@@ -106,16 +106,19 @@ class Poisson2DRectangle:
             A[-1, -1] = 0.0
             b[-1] = 0
 
-        for bd, mode in self.boundary.items():
+        for bd, (bd_func, mode) in self.boundary.items():
             bd_pos = boundary_pos[bd]
             bd_ids = boundary_ids[bd]
-
-            # if isinstance(bd_func, types.FunctionType):
-            #     b[bd_pos] = bd_func(self.xs[bd_ids], self.ys[bd_ids])
-            # elif isinstance(bd_func, (int, float)):
-            #     b[bd_pos] = bd_func
             
-            b[bd_pos] = 1
+            print("ids", bd_ids)
+            print("pos", bd_pos)
+
+            if isinstance(bd_func, types.FunctionType):
+                b[bd_pos] = bd_func(self.xs[bd_ids], self.ys[bd_ids])
+            elif isinstance(bd_func, (int, float)):
+                b[bd_pos] = bd_func
+            
+            # b[bd_pos] = 1
 
             if mode == "dirichlet":
                 A[bd_pos, bd_pos] = 1
