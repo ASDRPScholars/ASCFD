@@ -12,13 +12,20 @@ from poissonpy import solvers
 class Fields:
     def __init__(self, a_inputs: Inputs):
         self.inp = a_inputs
-        self.ics = FieldInitialConditions(self.inp)
-        
-        self.ics.apply_B_ics()
-        self.ics.apply_E_ics()
         
         self.E = np.zeros((self.inp.nx, self.inp.ny, 3))
         self.B = np.zeros((self.inp.nx, self.inp.ny, 3))
+        
+        self.ics = FieldInitialConditions(self.E, self.B, self.inp)
+        
+        self.B = self.ics.apply_B_ics()
+        self.ics.apply_E_ics()
+        
+        plt.figure()
+        im = plt.imshow(self.B[:, :, 1])
+        plt.title("apply_B_ics() magnetic field")
+        plt.colorbar(im)
+        plt.show()
         
         self.charge_density = np.zeros((self.inp.nx, self.inp.ny))
         self.potential = np.zeros((self.inp.nx, self.inp.ny))
@@ -34,63 +41,62 @@ class Fields:
         self.solve_poisson()
         self._compute_electric_field()
         
+        # print("THIS IS CHARGE DENSITY TAKEN IN BY POISSON:", self.charge_density)
+        # print("NEW CALCULATED EX IS:", self.E[:, :, 0])
+        # print("NEW CALCULATED EY IS:", self.E[:, :, 1])
+
+        # fig, axs = plt.subplots(2, 2, figsize=(15, 15))  # 1 row, 3 columns
+        # axs = axs.flatten()
+
+        # # Plot charge density
+        # im0 = axs[0].imshow(self.charge_density, cmap="coolwarm")
+        # axs[0].set_title("Charge Density")
+        # fig.colorbar(im0, ax=axs[0])
+
+        # # Plot Ex
+        # im1 = axs[1].imshow(self.E[:, :, 0], cmap="coolwarm")
+        # axs[1].set_title("Electric Field Ex")
+        # fig.colorbar(im1, ax=axs[1])
+
+        # # Plot Ey
+        # im2 = axs[2].imshow(self.E[:, :, 1], cmap="coolwarm")
+        # axs[2].set_title("Electric Field Ey")
+        # fig.colorbar(im2, ax=axs[2])
         
-        print("THIS IS CHARGE DENSITY TAKEN IN BY POISSON:", self.charge_density)
-        print("NEW CALCULATED EX IS:", self.E[:, :, 0])
-        print("NEW CALCULATED EY IS:", self.E[:, :, 1])
-
-        fig, axs = plt.subplots(2, 2, figsize=(15, 15))  # 1 row, 3 columns
-        axs = axs.flatten()
-
-        # Plot charge density
-        im0 = axs[0].imshow(self.charge_density, cmap="coolwarm")
-        axs[0].set_title("Charge Density")
-        fig.colorbar(im0, ax=axs[0])
-
-        # Plot Ex
-        im1 = axs[1].imshow(self.E[:, :, 0], cmap="coolwarm")
-        axs[1].set_title("Electric Field Ex")
-        fig.colorbar(im1, ax=axs[1])
-
-        # Plot Ey
-        im2 = axs[2].imshow(self.E[:, :, 1], cmap="coolwarm")
-        axs[2].set_title("Electric Field Ey")
-        fig.colorbar(im2, ax=axs[2])
+        # # Plot E
+        # im3 = axs[3].imshow(np.sqrt(self.E[:, :, 0]**2 + self.E[:, :, 1]**2), cmap="coolwarm")
+        # axs[3].set_title("Electric Field Magnitude")
+        # fig.colorbar(im3, ax=axs[3])
         
-        # Plot E
-        im3 = axs[3].imshow(np.sqrt(self.E[:, :, 0]**2 + self.E[:, :, 1]**2), cmap="coolwarm")
-        axs[3].set_title("Electric Field Magnitude")
-        fig.colorbar(im3, ax=axs[3])
+        # plt.tight_layout()
+        # plt.show()
         
-        plt.tight_layout()
-        plt.show()
-        
-        ### 3D PLOT
-        # Compute E magnitude
-        E_mag = np.sqrt(self.E[5:-5, 5:-5, 0]**2 + self.E[5:-5, 5:-5, 1]**2)
+        # ### 3D PLOT
+        # # Compute E magnitude
+        # E_mag = np.sqrt(self.E[5:-5, 5:-5, 0]**2 + self.E[5:-5, 5:-5, 1]**2)
 
-        # Create meshgrid for X and Y
-        nx, ny = E_mag.shape
-        x = np.arange(nx)
-        y = np.arange(ny)
-        X, Y = np.meshgrid(y, x)  # careful: meshgrid uses (cols, rows) order
+        # # Create meshgrid for X and Y
+        # nx, ny = E_mag.shape
+        # x = np.arange(nx)
+        # y = np.arange(ny)
+        # X, Y = np.meshgrid(y, x)  # careful: meshgrid uses (cols, rows) order
 
-        # Create figure
-        fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111, projection='3d')
+        # # Create figure
+        # fig = plt.figure(figsize=(10, 8))
+        # ax = fig.add_subplot(111, projection='3d')
 
-        # Plot the surface
-        surf = ax.plot_surface(X, Y, E_mag, cmap='coolwarm')
+        # # Plot the surface
+        # surf = ax.plot_surface(X, Y, E_mag, cmap='coolwarm')
 
-        # Add colorbar and labels
-        fig.colorbar(surf, ax=ax, shrink=0.5, aspect=10)
-        ax.set_title("Electric Field Magnitude (3D)")
-        ax.set_xlabel("X")
-        ax.set_ylabel("Y")
-        ax.set_zlabel("|E|")
+        # # Add colorbar and labels
+        # fig.colorbar(surf, ax=ax, shrink=0.5, aspect=10)
+        # ax.set_title("ours")
+        # ax.set_xlabel("X")
+        # ax.set_ylabel("Y")
+        # ax.set_zlabel("|E|")
 
-        plt.tight_layout()
-        plt.show()
+        # plt.tight_layout()
+        # plt.show()
         
         self._clear_calculation_grids()
         
