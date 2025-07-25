@@ -16,7 +16,7 @@ class Poisson2DRectangle:
     """
     
     # TODO: ADJUST FOR LIKE OUR ACTUAL GRID IDK
-    def __init__(self, rect, interior, boundary, X=104, Y=104, zero_mean=False):
+    def __init__(self, rect, interior, boundary, X, Y, zero_mean=False):
         """
         Args:
             rect:
