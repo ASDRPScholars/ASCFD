@@ -38,10 +38,12 @@ class Fields:
                 
     def update_E(self):
         print("UPDATE E")
-        self.solve_poisson()
-        self._compute_electric_field()
         
         print("THIS IS CHARGE DENSITY TAKEN IN BY POISSON:", self.charge_density)
+        
+        self.solve_poisson()
+        self._compute_electric_field()
+    
         print("NEW CALCULATED EX IS:", self.E[:, :, 0])
         print("NEW CALCULATED EY IS:", self.E[:, :, 1])
 
@@ -111,14 +113,18 @@ class Fields:
     
     
     def solve_poisson(self):
+        
         rhs = - self.charge_density / self.eps0
         
+        print(np.shape(self.charge_density))
+        print(np.shape(self.potential))
+        
         # Create hall thruster geometry mask
-        mask = self._create_hall_thruster_mask(rhs.shape)
+        # mask = self._create_hall_thruster_mask(rhs.shape)
         rect = ((self.inp.xlim[0], self.inp.ylim[0]), (self.inp.xlim[1], self.inp.ylim[1]))
         
         # Create boundary segments for different BC types
-        boundary_segments = self._create_hall_thruster_boundary_segments(mask, rect)
+        # boundary_segments = self._create_hall_thruster_boundary_segments(mask, rect)
         
         # Define boundary conditions
         # 1: Anode (300V), 2: Cathode (0V), 3: Walls (0V), 4: Outflow (Neumann)
@@ -129,77 +135,85 @@ class Fields:
             4: (0.0, "neumann_x")       # Outflow: Neumann
         }
         
-        solver = solvers.Poisson2DRegion(
-            region=mask,
-            interior=rhs,
-            boundary_conditions=boundary_conditions,
-            boundary_segments=boundary_segments,
-            rect=rect
-        )
+        boundary = {
+            "left": "dirichlet",
+            "right": "dirichlet",
+            "top": "dirichlet",
+            "bottom": "dirichlet"
+        }
+        
+        solver = solvers.Poisson2DRectangle(rect=rect, interior=rhs, boundary=boundary)
+        # solver = solvers.Poisson2DRegion(
+        #     region=mask,
+        #     interior=rhs,
+        #     boundary=(1, 0.1),
+        #     rect=rect
+        # )
         
         self.potential = solver.solve()
+        print(np.shape(self.potential))
     
     
-    def _create_hall_thruster_mask(self, shape):
-        """Create hall thruster geometry mask - True where we solve Poisson equation (fluid domain)"""
-        ny, nx = shape
-        mask = np.ones(shape, dtype=bool)  # Start with entire domain
+    # def _create_hall_thruster_mask(self, shape):
+    #     """Create hall thruster geometry mask - True where we solve Poisson equation (fluid domain)"""
+    #     ny, nx = shape
+    #     mask = np.ones(shape, dtype=bool)  # Start with entire domain
         
-        # Define wall bounds using integer slicing
-        x_end = round(nx * 0.5)
-        y1_end = round(ny * 0.4)
-        y2_start = round(ny * 0.6)
+    #     # Define wall bounds using integer slicing
+    #     x_end = round(nx * 0.5)
+    #     y1_end = round(ny * 0.4)
+    #     y2_start = round(ny * 0.6)
 
-        # Remove wall regions from solution domain (walls are solid, no solution needed there)
-        mask[:y1_end, :x_end] = False    # wall1 (bottom-left)
-        mask[y2_start:, :x_end] = False  # wall2 (top-left)
+    #     # Remove wall regions from solution domain (walls are solid, no solution needed there)
+    #     mask[:y1_end, :x_end] = False    # wall1 (bottom-left)
+    #     mask[y2_start:, :x_end] = False  # wall2 (top-left)
         
-        return mask
+    #     return mask
     
     
-    def _create_hall_thruster_boundary_segments(self, mask, rect):
-        """Create boundary segments for hall thruster with specific BC assignments"""
-        from poissonpy.helpers import create_boundary_segments
-        from skimage.segmentation import find_boundaries
+    # def _create_hall_thruster_boundary_segments(self, mask, rect):
+    #     """Create boundary segments for hall thruster with specific BC assignments"""
+    #     from poissonpy.helpers import create_boundary_segments
+    #     from skimage.segmentation import find_boundaries
         
-        ny, nx = mask.shape
+    #     ny, nx = mask.shape
         
-        # Use same discrete boundaries as mask creation to ensure consistency
-        x_end = round(nx * 0.5)
-        y1_end = round(ny * 0.4)
-        y2_start = round(ny * 0.6)
+    #     # Use same discrete boundaries as mask creation to ensure consistency
+    #     x_end = round(nx * 0.5)
+    #     y1_end = round(ny * 0.4)
+    #     y2_start = round(ny * 0.6)
         
-        # Find boundaries
-        boundary_mask = find_boundaries(mask, mode="inner")
-        boundary_segments = np.zeros_like(mask, dtype=int)
+    #     # Find boundaries
+    #     boundary_mask = find_boundaries(mask, mode="inner")
+    #     boundary_segments = np.zeros_like(mask, dtype=int)
         
-        # Get boundary coordinates in index space
-        boundary_y, boundary_x = np.where(boundary_mask)
+    #     # Get boundary coordinates in index space
+    #     boundary_y, boundary_x = np.where(boundary_mask)
         
-        # Classify boundary segments using discrete indices
-        for i in range(len(boundary_y)):
-            by, bx = boundary_y[i], boundary_x[i]
+    #     # Classify boundary segments using discrete indices
+    #     for i in range(len(boundary_y)):
+    #         by, bx = boundary_y[i], boundary_x[i]
             
-            # Anode: left boundary of channel entrance (x = 0, y ∈ [y1_end, y2_start])
-            if bx == 0 and y1_end <= by < y2_start:
-                boundary_segments[by, bx] = 1  # Anode
+    #         # Anode: left boundary of channel entrance (x = 0, y ∈ [y1_end, y2_start])
+    #         if bx == 0 and y1_end <= by < y2_start:
+    #             boundary_segments[by, bx] = 1  # Anode
             
-            # Cathode: right boundary of entire domain (x = nx-1)
-            elif bx == nx - 1:
-                boundary_segments[by, bx] = 2  # Cathode
+    #         # Cathode: right boundary of entire domain (x = nx-1)
+    #         elif bx == nx - 1:
+    #             boundary_segments[by, bx] = 2  # Cathode
             
-            # Walls: interfaces between channel and wall regions
-            elif ((bx == x_end - 1 and by < y1_end) or           # bottom wall interface
-                  (bx == x_end - 1 and by >= y2_start) or        # top wall interface
-                  (by == y1_end and bx < x_end) or               # bottom channel wall
-                  (by == y2_start - 1 and bx < x_end)):          # top channel wall
-                boundary_segments[by, bx] = 3  # Walls
+    #         # Walls: interfaces between channel and wall regions
+    #         elif ((bx == x_end - 1 and by < y1_end) or           # bottom wall interface
+    #               (bx == x_end - 1 and by >= y2_start) or        # top wall interface
+    #               (by == y1_end and bx < x_end) or               # bottom channel wall
+    #               (by == y2_start - 1 and bx < x_end)):          # top channel wall
+    #             boundary_segments[by, bx] = 3  # Walls
             
-            # Outflow: top and bottom boundaries of main channel
-            else:
-                boundary_segments[by, bx] = 4  # Outflow
+    #         # Outflow: top and bottom boundaries of main channel
+    #         else:
+    #             boundary_segments[by, bx] = 4  # Outflow
         
-        return boundary_segments
+    #     return boundary_segments
             
     def _compute_electric_field(self):
         """Compute E = -grad(phi) using central differences with ghost cells"""
@@ -211,12 +225,14 @@ class Fields:
         Ey = np.zeros((nx, ny))
         
         # Use central differences only for interior points in both directions
-        Ex[1:-1, 1:-1] = -(self.potential[2:, 1:-1] - self.potential[:-2, 1:-1]) / (2 * self.dx)
-        Ey[1:-1, 1:-1] = -(self.potential[1:-1, 2:] - self.potential[1:-1, :-2]) / (2 * self.dy)
+        Ex = -(self.potential[3:-1, 3:-1] - self.potential[1:-3, 1:-3]) / (2 * self.dx)
+        Ey = -(self.potential[3:-1, 3:-1] - self.potential[1:-3, 1:-3]) / (2 * self.dy)
+        
+        print(np.shape(Ex))
         
         # Extract interior domain for storage
-        self.E[:, :, 0] = Ex[ng:-ng, ng:-ng]
-        self.E[:, :, 1] = Ey[ng:-ng, ng:-ng]
+        self.E[:, :, 0] = Ex
+        self.E[:, :, 1] = Ey
     
     
     def check_E_field(self):
