@@ -116,16 +116,102 @@ class Fields:
     def solve_poisson(self):
         rhs = - self.charge_density / self.eps0
         
-        mask = np.ones_like(rhs)
+        # Create hall thruster geometry mask
+        mask = self._create_hall_thruster_mask(rhs.shape)
         rect = ((self.inp.xlim[0], self.inp.ylim[0]), (self.inp.xlim[1], self.inp.ylim[1]))
         
-        # For Poisson2DRegion, boundary should be a numpy array, not a dict
-        boundary_values = np.zeros_like(rhs)  # Zero potential on boundaries
+        # Create boundary segments for different BC types
+        boundary_segments = self._create_hall_thruster_boundary_segments(mask, rect)
         
-        solver = solvers.Poisson2DRegion(mask, rhs, boundary_values, rect)
+        # Define boundary conditions
+        # 1: Anode (300V), 2: Cathode (0V), 3: Walls (0V), 4: Outflow (Neumann)
+        boundary_conditions = {
+            1: (300.0, "dirichlet"),    # Anode: 300V
+            2: (0.0, "dirichlet"),      # Cathode: 0V  
+            3: (0.0, "dirichlet"),      # Walls: 0V
+            4: (0.0, "neumann_x")       # Outflow: Neumann
+        }
+        
+        solver = solvers.Poisson2DRegion(
+            region=mask,
+            interior=rhs,
+            boundary_conditions=boundary_conditions,
+            boundary_segments=boundary_segments,
+            rect=rect
+        )
         
         self.potential = solver.solve()
+    
+    
+    def _create_hall_thruster_mask(self, shape):
+        """Create hall thruster geometry mask with walls at specified locations"""
+        ny, nx = shape
+        mask = np.ones(shape, dtype=bool)
         
+        # Get coordinate mappings
+        x_coords = np.linspace(self.inp.xlim[0], self.inp.xlim[1], nx)
+        y_coords = np.linspace(self.inp.ylim[0], self.inp.ylim[1], ny)
+        
+        # Create coordinate grids
+        x_grid, y_grid = np.meshgrid(x_coords, y_coords)
+        
+        # Mask out wall regions: ((0, 0), (0.5, 0.3)) and ((0, 0.6), (0.5, 1))
+        # Wall region 1: x ∈ [0, 0.5], y ∈ [0, 0.3]
+        wall1_mask = (x_grid >= 0.0) & (x_grid <= 0.5) & (y_grid >= 0.0) & (y_grid <= 0.3)
+        
+        # Wall region 2: x ∈ [0, 0.5], y ∈ [0.6, 1.0]
+        wall2_mask = (x_grid >= 0.0) & (x_grid <= 0.5) & (y_grid >= 0.6) & (y_grid <= 1.0)
+        
+        # Remove wall regions from computational domain
+        mask[wall1_mask] = False
+        mask[wall2_mask] = False
+        
+        return mask
+    
+    
+    def _create_hall_thruster_boundary_segments(self, mask, rect):
+        """Create boundary segments for hall thruster with specific BC assignments"""
+        from poissonpy.helpers import create_boundary_segments
+        from skimage.segmentation import find_boundaries
+        
+        ny, nx = mask.shape
+        x_coords = np.linspace(rect[0][0], rect[1][0], nx)
+        y_coords = np.linspace(rect[0][1], rect[1][1], ny)
+        
+        # Find boundaries
+        boundary_mask = find_boundaries(mask, mode="inner")
+        boundary_segments = np.zeros_like(mask, dtype=int)
+        
+        # Get boundary coordinates
+        boundary_y, boundary_x = np.where(boundary_mask)
+        
+        # Map indices to physical coordinates
+        x_phys = x_coords[boundary_x]
+        y_phys = y_coords[boundary_y]
+        
+        # Classify boundary segments
+        for i, (x, y) in enumerate(zip(x_phys, y_phys)):
+            by, bx = boundary_y[i], boundary_x[i]
+            
+            # Anode: left boundary of channel (x ≈ 0.5, y ∈ [0.3, 0.6])
+            if abs(x - 0.5) < 0.05 and 0.3 <= y <= 0.6:
+                boundary_segments[by, bx] = 1  # Anode
+            
+            # Cathode: right boundary (x ≈ 1.0)
+            elif abs(x - rect[1][0]) < 0.05:
+                boundary_segments[by, bx] = 2  # Cathode
+            
+            # Walls: boundaries of masked regions
+            elif ((0.0 <= x <= 0.5 and (abs(y - 0.0) < 0.05 or abs(y - 0.3) < 0.05)) or
+                  (0.0 <= x <= 0.5 and (abs(y - 0.6) < 0.05 or abs(y - 1.0) < 0.05)) or
+                  (abs(x - 0.0) < 0.05 and (0.0 <= y <= 0.3 or 0.6 <= y <= 1.0))):
+                boundary_segments[by, bx] = 3  # Walls
+            
+            # Outflow: remaining boundaries (top/bottom of channel)
+            else:
+                boundary_segments[by, bx] = 4  # Outflow
+        
+        return boundary_segments
             
     def _compute_electric_field(self):
         """Compute E = -grad(phi) using central differences with ghost cells"""

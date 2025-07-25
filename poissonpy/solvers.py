@@ -168,7 +168,7 @@ class Poisson2DRegion:
     """
         Solve 2D Poisson Equation on a region with arbitrary shape.
     """
-    def __init__(self, region, interior, boundary, rect=None):
+    def __init__(self, region, interior, boundary=None, boundary_conditions=None, boundary_segments=None, rect=None):
         self.region = region # region mask
         self.Y, self.X = self.region.shape
 
@@ -181,6 +181,8 @@ class Poisson2DRegion:
             self.x = np.arange(self.X)
             self.y = np.arange(self.Y)
         self.x_grid, self.y_grid = np.meshgrid(self.x, self.y)
+        self.xs = self.x_grid.flatten()
+        self.ys = self.y_grid.flatten()
         
         self.dx = self.x[1] - self.x[0]
         self.dy = self.y[1] - self.y[0]
@@ -192,12 +194,28 @@ class Poisson2DRegion:
         else:
             self.interior = interior
 
-        if isinstance(boundary, types.FunctionType):
-            self.boundary = boundary(self.x_grid, self.y_grid)
-        elif isinstance(boundary, (int, float)):
-            self.boundary = np.ones_like(region) * boundary
+        # Handle boundary conditions - support both old and new format
+        if boundary_conditions is not None:
+            # New format: boundary_conditions dict + boundary_segments mask
+            assert boundary_segments is not None, "boundary_segments required when using boundary_conditions"
+            self.boundary_conditions = boundary_conditions
+            self.boundary_segments = boundary_segments
+            
+            # Validate boundary condition modes
+            for segment_id, (_, mode) in self.boundary_conditions.items():
+                assert mode in ["dirichlet", "neumann_x", "neumann_y"], f"Invalid mode: {mode}"
         else:
-            self.boundary = boundary
+            # Old format: single boundary value for all boundaries (Dirichlet only)
+            assert boundary is not None, "Either boundary or boundary_conditions must be provided"
+            if isinstance(boundary, types.FunctionType):
+                self.boundary = boundary(self.x_grid, self.y_grid)
+            elif isinstance(boundary, (int, float)):
+                self.boundary = np.ones_like(region) * boundary
+            else:
+                self.boundary = boundary
+            
+            self.boundary_conditions = None
+            self.boundary_segments = None
 
         self.A, self.b = self.build_linear_system()
     
@@ -251,14 +269,105 @@ class Poisson2DRegion:
         A[self.inner_pos[n4_valid], n4_pos[n4_valid]] = 1 / (self.dy**2)
         A[self.inner_pos, self.inner_pos] = -2 / (self.dx**2) + -2 / (self.dy**2)
 
-        A[self.boundary_pos, self.boundary_pos] = 1 # only dirichlet for now
+        # Handle boundary conditions
+        if self.boundary_conditions is not None:
+            # New format: mixed boundary conditions
+            # Get boundary segment mask aligned with boundary region
+            boundary_segments_on_boundary = helpers.get_selected_values(self.boundary_segments, self.boundary_region).flatten()
+            
+            for segment_id, (bd_func, mode) in self.boundary_conditions.items():
+                # Find boundary points belonging to this segment
+                segment_mask = boundary_segments_on_boundary == segment_id
+                segment_boundary_pos = self.boundary_pos[segment_mask]
+                segment_boundary_ids = self.boundary_ids[segment_mask]
+                
+                if len(segment_boundary_pos) == 0:
+                    continue
+                
+                if mode == "dirichlet":
+                    A[segment_boundary_pos, segment_boundary_pos] = 1
+                elif mode == "neumann_x":
+                    # For Neumann x conditions, we need to find interior neighbors
+                    # Try left and right neighbors
+                    left_ids = segment_boundary_ids - 1
+                    right_ids = segment_boundary_ids + 1
+                    
+                    # Check which neighbors are in the region
+                    left_pos = np.searchsorted(self.region_ids, left_ids)
+                    right_pos = np.searchsorted(self.region_ids, right_ids)
+                    
+                    left_valid = (left_pos < len(self.region_ids)) & (self.region_ids[left_pos] == left_ids)
+                    right_valid = (right_pos < len(self.region_ids)) & (self.region_ids[right_pos] == right_ids)
+                    
+                    # Apply finite difference for normal derivative
+                    for i in range(len(segment_boundary_pos)):
+                        if left_valid[i]:
+                            A[segment_boundary_pos[i], segment_boundary_pos[i]] = -1 / self.dx
+                            A[segment_boundary_pos[i], left_pos[i]] = 1 / self.dx
+                        elif right_valid[i]:
+                            A[segment_boundary_pos[i], segment_boundary_pos[i]] = 1 / self.dx
+                            A[segment_boundary_pos[i], right_pos[i]] = -1 / self.dx
+                        else:
+                            # Fallback to Dirichlet if no valid neighbor
+                            A[segment_boundary_pos[i], segment_boundary_pos[i]] = 1
+                            
+                elif mode == "neumann_y":
+                    # For Neumann y conditions
+                    top_ids = segment_boundary_ids - self.X
+                    bottom_ids = segment_boundary_ids + self.X
+                    
+                    top_pos = np.searchsorted(self.region_ids, top_ids)
+                    bottom_pos = np.searchsorted(self.region_ids, bottom_ids)
+                    
+                    top_valid = (top_pos < len(self.region_ids)) & (self.region_ids[top_pos] == top_ids)
+                    bottom_valid = (bottom_pos < len(self.region_ids)) & (self.region_ids[bottom_pos] == bottom_ids)
+                    
+                    for i in range(len(segment_boundary_pos)):
+                        if top_valid[i]:
+                            A[segment_boundary_pos[i], segment_boundary_pos[i]] = -1 / self.dy
+                            A[segment_boundary_pos[i], top_pos[i]] = 1 / self.dy
+                        elif bottom_valid[i]:
+                            A[segment_boundary_pos[i], segment_boundary_pos[i]] = 1 / self.dy
+                            A[segment_boundary_pos[i], bottom_pos[i]] = -1 / self.dy
+                        else:
+                            # Fallback to Dirichlet if no valid neighbor
+                            A[segment_boundary_pos[i], segment_boundary_pos[i]] = 1
+        else:
+            # Old format: single Dirichlet boundary condition
+            A[self.boundary_pos, self.boundary_pos] = 1
+            
         A = A.tocsr()
 
-        boundary_conditions = helpers.get_selected_values(self.boundary, self.boundary_region).flatten()
+        # Build right-hand side vector
         interior_laplacians = helpers.get_selected_values(self.interior, self.inner_region).flatten()
         b = np.zeros(len(self.region_ids))
         b[self.inner_pos] = interior_laplacians
-        b[self.boundary_pos] = boundary_conditions
+        
+        if self.boundary_conditions is not None:
+            # New format: apply boundary values per segment
+            boundary_segments_on_boundary = helpers.get_selected_values(self.boundary_segments, self.boundary_region).flatten()
+            
+            for segment_id, (bd_func, mode) in self.boundary_conditions.items():
+                segment_mask = boundary_segments_on_boundary == segment_id
+                segment_boundary_pos = self.boundary_pos[segment_mask]
+                segment_boundary_ids = self.boundary_ids[segment_mask]
+                
+                if len(segment_boundary_pos) == 0:
+                    continue
+                
+                # Get boundary values
+                if isinstance(bd_func, types.FunctionType):
+                    boundary_values = bd_func(self.xs[segment_boundary_ids], self.ys[segment_boundary_ids])
+                elif isinstance(bd_func, (int, float)):
+                    boundary_values = bd_func
+                else:
+                    boundary_values = bd_func
+                
+                b[segment_boundary_pos] = boundary_values
+        else:
+            # Old format: single boundary value
+            boundary_conditions = helpers.get_selected_values(self.boundary, self.boundary_region).flatten()
+            b[self.boundary_pos] = boundary_conditions
 
         return A, b
 
