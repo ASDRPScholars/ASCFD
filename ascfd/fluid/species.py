@@ -15,6 +15,7 @@ import numpy as np
 
 class FluidSpecies:
     def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields):
+        print("INITIALIZED ELECTRONS")
         self.c = FluidConstants(a_inputs)
         self.pc = ParticleConstants()
         self.euler = FluidEuler(self.c)
@@ -38,7 +39,9 @@ class FluidSpecies:
         # TODO: DELETE UNNECESSARY VALUES HERE LATER WHEN ICS.APPLY_ICS() IS DONE
         # boring ascfd.logistics stuff for apply_ics()
         
-        self.ics.apply_ics()
+        self.grid = self.ics.apply_ics()
+        
+        print("HI OK THIS IS DENSITY AT ICS:", self.grid[self.c.RHOCOMP])
         
         
     def update(self):
@@ -78,6 +81,9 @@ class FluidSpecies:
     
     def get_charge_density(self):
         charge_density = self.params.charge * self.get_number_density()
+        print("HI THIS IS DENSITY:", self.grid[self.c.RHOCOMP])
+        print("HI THIS IS NUMBER DENSITY:", self.get_number_density())
+        print("HI THIS IS CHARGE DENSITY:", charge_density)
         return charge_density
     
     

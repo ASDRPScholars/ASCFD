@@ -13,11 +13,16 @@ class FluidInitialConditions:
     def apply_ics(self):
         if self.inp.system == "euler2d":
             if self.inp.fluid_ics == "diagonal_advection":
+                print("applying diag advection")
                 f = self.diagonal_advection_2d
+                
+                new_grid = np.zeros_like(self.grid)
                 
                 for var in range(self.c.NUMQ):
                     print(var)
-                    self.grid[var] = f(self.mesh_x, self.mesh_y, var)
+                    new_grid[var] = f(self.mesh_x, self.mesh_y, var)
+                    
+                return new_grid
                     
                 # self.grid = self.diagonal_advection_2d()
             
@@ -43,7 +48,21 @@ class FluidInitialConditions:
                     self.grid[var] = f(self.mesh_x, self.mesh_y, var)
                     
             elif self.inp.fluid_ics == "static":
-                self.grid = self.static()
+                print("applying static ")
+
+                return self.static()
+                
+            elif self.inp.fluid_ics == "diagonal_advection":
+                print("applying diag advection")
+                f = self.diagonal_advection_2d
+                
+                new_grid = np.zeros_like(self.grid)
+                
+                for var in range(self.c.NUMQ):
+                    print(var)
+                    new_grid[var] = f(self.mesh_x, self.mesh_y, var)
+                    
+                return new_grid
            
         else:
             raise RuntimeError("[FLUID] ICS not valid.")
@@ -75,7 +94,9 @@ class FluidInitialConditions:
         elif a_var == 3: #PCOMP
             return np.ones_like(a_x)
         else:
-            raise ValueError(f"Unexpected variable: {a_var}")
+            return 0
+        # else:
+        #     raise ValueError(f"Unexpected variable: {a_var}")
 
     def kelvin_helmholtz_2d(a_x, a_y, a_var):
         """
@@ -186,5 +207,5 @@ class FluidInitialConditions:
         
         
     def static(self):
-        return np.zeros_like(self.grid)
+        return np.ones_like(self.grid)
     
