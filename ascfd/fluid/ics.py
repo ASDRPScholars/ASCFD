@@ -39,30 +39,6 @@ class FluidInitialConditions:
         elif self.inp.system == "mhd2d":
             if self.inp.fluid_ics == "orszag_tang":
                 self.grid = self.orszag_tang_2d()
-        
-        elif self.inp.system == "hallthruster_rz":
-            if self.inp.fluid_ics == "poisson_validation":
-                f = self.poisson_validation_charge_density
-                
-                for var in range(self.c.NUMQ):
-                    self.grid[var] = f(self.mesh_x, self.mesh_y, var)
-                    
-            elif self.inp.fluid_ics == "static":
-                print("applying static ")
-
-                return self.static()
-                
-            elif self.inp.fluid_ics == "diagonal_advection":
-                print("applying diag advection")
-                f = self.diagonal_advection_2d
-                
-                new_grid = np.zeros_like(self.grid)
-                
-                for var in range(self.c.NUMQ):
-                    print(var)
-                    new_grid[var] = f(self.mesh_x, self.mesh_y, var)
-                    
-                return new_grid
            
         else:
             raise RuntimeError("[FLUID] ICS not valid.")
@@ -131,7 +107,7 @@ class FluidInitialConditions:
         else:
             raise ValueError(f"Unexpected variable: {a_var}")
 
-    def riemann_2d(a_x, a_y, a_var):
+    def riemann_2d(self, a_x, a_y, a_var):
         """
         2D Riemann problem for 2D Euler equations.
         """
@@ -173,7 +149,7 @@ class FluidInitialConditions:
         elif a_var == 3: #PCOMP
             return p
         else:
-            raise ValueError(f"Unexpected variable: {a_var}")
+            return 0
         
     def orszag_tang_2d(a_x, a_y, a_var):
         """

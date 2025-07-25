@@ -11,6 +11,7 @@ from ascfd.fields.fields import Fields
 import ascfd.fluid.ics as ics
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 class FluidSpecies:
@@ -59,10 +60,27 @@ class FluidSpecies:
         for i in range(self.inp.numghosts, self.inp.nx + self.inp.numghosts):
             for j in range(self.inp.numghosts, self.inp.ny + self.inp.numghosts):
                 for icomp in range(self.c.NUMQ):
-                    consU_new[icomp, i, j] = consU[icomp, i, j] - (
+                    
+                    delta = (
                         (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
                         (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
                     
+                    print("RIGHT LEFT TOP BOTTOM:", right_flux[icomp, i, j], left_flux[icomp, i, j], top_flux[icomp, i, j], bottom_flux[icomp, i, j])
+                    
+                    if icomp in [self.c.RHOCOMP, self.c.ECOMP]:
+                        consU_new[icomp, i, j] = max(1e-6, consU[icomp, i, j] - delta)
+                    else:
+                        consU_new[icomp, i, j] = consU[icomp, i, j] - delta
+                    
+                    print("DELTA:", delta)
+        
+        plt.figure()
+        plt.imshow(self.grid[self.c.RHOCOMP])
+        plt.title("electron density")
+        plt.show()
+        
+        self.grid = self.euler.cons_to_prim(consU_new)
+        
         self.bcs.apply_bcs()
         
         charge_density = self.get_charge_density()
@@ -76,7 +94,7 @@ class FluidSpecies:
         
         # TODO: call self.ebs.apply_ebs() once embedded boundaries are brought in
         
-        self.grid = self.euler.cons_to_prim(consU_new)
+
     
     
     def get_charge_density(self):

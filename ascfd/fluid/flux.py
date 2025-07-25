@@ -38,7 +38,7 @@ class FluidFlux:
     def rusanov(self, a_grid, a_Nx, a_Ny, a_Nghost):
 
         #get density 
-        if self.c.system in ["euler2d", "hallthruster_rz"]:
+        if self.c.system == "euler2d":
             density = a_grid[self.c.RHOCOMP]
         else:
             raise RuntimeError("Density method needs to be implemented.")
@@ -190,7 +190,7 @@ class FluidFlux:
         """
         Calculates the numerical flux using the HLLC approximate Riemann solver.
         """
-        if self.c.system not in ["euler2d", "hallthruster_rz"]:
+        if self.c.system != "euler2d":
             raise NotImplementedError("HLLC flux is only implemented for euler2d system.")
 
         # Get primitive variables (rho, u, v, p)

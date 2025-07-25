@@ -9,7 +9,7 @@ class FieldInitialConditions:
         
     # TODO: THIS IS WHERE WE IMPLEMENT THE MAGNETIC FIELD INITIAL CONDITION
     def apply_B_ics(self):
-        if self.inp.system == "hallthruster_rz":
+        if self.inp.system == "euler2d":
             if self.inp.B_ics == "guillaume":
                 return self.guillaume()
                 print("FROM IC", self.B_field[:, :, 1])
@@ -18,7 +18,7 @@ class FieldInitialConditions:
                 
                 
     def apply_E_ics(self):
-        if self.inp.system == "hallthruster_rz":
+        if self.inp.system == "euler2d":
             pass
         
         

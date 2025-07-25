@@ -93,22 +93,8 @@ class Simulation:
     def get_dt(self):
         # TODO: consider particles + fields as well when calculating dt
         
-        if self.inp.system == "hallthruster_rz":
-            density = self.electrons.grid[self.c.RHOCOMP]
-            pressure = self.electrons.grid[self.c.PCOMP]
-            u = self.electrons.grid[self.c.UCOMP]
-            v = self.electrons.grid[self.c.VCOMP]
-            # Ensure pressure and density are positive before sqrt
-            pressure = np.maximum(pressure, 1e-12)
-            density = np.maximum(density, 1e-12)
-            a = np.sqrt(self.c.gamma * pressure / density) # Sound speed
-            max_speed_x = np.max(np.abs(u) + a)
-            max_speed_y = np.max(np.abs(v) + a)
-            max_speed = max(max_speed_x, max_speed_y) # More robust estimate
-        
-        
         # Determine timestep dt based on CFL condition
-        elif self.inp.system == "euler2d":
+        if self.inp.system == "euler2d":
             density = self.electrons.grid[self.c.RHOCOMP]
             pressure = self.electrons.grid[self.c.PCOMP]
             u = self.electrons.grid[self.c.UCOMP]
@@ -193,10 +179,8 @@ class Simulation:
                     y = self.inp.grid_y[j]
                     components = [self.electrons.grid[q, i, j] for q in range(self.c.NUMQ)]
                     f.write(f"{x:.12f}, {y:.12f}, " + ", ".join(f"{comp:.8f}" for comp in components) + "\n")
-
-        if self.inp.system == "hallthruster_rz":
-            fig, axs = plt.subplots(3, 2, figsize=(30, 15))
-        elif self.inp.system == "euler2d":
+                    
+        if self.inp.system == "euler2d":
             fig, axs = plt.subplots(2, 2, figsize=(15, 15))
         elif self.inp.system == "mhd2d":
             fig, axs = plt.subplots(2, 4, figsize=(36, 18))
