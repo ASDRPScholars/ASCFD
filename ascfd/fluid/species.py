@@ -47,18 +47,15 @@ class FluidSpecies:
         
     def update(self):
         
-        E = self.fields.E
-        B = self.fields.B
-        
         consU = self.euler.prim_to_cons(self.grid)
         consU_new = self.euler.prim_to_cons(self.grid)
         
-        _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.numghosts)
+        _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
         
         self.bcs.apply_bcs()
         
-        for i in range(self.inp.numghosts, self.inp.nx + self.inp.numghosts):
-            for j in range(self.inp.numghosts, self.inp.ny + self.inp.numghosts):
+        for i in range(self.inp.ng, self.inp.nx + self.inp.ng):
+            for j in range(self.inp.ng, self.inp.ny + self.inp.ng):
                 for icomp in range(self.c.NUMQ):
                     
                     delta = (
@@ -67,12 +64,14 @@ class FluidSpecies:
                     
                     print("RIGHT LEFT TOP BOTTOM:", right_flux[icomp, i, j], left_flux[icomp, i, j], top_flux[icomp, i, j], bottom_flux[icomp, i, j])
                     
-                    if icomp in [self.c.RHOCOMP, self.c.ECOMP]:
-                        consU_new[icomp, i, j] = max(1e-6, consU[icomp, i, j] - delta)
-                    else:
-                        consU_new[icomp, i, j] = consU[icomp, i, j] - delta
+                    # if icomp in [self.c.RHOCOMP, self.c.ECOMP]:
+                    #     consU_new[icomp, i, j] = max(1e-6, consU[icomp, i, j] - delta)
+                    # else:
+                    consU_new[icomp, i, j] = consU[icomp, i, j] - delta
                     
                     print("DELTA:", delta)
+        
+        self._apply_lorentz_source_terms(consU_new)
         
         plt.figure()
         plt.imshow(self.grid[self.c.RHOCOMP])
@@ -83,9 +82,8 @@ class FluidSpecies:
         
         self.bcs.apply_bcs()
         
-        charge_density = self.get_charge_density()
-        
         # ELECTRIC FIELD UPDATE
+        charge_density = self.get_charge_density()
         self.fields.add_charge_density(charge_density)
         
         print("ELECTRONS ADDED CHARGE DENSITY:", charge_density)
@@ -93,9 +91,39 @@ class FluidSpecies:
         self.fields.update_E()
         
         # TODO: call self.ebs.apply_ebs() once embedded boundaries are brought in
-        
-
     
+    
+    def _apply_lorentz_source_terms(self, consU_new):
+                
+        E = self.fields.E
+        B = self.fields.B
+        V = self._get_V()
+        charge_density = self.get_charge_density()
+        
+        assert not np.isnan(E).any(), "NaN in E"
+        assert not np.isnan(B).any(), "NaN in B"
+        assert not np.isnan(V).any(), "NaN in V"
+        
+        lorentz_force = (E + np.cross(V, B))
+        
+        ## MOMENTUM UPDATE
+        x_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * lorentz_force[:, :, 0]
+        y_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * lorentz_force[:, :, 1]
+        
+        print("WHAT ARE WE FEEDING (X):", x_mom_source)
+        # assert np.any(lorentz_source_x >= 0)
+        
+        print("WHAT ARE WE FEEDING (Y):", y_mom_source)
+        # assert np.any(lorentz_source_y >= 0)
+        
+        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += x_mom_source
+        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += y_mom_source
+        
+        ## ENERGY UPDATE
+        energy_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * np.sum(E * V, axis=-1) # cursed vector dot product on two (100, 100, 3 matricies)
+        energy_source = np.clip(energy_source, -1e5, 1e5)
+        consU_new[self.c.ECOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += energy_source
+        
     
     def get_charge_density(self):
         charge_density = self.params.charge * self.get_number_density()
@@ -173,8 +201,8 @@ class FluidSpecies:
     # TODO: check particles ("check_grid()") for neutrals and ions too
     def check_grid(self, prim=False, cons=False):
         # Check for negative or invalid values in the grid
-        for i in range(self.inp.nx + 2 * self.inp.numghosts):
-            for j in range(self.inp.ny + 2 * self.inp.numghosts):
+        for i in range(self.inp.nx + 2 * self.inp.ng):
+            for j in range(self.inp.ny + 2 * self.inp.ng):
                 # if prim:
                 #     # Check for negative pressure
                 #     if self.grid[self.c.PCOMP, i, j] <= 0:
@@ -198,3 +226,16 @@ class FluidSpecies:
                         print(f"NaN value - Bad cell: ({i}, {j}), component: {icomp}")
                         assert False
                         
+    
+    def _get_V(self):
+        w_array = np.zeros_like(self.grid[self.c.UCOMP])
+        V = np.array([self.grid[self.c.UCOMP], self.grid[self.c.VCOMP], w_array])
+        
+        # change (3, 104, 104) to (100, 100, 3)
+        V = np.transpose(V, (1, 2, 0))
+        V = V[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng:]
+        
+        return V
+    
+    
+    
