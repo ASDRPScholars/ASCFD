@@ -71,64 +71,64 @@ class FluidBoundaryConditions:
         # dirichlet boundary condition at the low boundary
         for var in range(self.c.NUMQ): # all variables in the grid
             if dim == 0: # low boundary in x-direction
-                for i in range(self.inp.numghosts): # ghost cells
-                    for j in range(self.inp.numghosts, self.inp.ny + self.inp.numghosts): # valid y-range
-                        grid[var, i, j] = grid[var, self.inp.numghosts, j]
+                for i in range(self.inp.ng): # ghost cells
+                    for j in range(self.inp.ng, self.inp.ny + self.inp.ng): # valid y-range
+                        grid[var, i, j] = grid[var, self.inp.ng, j]
             else:  # low boundary in y-direction
-                for i in range(self.inp.numghosts, self.inp.nx + self.inp.numghosts): # valid x-range
-                    for j in range(self.inp.numghosts): # ghost cells
-                        grid[var, i, j] = grid[var, i, self.inp.numghosts]
+                for i in range(self.inp.ng, self.inp.nx + self.inp.ng): # valid x-range
+                    for j in range(self.inp.ng): # ghost cells
+                        grid[var, i, j] = grid[var, i, self.inp.ng]
 
     
     def dirichlet_hi(self, grid, dim: int) -> None:
         # dirichlet boundary condition at the high boundary
         for var in range(self.c.NUMQ): # all variables in the grid
             if dim == 0:  # high boundary in x-direction
-                for i in range(self.inp.nx + self.inp.numghosts, self.inp.nx + 2*self.inp.numghosts): # ghost x-range
-                    for j in range(self.inp.numghosts, self.inp.ny + self.inp.numghosts):  # valid y-range
-                        grid[var, i, j] = grid[var, self.inp.nx + self.inp.numghosts - 1, j]
+                for i in range(self.inp.nx + self.inp.ng, self.inp.nx + 2*self.inp.ng): # ghost x-range
+                    for j in range(self.inp.ng, self.inp.ny + self.inp.ng):  # valid y-range
+                        grid[var, i, j] = grid[var, self.inp.nx + self.inp.ng - 1, j]
             else:  # high boundary in y-direction
-                for i in range(self.inp.numghosts, self.inp.nx + self.inp.numghosts): # valid x-range
-                    for j in range(self.inp.ny + self.inp.numghosts, self.inp.ny + 2*self.inp.numghosts): #ghost x-range
-                        grid[var, i, j] = grid[var, i, self.inp.ny + self.inp.numghosts - 1]
+                for i in range(self.inp.ng, self.inp.nx + self.inp.ng): # valid x-range
+                    for j in range(self.inp.ny + self.inp.ng, self.inp.ny + 2*self.inp.ng): #ghost x-range
+                        grid[var, i, j] = grid[var, i, self.inp.ny + self.inp.ng - 1]
 
     
     def neumann_lo(self, grid, dim: int) -> None:
         # neumann boundary condition at the low boundary
         for var in range(self.c.NUMQ): # all variables in the grid
             if dim == 0:  # low boundary in x-direction
-                for i in range(self.inp.numghosts): # ghost cells
-                    for j in range(self.inp.numghosts, self.inp.ny + self.inp.numghosts):  # valid y-range
-                        grid[var, i, j] = grid[var, self.inp.numghosts, j]
+                for i in range(self.inp.ng): # ghost cells
+                    for j in range(self.inp.ng, self.inp.ny + self.inp.ng):  # valid y-range
+                        grid[var, i, j] = grid[var, self.inp.ng, j]
             else:  # low boundary in y-direction
-                for i in range(self.inp.numghosts, self.inp.nx + self.inp.numghosts): # valid x-range
-                    for j in range(self.inp.numghosts): # ghost cells
-                        grid[var, i, j] = grid[var, i, self.inp.numghosts]
+                for i in range(self.inp.ng, self.inp.nx + self.inp.ng): # valid x-range
+                    for j in range(self.inp.ng): # ghost cells
+                        grid[var, i, j] = grid[var, i, self.inp.ng]
 
     
     def neumann_hi(self, grid, dim: int) -> None:
          # neumann boundary condition at the high boundary
         for var in range(self.c.NUMQ): # all variables in the grid
             if dim == 0:  # high boundary in x-direction
-                for i in range(self.inp.nx + self.inp.numghosts, self.inp.nx + 2*self.inp.numghosts): # ghost cells
-                    for j in range(self.inp.numghosts, self.inp.ny + self.inp.numghosts): # valid y-range
-                        grid[var, i, j] = grid[var, self.inp.nx + self.inp.numghosts - 1, j]
+                for i in range(self.inp.nx + self.inp.ng, self.inp.nx + 2*self.inp.ng): # ghost cells
+                    for j in range(self.inp.ng, self.inp.ny + self.inp.ng): # valid y-range
+                        grid[var, i, j] = grid[var, self.inp.nx + self.inp.ng - 1, j]
             else:  # y-direction
-                for i in range(self.inp.numghosts, self.inp.nx + self.inp.numghosts):
-                    for j in range(self.inp.ny + self.inp.numghosts, self.inp.ny + 2*self.inp.numghosts): # valid x-range
-                        grid[var, i, j] = grid[var, i, self.inp.ny + self.inp.numghosts - 1] # ghost cells
+                for i in range(self.inp.ng, self.inp.nx + self.inp.ng):
+                    for j in range(self.inp.ny + self.inp.ng, self.inp.ny + 2*self.inp.ng): # valid x-range
+                        grid[var, i, j] = grid[var, i, self.inp.ny + self.inp.ng - 1] # ghost cells
 
     
     def periodic_lo(self, grid, dim: int) -> None:
         # periodic boundary condition at the low boundary
         for var in range(self.c.NUMQ):  # all variables in the grid
             if dim == 0:  # low boundary in x-direction
-                for i in range(self.inp.numghosts): # ghost cells in low x-range
-                    for j in range(self.inp.numghosts, self.inp.ny + self.inp.numghosts): # valid y-range
+                for i in range(self.inp.ng): # ghost cells in low x-range
+                    for j in range(self.inp.ng, self.inp.ny + self.inp.ng): # valid y-range
                         grid[var, i, j] = grid[var, self.inp.nx + i, j]
             else:  # low boundary in y-direction
-                for i in range(self.inp.numghosts, self.inp.nx + self.inp.numghosts): #valid x-range
-                    for j in range(self.inp.numghosts): # ghost cells in low y-range
+                for i in range(self.inp.ng, self.inp.nx + self.inp.ng): #valid x-range
+                    for j in range(self.inp.ng): # ghost cells in low y-range
                         grid[var, i, j] = grid[var, i, self.inp.ny + j]
 
     
@@ -136,10 +136,10 @@ class FluidBoundaryConditions:
         # periodic boundary condition at the high boundary
         for var in range(self.c.NUMQ): #all variables in the grid
             if dim == 0:  # high boundary in x-direction
-                for i in range(self.inp.nx + self.inp.numghosts, self.inp.nx + 2*self.inp.numghosts): # ghost cells in high x-range
-                    for j in range(self.inp.numghosts, self.inp.ny + self.inp.numghosts):  # valid y-range
+                for i in range(self.inp.nx + self.inp.ng, self.inp.nx + 2*self.inp.ng): # ghost cells in high x-range
+                    for j in range(self.inp.ng, self.inp.ny + self.inp.ng):  # valid y-range
                         grid[var, i, j] = grid[var, i - self.inp.nx, j]
             else:  # H=high boundary in y-direction
-                for i in range(self.inp.numghosts, self.inp.nx + self.inp.numghosts): #valid x-range
-                    for j in range(self.inp.ny + self.inp.numghosts, self.inp.ny + 2*self.inp.numghosts): # ghost cells in high y-range
+                for i in range(self.inp.ng, self.inp.nx + self.inp.ng): #valid x-range
+                    for j in range(self.inp.ny + self.inp.ng, self.inp.ny + 2*self.inp.ng): # ghost cells in high y-range
                         grid[var, i, j] = grid[var, i, j - self.inp.ny]

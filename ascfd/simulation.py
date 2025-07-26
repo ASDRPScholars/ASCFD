@@ -57,7 +57,6 @@ class Simulation:
             if self.inp.timeStepper == "RK1":
                 new_particles = []
                 for species in self.all_species:
-                    print("SIM UPDATING")
                     new_particles_from_species = species.update()
                     if new_particles_from_species:
                         new_particles.extend(new_particles_from_species)
@@ -174,8 +173,8 @@ class Simulation:
             f.write(f"# Time: {self.t:.4f}\n")
             f.write("# x, y, density, x-velocity, y-velocity, pressure\n")
 
-            for i in range(self.inp.numghosts, self.inp.nx - self.inp.numghosts):
-                for j in range(self.inp.numghosts, self.inp.ny - self.inp.numghosts):
+            for i in range(self.inp.ng, self.inp.nx - self.inp.ng):
+                for j in range(self.inp.ng, self.inp.ny - self.inp.ng):
                     x = self.inp.grid_x[i]
                     y = self.inp.grid_y[j]
                     components = [self.electrons.grid[q, i, j] for q in range(self.c.NUMQ)]
@@ -189,11 +188,11 @@ class Simulation:
         
         for q in range(self.c.NUMQ):
             # Exclude ghost cells from the plot
-            plot_data = self.electrons.grid[q, self.inp.numghosts:-self.inp.numghosts, self.inp.numghosts:-self.inp.numghosts].T # TODO: why transpose?
+            plot_data = self.electrons.grid[q, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng].T # TODO: why transpose?
             # plot_data = self.electrons.grid[q, :, :].T
             
-            extent = [self.inp.grid_x[self.inp.numghosts], self.inp.grid_y[-self.inp.numghosts-1],
-                      self.inp.grid_y[self.inp.numghosts], self.inp.grid_y[-self.inp.numghosts-1]]
+            extent = [self.inp.grid_x[self.inp.ng], self.inp.grid_y[-self.inp.ng-1],
+                      self.inp.grid_y[self.inp.ng], self.inp.grid_y[-self.inp.ng-1]]
 
             im = axs[q].imshow(plot_data, origin='lower', extent=extent, cmap='magma')
             

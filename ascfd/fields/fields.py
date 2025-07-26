@@ -37,15 +37,15 @@ class Fields:
                 
                 
     def update_E(self):
-        print("UPDATE E")
+        # print("UPDATE E")
         
-        print("THIS IS CHARGE DENSITY TAKEN IN BY POISSON:", self.charge_density)
+        # print("THIS IS CHARGE DENSITY TAKEN IN BY POISSON:", self.charge_density)
         
         self.solve_poisson()
         self._compute_electric_field()
     
-        print("NEW CALCULATED EX IS:", self.E[:, :, 0])
-        print("NEW CALCULATED EY IS:", self.E[:, :, 1])
+        # print("NEW CALCULATED EX IS:", self.E[:, :, 0])
+        # print("NEW CALCULATED EY IS:", self.E[:, :, 1])
 
         fig, axs = plt.subplots(2, 2, figsize=(15, 15))  # 1 row, 3 columns
         axs = axs.flatten()
@@ -129,13 +129,13 @@ class Fields:
         
         self.potential = solver.solve()
         
-        print("POTENTIAL FROM SOLVED POISSON IS:", self.potential)
-        print(np.shape(self.potential))
+        # print("POTENTIAL FROM SOLVED POISSON IS:", self.potential)
+        # print(np.shape(self.potential))
 
             
     def _compute_electric_field(self):
         """Compute E = -grad(phi) using central differences with ghost cells"""
-        ng = self.inp.numghosts
+        ng = self.inp.ng
         nx, ny = self.inp.nx_with_ghosts, self.inp.ny_with_ghosts
         
         # Central differences only for interior points to avoid boundary artifacts
