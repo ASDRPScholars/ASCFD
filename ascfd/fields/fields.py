@@ -3,10 +3,13 @@ from ascfd.inputs import Inputs
 from ascfd.fields.ics import FieldInitialConditions
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D  # needed for 3D projection only
-# from sympy import sin, cos
-# from sympy.abc import x, y
+from sympy import sin, cos
+from sympy.abc import x, y
 
-from poissonpy import solvers
+import sys
+
+from poissonpy import solvers, functional
+import poissonpy
 
 
 class Fields:
@@ -121,13 +124,17 @@ class Fields:
         
         rhs = - self.charge_density / self.eps0
         rect = ((self.inp.xlim[0], self.inp.ylim[0]), (self.inp.xlim[1], self.inp.ylim[1]))
+
         
         boundary = {
-            "left": (0.5, "dirichlet"),
-            "right": (0, "dirichlet"),
+            "left": (0.02, "dirichlet"), # high voltage
+            "right": (0, "dirichlet"), # to low voltage
             "top": (0, "neumann_y"),
             "bottom": (0, "neumann_y")
         }
+        
+        np.set_printoptions(threshold=sys.maxsize)
+        print("rhs", rhs)
         
         # solve potential from poisson !!WITH GHOSTS!! this makes computing E = -grad(phi) easier
         solver = solvers.Poisson2DRectangle(rect=rect, interior=rhs, boundary=boundary, X=self.inp.nx_with_ghosts, Y=self.inp.ny_with_ghosts)
@@ -136,6 +143,26 @@ class Fields:
         
         # print("POTENTIAL FROM SOLVED POISSON IS:", self.potential)
         # print(np.shape(self.potential))
+        
+        # f_expr = sin(x) + cos(y) # create sympy function expression
+        # laplacian_expr = functional.get_sp_laplacian_expr(f_expr) # create sympy laplacian function expression
+
+        # f = functional.get_sp_function(f_expr) # create sympy function
+        # laplacian = functional.get_sp_function(laplacian_expr) # create sympy function
+        
+        # interior = laplacian
+        # boundary = {
+        #     "left": (f, "dirichlet"),
+        #     "right": (f, "dirichlet"),
+        #     "top": (f, "dirichlet"),
+        #     "bottom": (f, "dirichlet")
+        # }
+        
+        # solver = solvers.Poisson2DRectangle(((-2*np.pi, -2*np.pi), (2*np.pi, 2*np.pi)), 
+        #     interior, boundary, X=100, Y=100)
+        # solution = solver.solve()
+        
+        # self.potential = solution
 
             
     def _compute_electric_field(self):
