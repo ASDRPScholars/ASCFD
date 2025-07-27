@@ -110,8 +110,8 @@ class Poisson2DRectangle:
             bd_pos = boundary_pos[bd]
             bd_ids = boundary_ids[bd]
             
-            print("ids", bd_ids)
-            print("pos", bd_pos)
+            # print("ids", bd_ids)
+            # print("pos", bd_pos)
 
             if isinstance(bd_func, types.FunctionType):
                 b[bd_pos] = bd_func(self.xs[bd_ids], self.ys[bd_ids])

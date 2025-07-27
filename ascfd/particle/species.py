@@ -180,7 +180,7 @@ class ParticleSpecies:
             
             print("IONS ADDED CHARGE DENSITY:", charge_density)
             
-            self.fields.update_E
+            # self.fields.update_E
 
         return new_particles
 

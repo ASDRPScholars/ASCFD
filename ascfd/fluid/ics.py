@@ -64,9 +64,9 @@ class FluidInitialConditions:
         if a_var == 0: #RHOCOMP
             return 1.0 + 0.2 * np.sin(2 * np.pi * (a_x + a_y - t))
         elif a_var == 1: #UCOMP
-            return np.ones_like(a_x)
+            return np.ones_like(a_x) * 10
         elif a_var == 2: #VCOMP
-            return np.ones_like(a_x)
+            return np.ones_like(a_x) * 10
         elif a_var == 3: #PCOMP
             return np.ones_like(a_x)
         else:
@@ -183,5 +183,11 @@ class FluidInitialConditions:
         
         
     def static(self):
-        return np.ones_like(self.grid)
+        ic_grid = np.zeros_like(self.grid)
+        
+        ic_grid[self.c.RHOCOMP] = 9e-11
+        ic_grid[self.c.UCOMP] = 0
+        ic_grid[self.c.PCOMP] = 0.001
+        
+        return ic_grid
     

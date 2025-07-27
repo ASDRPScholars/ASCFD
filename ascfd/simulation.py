@@ -43,7 +43,8 @@ class Simulation:
         
         # Set timestep for all species
         for species in self.all_species:
-            species.dt = self.dt
+            # species.dt = self.dt
+            species.dt = 1.283-8
         
         # -1 is no output. Always output ICs if we are outputting.
         if self.inp.output_freq >= 0:
@@ -51,29 +52,33 @@ class Simulation:
         
 
     def run(self):
-        while (self.t < self.inp.t_finish) and self.timestep < self.inp.nt:
+        # !TEMP!
+        while True:
             print("\033[1m" + f"Timestep: {self.timestep}, Current time: {self.t}" + "\033[0m")
             
             if self.inp.timeStepper == "RK1":
-                new_particles = []
-                for species in self.all_species:
-                    new_particles_from_species = species.update()
-                    if new_particles_from_species:
-                        new_particles.extend(new_particles_from_species)
+                self.electrons.update()
                 
-                for particle in new_particles:
-                    if hasattr(particle, '__len__') and len(particle) == self.pc.NUMQ + 1:
-                        particle_charge = particle[self.pc.NUMQ - 1] if hasattr(self.pc, 'CHARGE') else 0.0
-                        particle_mass = getattr(particle, 'mass', None)
+                # new_particles = []
+                
+                # for species in self.all_species:
+                #     new_particles_from_species = species.update()
+                    # if new_particles_from_species:
+                    #     new_particles.extend(new_particles_from_species)
+                
+                # for particle in new_particles:
+                #     if hasattr(particle, '__len__') and len(particle) == self.pc.NUMQ + 1:
+                #         particle_charge = particle[self.pc.NUMQ - 1] if hasattr(self.pc, 'CHARGE') else 0.0
+                #         particle_mass = getattr(particle, 'mass', None)
                         
-                        if hasattr(self, 'ions') and particle_charge > 0:
-                            self.ions.add_particle(particle)
-                        elif hasattr(self, 'electrons') and particle_charge < 0:
-                            pass
-                        elif hasattr(self, 'neutrals') and abs(particle_charge) < 1e-20:
-                            self.neutrals.add_particle(particle)      
+                #         if hasattr(self, 'ions') and particle_charge > 0:
+                #             self.ions.add_particle(particle)
+                #         elif hasattr(self, 'electrons') and particle_charge < 0:
+                #             pass
+                #         elif hasattr(self, 'neutrals') and abs(particle_charge) < 1e-20:
+                #             self.neutrals.add_particle(particle)      
                 
-                self.electrons.add_particles(new_particles)
+                # self.electrons.add_particles(new_particles)
                 
             else:
                 raise ValueError(f"Unknown time stepper: {self.inp.timeStepper}")
@@ -86,6 +91,9 @@ class Simulation:
         
         if self.inp.output_freq >= 0:
             self.output()
+            
+        # !TEMP!
+        self.output()
         
         print(f"\nSimulation completed at time {self.t} after {self.timestep} timesteps")
         

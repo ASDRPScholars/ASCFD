@@ -25,7 +25,7 @@ class FieldInitialConditions:
     def guillaume(self):
         ic_grid = np.zeros_like(self.B_field)
         
-        B_max = 0.237
+        B_max = 0.02 # 0.237 -> 0.02 per claude
         x_c = 0.5
         sigma = 0.05
         

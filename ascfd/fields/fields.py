@@ -18,8 +18,8 @@ class Fields:
         
         self.ics = FieldInitialConditions(self.E, self.B, self.inp)
         
-        self.B = self.ics.apply_B_ics()
-        self.ics.apply_E_ics()
+        # self.B = self.ics.apply_B_ics()
+        # self.ics.apply_E_ics()
         
         plt.figure()
         im = plt.imshow(self.B[:, :, 1])
@@ -46,59 +46,64 @@ class Fields:
     
         # print("NEW CALCULATED EX IS:", self.E[:, :, 0])
         # print("NEW CALCULATED EY IS:", self.E[:, :, 1])
-
-        fig, axs = plt.subplots(2, 2, figsize=(15, 15))  # 1 row, 3 columns
-        axs = axs.flatten()
-
-        # Plot charge density
-        im0 = axs[0].imshow(self.charge_density, cmap="coolwarm")
-        axs[0].set_title("Charge Density")
-        fig.colorbar(im0, ax=axs[0])
-
-        # Plot Ex
-        im1 = axs[1].imshow(self.E[:, :, 0], cmap="coolwarm")
-        axs[1].set_title("Electric Field Ex")
-        fig.colorbar(im1, ax=axs[1])
-
-        # Plot Ey
-        im2 = axs[2].imshow(self.E[:, :, 1], cmap="coolwarm")
-        axs[2].set_title("Electric Field Ey")
-        fig.colorbar(im2, ax=axs[2])
         
-        # Plot E
-        im3 = axs[3].imshow(np.sqrt(self.E[:, :, 0]**2 + self.E[:, :, 1]**2), cmap="coolwarm")
-        axs[3].set_title("Electric Field Magnitude")
-        fig.colorbar(im3, ax=axs[3])
+                
+        # print("E", self.E)
+        # print("V", V)
+        # print("B", self.B)
+
+        # fig, axs = plt.subplots(2, 2, figsize=(15, 15))  # 1 row, 3 columns
+        # axs = axs.flatten()
+
+        # # Plot charge density
+        # im0 = axs[0].imshow(self.charge_density, cmap="coolwarm")
+        # axs[0].set_title("Charge Density")
+        # fig.colorbar(im0, ax=axs[0])
+
+        # # Plot Ex
+        # im1 = axs[1].imshow(self.E[:, :, 0], cmap="coolwarm")
+        # axs[1].set_title("Electric Field Ex")
+        # fig.colorbar(im1, ax=axs[1])
+
+        # # Plot Ey
+        # im2 = axs[2].imshow(self.E[:, :, 1], cmap="coolwarm")
+        # axs[2].set_title("Electric Field Ey")
+        # fig.colorbar(im2, ax=axs[2])
         
-        plt.tight_layout()
-        plt.show()
+        # # Plot E
+        # im3 = axs[3].imshow(np.sqrt(self.E[:, :, 0]**2 + self.E[:, :, 1]**2), cmap="coolwarm")
+        # axs[3].set_title("Electric Field Magnitude")
+        # fig.colorbar(im3, ax=axs[3])
+        
+        # plt.tight_layout()
+        # plt.show()
         
         ### 3D PLOT
-        # Compute E magnitude
-        E_mag = np.sqrt(self.E[5:-5, 5:-5, 0]**2 + self.E[5:-5, 5:-5, 1]**2)
+        # # Compute E magnitude
+        # E_mag = np.sqrt(self.E[5:-5, 5:-5, 0]**2 + self.E[5:-5, 5:-5, 1]**2)
 
-        # Create meshgrid for X and Y
-        nx, ny = E_mag.shape
-        x = np.arange(nx)
-        y = np.arange(ny)
-        X, Y = np.meshgrid(y, x)  # careful: meshgrid uses (cols, rows) order
+        # # Create meshgrid for X and Y
+        # nx, ny = E_mag.shape
+        # x = np.arange(nx)
+        # y = np.arange(ny)
+        # X, Y = np.meshgrid(y, x)  # careful: meshgrid uses (cols, rows) order
 
-        # Create figure
-        fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111, projection='3d')
+        # # Create figure
+        # fig = plt.figure(figsize=(10, 8))
+        # ax = fig.add_subplot(111, projection='3d')
 
-        # Plot the surface
-        surf = ax.plot_surface(X, Y, E_mag, cmap='coolwarm')
+        # # Plot the surface
+        # surf = ax.plot_surface(X, Y, E_mag, cmap='coolwarm')
 
-        # Add colorbar and labels
-        fig.colorbar(surf, ax=ax, shrink=0.5, aspect=10)
-        ax.set_title("ours")
-        ax.set_xlabel("X")
-        ax.set_ylabel("Y")
-        ax.set_zlabel("|E|")
+        # # Add colorbar and labels
+        # fig.colorbar(surf, ax=ax, shrink=0.5, aspect=10)
+        # ax.set_title("ours")
+        # ax.set_xlabel("X")
+        # ax.set_ylabel("Y")
+        # ax.set_zlabel("|E|")
 
-        plt.tight_layout()
-        plt.show()
+        # plt.tight_layout()
+        # plt.show()
         
         self._clear_calculation_grids()
         
@@ -118,7 +123,7 @@ class Fields:
         rect = ((self.inp.xlim[0], self.inp.ylim[0]), (self.inp.xlim[1], self.inp.ylim[1]))
         
         boundary = {
-            "left": (300, "dirichlet"),
+            "left": (3, "dirichlet"),
             "right": (0, "dirichlet"),
             "top": (0, "neumann_y"),
             "bottom": (0, "neumann_y")

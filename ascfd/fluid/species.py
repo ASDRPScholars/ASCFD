@@ -13,6 +13,7 @@ import ascfd.fluid.ics as ics
 import numpy as np
 import matplotlib.pyplot as plt
 
+import sys
 
 class FluidSpecies:
     def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields):
@@ -30,7 +31,7 @@ class FluidSpecies:
         
         self.grid = np.zeros((self.c.NUMQ, self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
         
-        self.bcs = FluidBoundaryConditions(self.grid, self.inp.bcs_lo, self.inp.bcs_hi, self.inp)
+        self.bcs = FluidBoundaryConditions(self.grid, self.inp.bcs_lo, self.inp.bcs_hi, self.inp, embedded_boundaries="hallthruster")
         self.ics = FluidInitialConditions(self.grid, self.inp)
         
         self.bcs.apply_bcs()
@@ -42,13 +43,17 @@ class FluidSpecies:
         
         self.grid = self.ics.apply_ics()
         
-        print("HI OK THIS IS DENSITY AT ICS:", self.grid[self.c.RHOCOMP])
+        # print("HI OK THIS IS DENSITY AT ICS:", self.grid[self.c.RHOCOMP])
         
         
     def update(self):
         
+        print("dt is", self.dt)
         consU = self.euler.prim_to_cons(self.grid)
         consU_new = self.euler.prim_to_cons(self.grid)
+        
+        # print("!START! MU", self.grid[self.c.MUCOMP])
+        # print("!START! RHO", self.grid[self.c.RHOCOMP])
         
         _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
         
@@ -62,14 +67,17 @@ class FluidSpecies:
                         (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
                         (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
                     
-                    print("RIGHT LEFT TOP BOTTOM:", right_flux[icomp, i, j], left_flux[icomp, i, j], top_flux[icomp, i, j], bottom_flux[icomp, i, j])
+                    # print("RIGHT LEFT TOP BOTTOM:", right_flux[icomp, i, j], left_flux[icomp, i, j], top_flux[icomp, i, j], bottom_flux[icomp, i, j])
                     
                     # if icomp in [self.c.RHOCOMP, self.c.ECOMP]:
                     #     consU_new[icomp, i, j] = max(1e-6, consU[icomp, i, j] - delta)
                     # else:
                     consU_new[icomp, i, j] = consU[icomp, i, j] - delta
                     
-                    print("DELTA:", delta)
+                    # print("DELTA:", delta)
+                    
+        # print("!AFTER FLUX! MU TAKING IN", self.grid[self.c.MUCOMP])
+        # print("!AFTER FLUX! RHO TAKING IN", self.grid[self.c.RHOCOMP])
         
         self._apply_lorentz_source_terms(consU_new)
         
@@ -78,15 +86,51 @@ class FluidSpecies:
         plt.title("electron density")
         plt.show()
         
-        self.grid = self.euler.cons_to_prim(consU_new)
+        fig, axs = plt.subplots(2, 2, figsize=(10, 10))  # 1 row, 3 columns
+        axs = axs.flatten()
+        
+        # print("!FINAL BEFORE PLOT! MU TAKING IN", self.grid[self.c.MUCOMP])
+        # print("!FINAL BEFORE PLOT! RHO TAKING IN", self.grid[self.c.RHOCOMP])
+
+        # Plot charge density
+        im0 = axs[0].imshow(self.grid[self.c.RHOCOMP], cmap="magma")
+        axs[0].set_title("density")
+        fig.colorbar(im0, ax=axs[0])
+
+        # Plot Ex
+        im1 = axs[1].imshow(self.grid[self.c.MUCOMP], cmap="magma")
+        axs[1].set_title("mu")
+        fig.colorbar(im1, ax=axs[1])
+
+        # Plot Ey
+        im2 = axs[2].imshow(self.grid[self.c.MVCOMP], cmap="magma")
+        axs[2].set_title("mv")
+        fig.colorbar(im2, ax=axs[2])
+        
+        # Plot E
+        im3 = axs[3].imshow(self.grid[self.c.ECOMP], cmap="magma")
+        axs[3].set_title("energy")
+        fig.colorbar(im3, ax=axs[3])
+        
+        plt.tight_layout()
+        plt.show()
         
         self.bcs.apply_bcs()
+        
+        # print("!!AFTER BCS!! MU TAKING IN", self.grid[self.c.MUCOMP])
+        # print("!!AFTER BCS!! RHO TAKING IN", self.grid[self.c.RHOCOMP])
+
+        
+        self.grid = self.euler.cons_to_prim(consU_new)
+        
+        # print("!!AFTER REAL FLUX UPDATE!! MU TAKING IN", self.grid[self.c.MUCOMP])
+        # print("!!AFTER REAL FLUX UPDATE!! RHO TAKING IN", self.grid[self.c.RHOCOMP])
         
         # ELECTRIC FIELD UPDATE
         charge_density = self.get_charge_density()
         self.fields.add_charge_density(charge_density)
         
-        print("ELECTRONS ADDED CHARGE DENSITY:", charge_density)
+        # print("ELECTRONS ADDED CHARGE DENSITY:", charge_density)
         
         self.fields.update_E()
         
@@ -94,42 +138,108 @@ class FluidSpecies:
     
     
     def _apply_lorentz_source_terms(self, consU_new):
+        
+        print("DEBUG mass density:", np.max(self.grid[self.c.RHOCOMP]))
+        print("DEBUG params.mass:", self.params.mass)  
+        print("DEBUG params.charge:", self.params.charge)
                 
-        E = self.fields.E
-        B = self.fields.B
-        V = self._get_V()
-        charge_density = self.get_charge_density()
-        
-        assert not np.isnan(E).any(), "NaN in E"
-        assert not np.isnan(B).any(), "NaN in B"
-        assert not np.isnan(V).any(), "NaN in V"
-        
-        lorentz_force = (E + np.cross(V, B))
-        
-        ## MOMENTUM UPDATE
-        x_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * lorentz_force[:, :, 0]
-        y_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * lorentz_force[:, :, 1]
-        
-        print("WHAT ARE WE FEEDING (X):", x_mom_source)
-        # assert np.any(lorentz_source_x >= 0)
-        
-        print("WHAT ARE WE FEEDING (Y):", y_mom_source)
-        # assert np.any(lorentz_source_y >= 0)
-        
-        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += x_mom_source
-        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += y_mom_source
-        
-        ## ENERGY UPDATE
-        energy_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * np.sum(E * V, axis=-1) # cursed vector dot product on two (100, 100, 3 matricies)
-        energy_source = np.clip(energy_source, -1e5, 1e5)
-        consU_new[self.c.ECOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += energy_source
+        n_substeps = 10
+        dt_sub = self.dt / n_substeps
+    
+        for i in range(n_substeps):
+            E = self.fields.E
+            B = self.fields.B
+            V = self._get_V()
+            
+            charge_density = self.get_charge_density()
+            
+            print("DEBUG charge density:", np.max(charge_density))
+            print("DEBUG: max abs charge density:", np.max(np.abs(charge_density)))
+            print("DEBUG: max charge density:", np.max(charge_density))  
+            print("DEBUG: min charge density:", np.min(charge_density))
+            
+            # assert not np.isnan(E).any(), "NaN in E"
+            # assert not np.isnan(B).any(), "NaN in B"
+            # assert not np.isnan(V).any(), "NaN in V"
+            
+            lorentz_force = (E + np.cross(V, B))
+            print("DEBUG: max abs lorentz force:", np.max(np.abs(lorentz_force)))
+            
+            ## MOMENTUM UPDATE
+            x_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * lorentz_force[:, :, 0]
+            print("DEBUG: max abs x_mom_source:", np.max(np.abs(x_mom_source)))
+            y_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * lorentz_force[:, :, 1]
+            
+            # print("X MOM SOURCE TERMS:", x_mom_source)
+            # print("Y MOM SOURCE TERMS:", y_mom_source)
+            
+            np.set_printoptions(threshold=sys.maxsize)
+            
+            # print("charge_density", charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng])
+            # print("x lorentz force", lorentz_force[:, :, 0])
+            # print("x_mom", np.max(x_mom_source))
+            # print("y_mom", np.max(y_mom_source))
+            
+            # print("WHAT ARE WE FEEDING (X):", x_mom_source)
+            # # assert np.any(lorentz_source_x >= 0)
+            
+            # print("WHAT ARE WE FEEDING (Y):", y_mom_source)
+            # # assert np.any(lorentz_source_y >= 0)
+            
+            # !!C!!
+            consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += x_mom_source * dt_sub
+            consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += y_mom_source * dt_sub
+            
+            # print("!!C!! Max x_mom_source added:", np.max(np.abs(x_mom_source)))
+            # print("!!C!! Max y_mom_source added:", np.max(np.abs(y_mom_source)))
+            # print("!!C!! Max momentum after update:", np.max(np.abs(consU_new[self.c.MUCOMP])))
+            # print("!!C!! Min/Max density:", np.min(consU_new[self.c.RHOCOMP]), np.max(consU_new[self.c.RHOCOMP]))
+
+            # !!C!! 
+            V = self._get_V()
+            
+            # print("!AFTER MOM UPDATE! MU TAKING IN", self.grid[self.c.MUCOMP])
+            # print("!AFTER MOM UPDATE! RHO TAKING IN", self.grid[self.c.RHOCOMP])
+            # print("!AFTER MOM UPDATE! V COMING OUT", V)
+            
+            # ENERGY UPDATE
+            energy_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * (E[:, :, 0] * V[:, :, 0] + E[:, :, 1] * V[:, :, 1] + E[:, :, 2] * V[:, :, 2]) # cursed vector dot product on two (100, 100, 3 matricies)
+            
+            # # Current density
+            # J_e = charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] * V  # electron current density
+
+            # # Joule heating (energy source)
+            # energy_source = J_e[:,:,0] * E[:,:,0] + J_e[:,:,1] * E[:,:,1] + J_e[:,:,2] * E[:,:,2]
+            
+            #####
+            
+            # energy_source = np.clip(energy_source, -1e3, 1e3)
+            
+            # print("x energy", E[:, :, 0])
+            # print("REAL x velocity", self.grid[self.c.MUCOMP])
+            # print("x velocity", V[:, :, 0])
+                    
+            # print("ENERGY source", energy_source)
+            # print("ENERGY charge density", charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng])
+            # print("ENERGY E field", E[:, :, 0])
+            print("ENERGY V field", V[:, :, 0])
+            
+            # print("energy", np.max(energy_source))
+            
+            # !!C!!
+            consU_new[self.c.ECOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += energy_source * dt_sub
+            
+            print("!!C!! Max charge density:", np.max(np.abs(charge_density)))
+            print("!!C!! Max E field:", np.max(np.abs(E)))
+            print("!!C!! Max V field:", np.max(np.abs(V)))
+            print("!!C!! Max Lorentz force:", np.max(np.abs(lorentz_force)))
         
     
     def get_charge_density(self):
         charge_density = self.params.charge * self.get_number_density()
-        print("HI THIS IS DENSITY:", self.grid[self.c.RHOCOMP])
-        print("HI THIS IS NUMBER DENSITY:", self.get_number_density())
-        print("HI THIS IS CHARGE DENSITY:", charge_density)
+        # print("HI THIS IS DENSITY:", self.grid[self.c.RHOCOMP])
+        # print("HI THIS IS NUMBER DENSITY:", self.get_number_density())
+        # print("HI THIS IS CHARGE DENSITY:", charge_density)
         return charge_density
     
     
@@ -228,6 +338,7 @@ class FluidSpecies:
                         
     
     def _get_V(self):
+        
         w_array = np.zeros_like(self.grid[self.c.UCOMP])
         V = np.array([self.grid[self.c.UCOMP], self.grid[self.c.VCOMP], w_array])
         
@@ -236,6 +347,4 @@ class FluidSpecies:
         V = V[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng:]
         
         return V
-    
-    
     
