@@ -32,6 +32,8 @@ class FluidBoundaryConditions:
                 self.f_lo[idim] = self.neumann_lo
             elif self.types_lo[idim] == "periodic":
                 self.f_lo[idim] = self.periodic_lo
+            elif self.types_lo[idim] == "inflow":
+                self.f_lo[idim] = self.inflow_lo
             else:
                 # error if unsupported boundary condition type is provided
                 raise RuntimeError(f"BC Lo Type not supported: {self.types_lo[idim]}")
@@ -147,3 +149,25 @@ class FluidBoundaryConditions:
                 for i in range(self.inp.ng, self.inp.nx + self.inp.ng): #valid x-range
                     for j in range(self.inp.ny + self.inp.ng, self.inp.ny + 2*self.inp.ng): # ghost cells in high y-range
                         grid[var, i, j] = grid[var, i, j - self.inp.ny]
+                        
+                        
+    def inflow_lo(self, grid, dim: int) -> None:
+        print("!BCS! CALLED NEUMANN LO")
+        print("!BCS! CAN I READ THE MIDDLE OF GRID??", grid[1, 52, 52])
+        # neumann boundary condition at the low boundary
+
+        if dim == 0:  # low boundary in x-direction
+            for i in range(self.inp.ng): # ghost cells
+                for j in range(self.inp.ng, self.inp.ny + self.inp.ng):  # valid y-range
+                    grid[self.c.RHOCOMP, i, j] = 5
+                    grid[self.c.PCOMP, i, j] = 5e7
+                    grid[self.c.VCOMP, i, j] = 10
+                    grid[self.c.UCOMP, i, j] = 0
+                    
+        else:  # low boundary in y-direction
+            for i in range(self.inp.ng, self.inp.nx + self.inp.ng): # valid x-range
+                for j in range(self.inp.ng): # ghost cells
+                    grid[self.c.RHOCOMP, i, j] = 5
+                    grid[self.c.PCOMP, i, j] = 5e7
+                    grid[self.c.VCOMP, i, j] = 0
+                    grid[self.c.UCOMP, i, j] = 10
