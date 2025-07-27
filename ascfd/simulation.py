@@ -196,11 +196,12 @@ class Simulation:
         
         for q in range(self.c.NUMQ):
             # Exclude ghost cells from the plot
-            plot_data = self.electrons.grid[q, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng].T # TODO: why transpose?
+            plot_data = self.electrons.grid[q, self.inp.ng*5:-self.inp.ng*5, self.inp.ng*5:-self.inp.ng*5].T # TODO: why transpose?
             # plot_data = self.electrons.grid[q, :, :].T
             
-            extent = [self.inp.grid_x[self.inp.ng], self.inp.grid_y[-self.inp.ng-1],
-                      self.inp.grid_y[self.inp.ng], self.inp.grid_y[-self.inp.ng-1]]
+            # !TEMP!
+            extent = [self.inp.grid_x[self.inp.ng*5], self.inp.grid_y[-self.inp.ng*5-1],
+                      self.inp.grid_y[self.inp.ng*5], self.inp.grid_y[-self.inp.ng*5-1]]
 
             im = axs[q].imshow(plot_data, origin='lower', extent=extent, cmap='magma')
             
