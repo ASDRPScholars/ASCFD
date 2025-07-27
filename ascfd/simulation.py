@@ -189,19 +189,22 @@ class Simulation:
                     f.write(f"{x:.12f}, {y:.12f}, " + ", ".join(f"{comp:.8f}" for comp in components) + "\n")
                     
         if self.inp.system == "euler2d":
-            fig, axs = plt.subplots(2, 2, figsize=(15, 15))
+            fig, axs = plt.subplots(2, 4, figsize=(35, 15))
         elif self.inp.system == "mhd2d":
             fig, axs = plt.subplots(2, 4, figsize=(36, 18))
         axs = axs.ravel()  # Flatten the array to index by i
         
         for q in range(self.c.NUMQ):
             # Exclude ghost cells from the plot
-            plot_data = self.electrons.grid[q, self.inp.ng*5:-self.inp.ng*5, self.inp.ng*5:-self.inp.ng*5].T # TODO: why transpose?
+            # plot_data = self.electrons.grid[q, self.inp.ng*5:-self.inp.ng*5, self.inp.ng*5:-self.inp.ng*5].T # TODO: why transpose?
+            plot_data = self.electrons.grid[q, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng].T # TODO: why transpose?
             # plot_data = self.electrons.grid[q, :, :].T
             
             # !TEMP!
-            extent = [self.inp.grid_x[self.inp.ng*5], self.inp.grid_y[-self.inp.ng*5-1],
-                      self.inp.grid_y[self.inp.ng*5], self.inp.grid_y[-self.inp.ng*5-1]]
+            # extent = [self.inp.grid_x[self.inp.ng*5], self.inp.grid_y[-self.inp.ng*5-1],
+            #           self.inp.grid_y[self.inp.ng*5], self.inp.grid_y[-self.inp.ng*5-1]]
+            extent = [self.inp.grid_x[self.inp.ng], self.inp.grid_y[-self.inp.ng-1],
+                      self.inp.grid_y[self.inp.ng], self.inp.grid_y[-self.inp.ng-1]]
 
             im = axs[q].imshow(plot_data, origin='lower', extent=extent, cmap='magma')
             
@@ -213,6 +216,24 @@ class Simulation:
             axs[q].set_title(self.c.variable_names[q])
             axs[q].set_xlabel('x')
             axs[q].set_ylabel('y')
+            
+            
+        im = axs[4].imshow(self.fields.E[:, :, 0], cmap='coolwarm')
+        plt.colorbar(im, ax=axs[4])
+        axs[4].set_title("electric field x")
+        
+        im = axs[5].imshow(self.fields.E[:, :, 1], cmap='coolwarm')
+        plt.colorbar(im, ax=axs[5])
+        axs[5].set_title("electric field y")
+        
+        im = axs[6].imshow(np.sqrt(self.fields.E[:, :, 0] ** 2 +self.fields.E[:, :, 1]), cmap='coolwarm')
+        plt.colorbar(im, ax=axs[6])
+        axs[6].set_title("electric field magnitude")
+        
+        im = axs[7].imshow(self.fields.B[:, :, 1], cmap='coolwarm')
+        plt.colorbar(im, ax=axs[7])
+        axs[7].set_title("magnetic field y")
+        
 
         fig.suptitle(f"Time: {self.t:.4f}, Timestep: {self.timestep}")
         plt.tight_layout()
