@@ -44,7 +44,7 @@ class Simulation:
         # Set timestep for all species
         for species in self.all_species:
             # species.dt = self.dt
-            species.dt = 1.283-8
+            species.dt = 1.283e-8
         
         # -1 is no output. Always output ICs if we are outputting.
         if self.inp.output_freq >= 0:

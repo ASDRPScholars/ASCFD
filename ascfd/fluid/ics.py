@@ -1,10 +1,12 @@
 from ascfd.fluid.constants import FluidConstants
 from ascfd.inputs import Inputs
+from ascfd.params import SpeciesParams
 import numpy as np
 
 class FluidInitialConditions:
-    def __init__(self, grid, a_inputs: Inputs):
+    def __init__(self, grid, a_inputs: Inputs, params: SpeciesParams):
         self.c = FluidConstants(a_inputs)
+        self.params = params
         self.inp = a_inputs
         self.grid = grid
         
@@ -183,11 +185,18 @@ class FluidInitialConditions:
         
         
     def static(self):
-        ic_grid = np.zeros_like(self.grid)
+        ic = np.zeros_like(self.grid)
+        rho0 = 9e-11                 # kg/m³  → n≈1e20 m⁻³
+        u0 = 0.0                     # m/s
+        v0 = 0.0
+        T0 = 1e4                     # K, choose a reasonable electron/ion temperature
+        p0 = rho0/self.params.mass * self.c.k_B * T0  # ideal‑gas law: n kT
+        E0 = p0/(self.c.gamma-1) + 0.5*rho0*(u0**2+v0**2)
         
-        ic_grid[self.c.RHOCOMP] = 9e-11
-        ic_grid[self.c.UCOMP] = 0
-        ic_grid[self.c.PCOMP] = 0.001
-        
-        return ic_grid
+        ic[self.c.RHOCOMP] = rho0
+        ic[self.c.UCOMP ] = u0  
+        ic[self.c.VCOMP ] = v0
+        ic[self.c.ECOMP ] = E0
+        return ic
+    
     

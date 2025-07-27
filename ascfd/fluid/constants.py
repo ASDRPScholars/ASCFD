@@ -29,7 +29,8 @@ class FluidConstants:
             self.system = "euler2d"
 
             self.gamma = a_inputs.gammas[0] #gammas
-
+            
+            self.k_B = 1.380649e-23
 
             self.variable_names = ["Density", "X-Velocity", "Y-Velocity", "Pressure"]
 
