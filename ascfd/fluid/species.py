@@ -81,6 +81,8 @@ class FluidSpecies:
         
         self._apply_lorentz_source_terms(consU_new)
         
+        self.bcs.apply_bcs()
+        
         plt.figure()
         plt.imshow(self.grid[self.c.RHOCOMP])
         plt.title("electron density")
@@ -114,8 +116,6 @@ class FluidSpecies:
         
         plt.tight_layout()
         plt.show()
-        
-        self.bcs.apply_bcs()
         
         # print("!!AFTER BCS!! MU TAKING IN", self.grid[self.c.MUCOMP])
         # print("!!AFTER BCS!! RHO TAKING IN", self.grid[self.c.RHOCOMP])

@@ -123,7 +123,7 @@ class Fields:
         rect = ((self.inp.xlim[0], self.inp.ylim[0]), (self.inp.xlim[1], self.inp.ylim[1]))
         
         boundary = {
-            "left": (3, "dirichlet"),
+            "left": (0.5, "dirichlet"),
             "right": (0, "dirichlet"),
             "top": (0, "neumann_y"),
             "bottom": (0, "neumann_y")

@@ -25,6 +25,18 @@ class FluidInitialConditions:
                     new_grid[var] = f(self.mesh_x, self.mesh_y, var)
                     
                 return new_grid
+            
+            elif self.inp.fluid_ics == "poisson_validation":
+                print("applying diag advection")
+                f = self.poisson_validation_charge_density
+                
+                new_grid = np.zeros_like(self.grid)
+                
+                for var in range(self.c.NUMQ):
+                    print(var)
+                    new_grid[var] = f(self.mesh_x, self.mesh_y, var)
+                    
+                return new_grid
 
             elif self.inp.fluid_ics == "static":
                 return self.static()
@@ -35,6 +47,7 @@ class FluidInitialConditions:
                 self.grid = self.double_mach_reflection_2d()
             elif self.inp.fluid_ics == "riemann_problem":
                 self.grid = self.riemann_2d()
+
             else:
                 raise RuntimeError("[FLUID] ICS not valid.")
            
