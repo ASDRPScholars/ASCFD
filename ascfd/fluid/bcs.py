@@ -153,26 +153,23 @@ class FluidBoundaryConditions:
                         grid[var, i, j] = grid[var, i, j - self.inp.ny]
                         
                         
-    # def inflow_lo(self, grid, dim: int) -> None:
-    #     print("!BCS! CALLED NEUMANN LO")
-    #     print("!BCS! CAN I READ THE MIDDLE OF GRID??", grid[1, 52, 52])
-    #     # neumann boundary condition at the low boundary
+    def inflow_lo(self, grid, dim: int) -> None:
 
-    #     if dim == 0:  # low boundary in x-direction
-    #         for i in range(self.inp.ng): # ghost cells
-    #             for j in range(self.inp.ng, self.inp.ny + self.inp.ng):  # valid y-range
-    #                 grid[self.c.RHOCOMP, i, j] = 5
-    #                 grid[self.c.PCOMP, i, j] = 5e7
-    #                 grid[self.c.UCOMP, i, j] = 10
-    #                 grid[self.c.VCOMP, i, j] = 0
+        if dim == 0:  # low boundary in x-direction
+            for i in range(self.inp.ng): # ghost cells
+                for j in range(self.inp.ng, self.inp.ny + self.inp.ng):  # valid y-range
+                    grid[self.c.RHOCOMP, i, j] = 1e-9
+                    grid[self.c.PCOMP, i, j] = 150
+                    grid[self.c.UCOMP, i, j] = 10
+                    grid[self.c.VCOMP, i, j] = 0
                     
-    #     else:  # low boundary in y-direction
-    #         for i in range(self.inp.ng, self.inp.nx + self.inp.ng): # valid x-range
-    #             for j in range(self.inp.ng): # ghost cells
-    #                 grid[self.c.RHOCOMP, i, j] = 5
-    #                 grid[self.c.PCOMP, i, j] = 5e7
-    #                 grid[self.c.UCOMP, i, j] = 0
-    #                 grid[self.c.VCOMP, i, j] = 10
+        else:  # low boundary in y-direction
+            for i in range(self.inp.ng, self.inp.nx + self.inp.ng): # valid x-range
+                for j in range(self.inp.ng): # ghost cells
+                    grid[self.c.RHOCOMP, i, j] = 1e-9
+                    grid[self.c.PCOMP, i, j] = 6.5217391304e40
+                    grid[self.c.UCOMP, i, j] = 0
+                    grid[self.c.VCOMP, i, j] = 10
                     
                     
     def inflow_hi(self, grid, dim: int) -> None:
@@ -194,7 +191,7 @@ class FluidBoundaryConditions:
             for i in range(self.inp.ng, self.inp.nx + self.inp.ng): #valid x-range
                 for j in range(self.inp.ny + self.inp.ng, self.inp.ny + 2*self.inp.ng): # ghost cells in high y-range
                     grid[self.c.RHOCOMP, i, j] = 1e-10
-                    grid[self.c.PCOMP, i, j] = 15
-                    grid[self.c.UCOMP, i, j] = -10
-                    grid[self.c.VCOMP, i, j] = 0
+                    grid[self.c.PCOMP, i, j] = 6.5217391304e39
+                    grid[self.c.UCOMP, i, j] = 0
+                    grid[self.c.VCOMP, i, j] = -10
                     

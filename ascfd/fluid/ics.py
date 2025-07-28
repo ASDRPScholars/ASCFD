@@ -191,7 +191,7 @@ class FluidInitialConditions:
         This should produce electric field corresponding to sin(x) + cos(y)
         """
         if a_var == 0:  # Charge density component
-            return -np.sin(a_x) - np.cos(a_y)
+            return -np.sin(a_x*10) - np.cos(a_y*10)
         else:
             # Set all other components to zero
             return np.zeros_like(a_x)
@@ -200,16 +200,28 @@ class FluidInitialConditions:
     def static(self):
         ic = np.zeros_like(self.grid)
         rho0 = 9e-11                # kg/m³  → n≈1e20 m⁻³
+        rho1 = 9e-9
         u0 = 0.0                     # m/s
         v0 = 0.0
         T0 = 1e4                     # K, choose a reasonable electron/ion temperature
         p0 = rho0/self.params.mass * self.c.k_B * T0  # ideal‑gas law: n kT
+        p1 = rho1/self.params.mass * self.c.k_B * T0  # ideal‑gas law: n kT = 6.5217391304e40
+
         E0 = p0/(self.c.gamma-1) + 0.5*rho0*(u0**2+v0**2)
         
         ic[self.c.RHOCOMP] = rho0
+        
+        # ic[self.c.RHOCOMP, :, :50] = rho1
+        # ic[self.c.RHOCOMP, :, 50:] = rho0
+        
         ic[self.c.UCOMP ] = u0  
         ic[self.c.VCOMP ] = v0
-        ic[self.c.PCOMP ] = p0
+        
+        ic[self.c.PCOMP] = p0
+        
+        # ic[self.c.PCOMP, :, :50] = p1
+        # ic[self.c.PCOMP, :, 50:] = p0
+        
         return ic
     
     
