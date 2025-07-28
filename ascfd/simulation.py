@@ -239,9 +239,9 @@ class Simulation:
         plt.colorbar(im, ax=axs[6])
         axs[6].set_title("electric field magnitude")
         
-        im = axs[7].imshow(self.fields.B[:, :, 1], cmap='coolwarm')
+        im = axs[7].imshow(self.fields.charge_density, cmap='coolwarm')
         plt.colorbar(im, ax=axs[7])
-        axs[7].set_title("magnetic field y")
+        axs[7].set_title("charge density")
         
 
         fig.suptitle(f"Time: {self.t:.4f}, Timestep: {self.timestep}")
