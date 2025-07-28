@@ -45,8 +45,8 @@ class FluidBoundaryConditions:
                 self.f_hi[idim] = self.neumann_hi
             elif self.types_hi[idim] == "periodic":
                 self.f_hi[idim] = self.periodic_hi
-            elif self.types_hi[idim] == "inflow":
-                self.f_hi[idim] = self.inflow_hi
+            elif self.types_hi[idim] == "tame_inflow":
+                self.f_hi[idim] = self.tame_inflow_hi
             else:
                 # error if unsupported boundary condition type is provided
                 raise RuntimeError(f"BC Hi Type not supported: {self.types_hi[idim]}")
@@ -172,7 +172,7 @@ class FluidBoundaryConditions:
                     grid[self.c.VCOMP, i, j] = 10
                     
                     
-    def inflow_hi(self, grid, dim: int) -> None:
+    def tame_inflow_hi(self, grid, dim: int) -> None:
 
         # neumann boundary condition at the low boundary
 

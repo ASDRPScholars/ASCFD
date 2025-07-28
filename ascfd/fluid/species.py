@@ -88,7 +88,7 @@ class FluidSpecies:
         # print("!AFTER FLUX! MU TAKING IN", self.grid[self.c.MUCOMP])
         # print("!AFTER FLUX! RHO TAKING IN", self.grid[self.c.RHOCOMP])
         
-        # self._apply_lorentz_source_terms(consU_new)
+        self._apply_lorentz_source_terms(consU_new)
         
         plt.figure()
         plt.imshow(self.grid[self.c.RHOCOMP])

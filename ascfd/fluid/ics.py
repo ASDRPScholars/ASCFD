@@ -38,8 +38,8 @@ class FluidInitialConditions:
                     
                 return new_grid
 
-            elif self.inp.fluid_ics == "static":
-                return self.static()
+            elif self.inp.fluid_ics == "tame_static":
+                return self.tame_static()
                 
             elif self.inp.fluid_ics == "kelvin_helmholtz":
                 self.grid = self.kelvin_helmholtz_2d()
@@ -225,7 +225,7 @@ class FluidInitialConditions:
     #     return ic
     
     ## tame
-    def static(self):
+    def tame_static(self):
         ic = np.zeros_like(self.grid)
         rho0 = 9e-11                # kg/m³  → n≈1e20 m⁻³
         u0 = 0.0                     # m/s
