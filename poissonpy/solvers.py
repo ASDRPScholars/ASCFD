@@ -162,19 +162,22 @@ class Poisson2DRectangle:
                     A[bd_pos, bd_pos] = 1 / self.dy
                     A[bd_pos, n_pos] = -1 / self.dy
 
-        # Treat corners as simple Dirichlet (value 0 for now)
-        for name, pos in corner_pos.items():
-            A[pos, pos] = 1
-            b[pos] = 0  # or change this to a constant if needed
 
-        right_corners = {
+        corner_neumann = {
             "top_right": self.X - 1,
-            "bottom_right": self.X * self.Y - 1
+            "bottom_right": self.X * self.Y - 1,
+            "top_left": 0,
+            "bottom_left": self.X * (self.Y - 1)
         }
 
-        for name, cid in right_corners.items():
+        for name, cid in corner_neumann.items():
             pos = np.searchsorted(self.all_ids, cid)
-            neighbor_id = cid - 1  # immediate left neighbor
+            
+            if 'right' in name:
+                neighbor_id = cid - 1  # one step left
+            else:  # left corners
+                neighbor_id = cid + 1  # one step right
+            
             neighbor_pos = np.searchsorted(self.all_ids, neighbor_id)
 
             A[pos, pos] = 1 / self.dx

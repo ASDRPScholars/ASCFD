@@ -202,7 +202,7 @@ class Simulation:
         for q in range(self.c.NUMQ):
             # Exclude ghost cells from the plot
             # plot_data = self.electrons.grid[q, self.inp.ng*5:-self.inp.ng*5, self.inp.ng*5:-self.inp.ng*5].T # TODO: why transpose?
-            plot_data = self.electrons.grid[q, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng].T # TODO: why transpose?
+            plot_data = self.electrons.grid[q, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] # TODO: why transpose?
             # plot_data = np.flipud(self.electrons.grid[q]) # TODO: why transpose?
             # plot_data = self.electrons.grid[q, :, :].T
             
@@ -215,7 +215,7 @@ class Simulation:
             # extent = [self.inp.grid_x[self.inp.ng], self.inp.grid_y[-self.inp.ng-1],
             #           self.inp.grid_y[self.inp.ng], self.inp.grid_y[-self.inp.ng-1]]
 
-            im = axs[q].imshow(plot_data, origin='lower', cmap='magma')
+            im = axs[q].imshow(plot_data.T, origin='lower', cmap='magma')
             
             plt.colorbar(im, ax=axs[q])
             
@@ -227,21 +227,21 @@ class Simulation:
             axs[q].set_ylabel('y')
             
             
-        im = axs[4].imshow(self.fields.E[1:-1, 1:-1, 0], cmap='coolwarm')
+        im = axs[4].imshow(self.fields.E[1:-1, 1:-1, 0].T, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[4])
         axs[4].set_title("electric field x")
         
-        im = axs[5].imshow(self.fields.E[1:-1, 1:-1, 1], cmap='coolwarm')
+        im = axs[5].imshow(self.fields.E[1:-1, 1:-1, 1].T, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[5])
         axs[5].set_title("electric field y")
         
         # E_mag = np.sqrt(self.E[5:-5, 5:-5, 0]**2 + self.E[5:-5, 5:-5, 1]**2)
         
-        im = axs[6].imshow(np.sqrt(self.fields.E[1:-1, 1:-1, 0]**2 + self.fields.E[1:-1, 1:-1, 1]**2), cmap='coolwarm')
+        im = axs[6].imshow(self.fields.potential.T, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[6])
-        axs[6].set_title("electric field magnitude")
+        axs[6].set_title("electric potential")
         
-        im = axs[7].imshow(self.fields.charge_density, cmap='coolwarm')
+        im = axs[7].imshow(self.fields.charge_density.T, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[7])
         axs[7].set_title("charge density")
         

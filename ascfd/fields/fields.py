@@ -88,7 +88,7 @@ class Fields:
         ## 3D PLOT
 
         # Create meshgrid for X and Y
-        nx, ny = E_mag.shape
+        nx, ny = self.potential.shape
         x = np.arange(nx)
         y = np.arange(ny)
         X, Y = np.meshgrid(y, x)  # careful: meshgrid uses (cols, rows) order
@@ -98,14 +98,14 @@ class Fields:
         ax = fig.add_subplot(111, projection='3d')
 
         # Plot the surface
-        surf = ax.plot_surface(X, Y, E_mag, cmap='coolwarm')
+        surf = ax.plot_surface(X, Y, self.potential, cmap='coolwarm')
 
         # Add colorbar and labels
         fig.colorbar(surf, ax=ax, shrink=0.5, aspect=10)
-        ax.set_title("ours")
+        ax.set_title("potential")
         ax.set_xlabel("X")
         ax.set_ylabel("Y")
-        ax.set_zlabel("|E|")
+        ax.set_zlabel("potential")
 
         plt.tight_layout()
         plt.show()
@@ -124,10 +124,10 @@ class Fields:
         rect = ((self.inp.xlim[0], self.inp.ylim[0]), (self.inp.xlim[1], self.inp.ylim[1]))
 
         boundary = {
-            "left": (30, "dirichlet"), # high voltage
-            "right": (0, "neumann_x"), # to low voltage
-            "top": (0, "neumann_y"),
-            "bottom": (0, "neumann_y")
+            "left": (0, "neumann_x"), # BECOMES BOTTOM
+            "right": (0, "neumann_x"), # BECOMES TOP
+            "top": (30, "dirichlet"), # BECOMES LEFT
+            "bottom": (0, "neumann_y") # BECOMES RIGHT
         }
         
         # # x, y = sp.symbols('x y')
@@ -223,10 +223,10 @@ class Fields:
         
         dphi_dy, dphi_dx = np.gradient(phi, dy, dx)  # Mind the order: (rows, cols) → (y, x)
 
-        self.E[:, :, 0] = -dphi_dx  # Ex
-        self.E[:, :, 1] = -dphi_dy  # Ey
+        self.E[:, :, 1] = -dphi_dx  # Ey
+        self.E[:, :, 0] = -dphi_dy  # Ex
         
-        plt.quiver(self.E[::5, ::5, 0], self.E[::5, ::5, 1])
+        # plt.quiver(self.E[::5, ::5, 0], self.E[::5, ::5, 1])
     
     
     def check_E_field(self):
