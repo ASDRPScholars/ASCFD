@@ -227,17 +227,17 @@ class Simulation:
             axs[q].set_ylabel('y')
             
             
-        im = axs[4].imshow(self.fields.E[:, :, 0], cmap='coolwarm')
+        im = axs[4].imshow(self.fields.E[1:-1, 1:-1, 0], cmap='coolwarm')
         plt.colorbar(im, ax=axs[4])
         axs[4].set_title("electric field x")
         
-        im = axs[5].imshow(self.fields.E[:, :, 1], cmap='coolwarm')
+        im = axs[5].imshow(self.fields.E[1:-1, 1:-1, 1], cmap='coolwarm')
         plt.colorbar(im, ax=axs[5])
         axs[5].set_title("electric field y")
         
         # E_mag = np.sqrt(self.E[5:-5, 5:-5, 0]**2 + self.E[5:-5, 5:-5, 1]**2)
         
-        im = axs[6].imshow(np.sqrt(self.fields.E[:, :, 0]**2 + self.fields.E[:, :, 1]**2), cmap='coolwarm')
+        im = axs[6].imshow(np.sqrt(self.fields.E[1:-1, 1:-1, 0]**2 + self.fields.E[1:-1, 1:-1, 1]**2), cmap='coolwarm')
         plt.colorbar(im, ax=axs[6])
         axs[6].set_title("electric field magnitude")
         
