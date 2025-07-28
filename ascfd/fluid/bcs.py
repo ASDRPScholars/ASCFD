@@ -190,8 +190,16 @@ class FluidBoundaryConditions:
             # print("!!! WELRE ACLLING THIS RIGHT")
             for i in range(self.inp.ng, self.inp.nx + self.inp.ng): #valid x-range
                 for j in range(self.inp.ny + self.inp.ng, self.inp.ny + 2*self.inp.ng): # ghost cells in high y-range
-                    grid[self.c.RHOCOMP, i, j] = 1e-10
-                    grid[self.c.PCOMP, i, j] = 6.5217391304e39
+                    
+                    ## steep
+                    # grid[self.c.RHOCOMP, i, j] = 1e-10
+                    # grid[self.c.PCOMP, i, j] = 6.5217391304e39
+                    # grid[self.c.UCOMP, i, j] = 0
+                    # grid[self.c.VCOMP, i, j] = -10
+                    
+                    ## tame
+                    grid[self.c.RHOCOMP, i, j] = 1e-9
+                    grid[self.c.PCOMP, i, j] = 150
                     grid[self.c.UCOMP, i, j] = 0
                     grid[self.c.VCOMP, i, j] = -10
                     
