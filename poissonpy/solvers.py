@@ -99,6 +99,13 @@ class Poisson2DRectangle:
             b[self.interior_pos] = self.interior(self.xs[self.interior_ids], self.ys[self.interior_ids])
         elif isinstance(self.interior, (int, float)):
             b[self.interior_pos] = self.interior
+        elif isinstance(self.interior, np.ndarray):
+            print(np.shape(self.interior_pos))
+            print(np.shape(self.interior))
+            b[self.interior_pos] = self.interior.flatten()[self.interior_ids]
+            
+        else:
+            assert("[POISSONPY] Unsopported interior type")
         
         if self.zero_mean:
             A[-1, :] = 1.0 
