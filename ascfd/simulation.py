@@ -10,6 +10,8 @@ from ascfd.fields.fields import Fields
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import subprocess
+
 class Simulation:
     def __init__(self, a_inputs: Inputs):
         self.inp = a_inputs
@@ -53,7 +55,7 @@ class Simulation:
 
     def run(self):
         # !TEMP!
-        while True:
+        while (self.t < self.inp.t_finish) and self.timestep < self.inp.nt:
             print("\033[1m" + f"Timestep: {self.timestep}, Current time: {self.t}" + "\033[0m")
             
             if self.inp.timeStepper == "RK1":
@@ -89,13 +91,15 @@ class Simulation:
             if self.inp.output_freq > 0 and self.timestep % self.inp.output_freq == 0:
                 self.output()
         
-        if self.inp.output_freq >= 0:
-            self.output()
+        # if self.inp.output_freq >= 0:
+        #     self.output()
             
-        # !TEMP!
-        self.output()
-        
+        # # !TEMP!
+        # self.output()        
         print(f"\nSimulation completed at time {self.t} after {self.timestep} timesteps")
+
+        if self.inp.make_movie:
+            self.generate_movie()
         
         
     def get_dt(self):
@@ -161,6 +165,7 @@ class Simulation:
         
 
     def output(self):
+
         # Ensure the base output directory exists
         os.makedirs(self.inp.output_dir, exist_ok=True)
 
@@ -288,3 +293,50 @@ class Simulation:
         # ani.save(movie_filename, writer='ffmpeg', fps=10)
 
         # print(f"Movie saved as {movie_filename}")
+
+
+    def generate_movie(self):
+        frames_directory = os.path.join(self.inp.output_dir, "frames")
+
+        if not os.path.exists(frames_directory):
+            os.makedirs(frames_directory)
+
+        
+        test_ffmpeg_command = [
+            "ffmpeg",
+            "-version"
+        ]
+
+        try:
+            subprocess.run(test_ffmpeg_command, check=True)
+            print("ffmpeg installed correctly!")
+        except subprocess.CalledProcessError as error:
+            print("[SIMULATION.PY]: ffmpeg is not installed or not found in system PATH")
+            print("Please install ffmpeg or ensure it is accessible from command line")
+            
+            return
+
+
+        formatted_ffmpeg_command = [
+            "ffmpeg",
+            "-y",
+            "-framerate",
+            "24",
+            "-i",
+            os.path.join(frames_directory, "output_%06d.png"),
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            os.path.join(self.inp.output_dir, "movie.mp4")
+        ]
+
+        try:
+            subprocess.run(formatted_ffmpeg_command, check=True)
+            print("MOVIE successfully made!")
+        except subprocess.CalledProcessError as error:
+            print("[SIMULATION.PY]: FAILED to make movie")
+            if error.stderr:
+                print(error.stderr.decode())
+
+
