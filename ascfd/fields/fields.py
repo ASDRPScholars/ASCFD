@@ -76,7 +76,9 @@ class Fields:
         fig.colorbar(im2, ax=axs[2])
         
         # Plot E
-        im3 = axs[3].imshow(np.sqrt(self.E[:, :, 0]**2 + self.E[:, :, 1]**2), cmap="coolwarm")
+        E_mag = np.sqrt(self.E[:, :, 0]**2 + self.E[:, :, 1]**2)
+        
+        im3 = axs[3].imshow(E_mag, cmap="coolwarm")
         axs[3].set_title("Electric Field Magnitude")
         fig.colorbar(im3, ax=axs[3])
         
@@ -84,8 +86,6 @@ class Fields:
         plt.show()
         
         ## 3D PLOT
-        # Compute E magnitude
-        E_mag = np.sqrt(self.E[5:-5, 5:-5, 0]**2 + self.E[5:-5, 5:-5, 1]**2)
 
         # Create meshgrid for X and Y
         nx, ny = E_mag.shape
