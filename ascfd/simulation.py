@@ -235,7 +235,9 @@ class Simulation:
         plt.colorbar(im, ax=axs[5])
         axs[5].set_title("electric field y")
         
-        im = axs[6].imshow(np.sqrt(self.fields.E[:, :, 0] ** 2 +self.fields.E[:, :, 1]), cmap='coolwarm')
+        # E_mag = np.sqrt(self.E[5:-5, 5:-5, 0]**2 + self.E[5:-5, 5:-5, 1]**2)
+        
+        im = axs[6].imshow(np.sqrt(self.fields.E[:, :, 0]**2 + self.fields.E[:, :, 1]**2), cmap='coolwarm')
         plt.colorbar(im, ax=axs[6])
         axs[6].set_title("electric field magnitude")
         
