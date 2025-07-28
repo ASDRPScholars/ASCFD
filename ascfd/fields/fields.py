@@ -110,16 +110,9 @@ class Fields:
         plt.tight_layout()
         plt.show()
         
-        self._clear_calculation_grids()
-        
                 
     def add_charge_density(self, species_charge_density):
-        self.charge_density += species_charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-        
-        
-    def _clear_calculation_grids(self):
-        self.charge_density.fill(0)
-        self.potential.fill(0)
+        self.charge_density[:] = species_charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
     
     
     def solve_poisson(self):
@@ -167,8 +160,7 @@ class Fields:
         # solve potential from poisson !!WITH GHOSTS!! this makes computing E = -grad(phi) easier
         solver = solvers.Poisson2DRectangle(rect=rect, interior=rhs, boundary=boundary, X=self.inp.nx, Y=self.inp.ny)
         
-        self.potential = solver.solve()
-        
+        self.potential[:] = solver.solve()
         
         # print("POTENTIAL FROM SOLVED POISSON IS:", self.potential)
         # print(np.shape(self.potential))
