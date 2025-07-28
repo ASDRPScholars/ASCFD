@@ -57,9 +57,11 @@ class Poisson2DRectangle:
         return self._y_grid
 
     def build_linear_system(self):
-
+        # Interior points (excluding boundary rows/cols)
         self.interior_ids = np.arange(self.X + 1, 2 * self.X - 1) + self.X * np.expand_dims(np.arange(self.Y - 2), 1)
         self.interior_ids = self.interior_ids.flatten()
+
+        # Boundary edges (excluding corners)
         boundary_ids = {
             "left": self.X * np.arange(1, self.Y - 1),
             "right": self.X * np.arange(1, self.Y - 1) + (self.X - 1),
@@ -67,9 +69,20 @@ class Poisson2DRectangle:
             "bottom": np.arange(self.X * self.Y - self.X + 1, self.X * self.Y - 1)
         }
 
-        self.all_ids = np.concatenate([self.interior_ids, np.concatenate(list(boundary_ids.values()))]) 
-        self.all_ids.sort()
+        # Explicitly include corner points
+        corner_ids = {
+            "top_left": 0,
+            "top_right": self.X - 1,
+            "bottom_left": self.X * (self.Y - 1),
+            "bottom_right": self.X * self.Y - 1
+        }
 
+        # Combine all IDs
+        all_boundary_ids = list(boundary_ids.values()) + [np.array(list(corner_ids.values()))]
+        self.all_ids = np.concatenate([self.interior_ids] + all_boundary_ids)
+        self.all_ids = np.unique(self.all_ids)
+
+        # Setup matrix
         if self.zero_mean:
             A = scipy.sparse.lil_matrix((len(self.all_ids) + 1, len(self.all_ids) + 1))
             b = np.zeros(len(self.all_ids) + 1)
@@ -81,51 +94,48 @@ class Poisson2DRectangle:
         boundary_pos = {
             bd: np.searchsorted(self.all_ids, boundary_ids[bd]) for bd in boundary_ids
         }
+        corner_pos = {
+            bd: np.searchsorted(self.all_ids, [corner_ids[bd]])[0] for bd in corner_ids
+        }
 
-        # interior - laplacian
+        # Build Laplacian for interior
         n1_pos = np.searchsorted(self.all_ids, self.interior_ids - 1)
         n2_pos = np.searchsorted(self.all_ids, self.interior_ids + 1)
         n3_pos = np.searchsorted(self.all_ids, self.interior_ids - self.X)
         n4_pos = np.searchsorted(self.all_ids, self.interior_ids + self.X)
-        
-        # Discrete laplacian here important!
+
         A[self.interior_pos, n1_pos] = 1 / (self.dx**2)
         A[self.interior_pos, n2_pos] = 1 / (self.dx**2)
         A[self.interior_pos, n3_pos] = 1 / (self.dy**2)
         A[self.interior_pos, n4_pos] = 1 / (self.dy**2)
-        A[self.interior_pos, self.interior_pos] = -2 / (self.dx**2) + -2 / (self.dy**2)
+        A[self.interior_pos, self.interior_pos] = -2 / (self.dx**2) - 2 / (self.dy**2)
 
+        # Fill in source term
         if isinstance(self.interior, types.FunctionType):
             b[self.interior_pos] = self.interior(self.xs[self.interior_ids], self.ys[self.interior_ids])
         elif isinstance(self.interior, (int, float)):
             b[self.interior_pos] = self.interior
         elif isinstance(self.interior, np.ndarray):
-            print(np.shape(self.interior_pos))
-            print(np.shape(self.interior))
             b[self.interior_pos] = self.interior.flatten()[self.interior_ids]
-            
         else:
-            assert("[POISSONPY] Unsopported interior type")
-        
+            raise ValueError("[POISSONPY] Unsupported interior type")
+
+        # Apply zero-mean constraint if needed
         if self.zero_mean:
             A[-1, :] = 1.0 
             A[:, -1] = 1.0
             A[-1, -1] = 0.0
             b[-1] = 0
 
+        # Boundary conditions
         for bd, (bd_func, mode) in self.boundary.items():
             bd_pos = boundary_pos[bd]
             bd_ids = boundary_ids[bd]
-            
-            # print("ids", bd_ids)
-            # print("pos", bd_pos)
 
             if isinstance(bd_func, types.FunctionType):
                 b[bd_pos] = bd_func(self.xs[bd_ids], self.ys[bd_ids])
             elif isinstance(bd_func, (int, float)):
                 b[bd_pos] = bd_func
-            
-            # b[bd_pos] = 1
 
             if mode == "dirichlet":
                 A[bd_pos, bd_pos] = 1
@@ -135,7 +145,7 @@ class Poisson2DRectangle:
                     n_pos = np.searchsorted(self.all_ids, n_ids)
                     A[bd_pos, bd_pos] = -1 / self.dx
                     A[bd_pos, n_pos] = 1 / self.dx
-                else: # right
+                else:  # right
                     n_ids = bd_ids - 1
                     n_pos = np.searchsorted(self.all_ids, n_ids)
                     A[bd_pos, bd_pos] = 1 / self.dx
@@ -146,12 +156,33 @@ class Poisson2DRectangle:
                     n_pos = np.searchsorted(self.all_ids, n_ids)
                     A[bd_pos, bd_pos] = -1 / self.dy
                     A[bd_pos, n_pos] = 1 / self.dy
-                else: 
+                else:  # bottom
                     n_ids = bd_ids - self.X
                     n_pos = np.searchsorted(self.all_ids, n_ids)
                     A[bd_pos, bd_pos] = 1 / self.dy
                     A[bd_pos, n_pos] = -1 / self.dy
+
+        # Treat corners as simple Dirichlet (value 0 for now)
+        for name, pos in corner_pos.items():
+            A[pos, pos] = 1
+            b[pos] = 0  # or change this to a constant if needed
+
+        right_corners = {
+            "top_right": self.X - 1,
+            "bottom_right": self.X * self.Y - 1
+        }
+
+        for name, cid in right_corners.items():
+            pos = np.searchsorted(self.all_ids, cid)
+            neighbor_id = cid - 1  # immediate left neighbor
+            neighbor_pos = np.searchsorted(self.all_ids, neighbor_id)
+
+            A[pos, pos] = 1 / self.dx
+            A[pos, neighbor_pos] = -1 / self.dx
+            b[pos] = 0  # zero gradient
+    
         return A.tocsr(), b
+
 
     def solve(self):
         # multigrid solver result bad?
