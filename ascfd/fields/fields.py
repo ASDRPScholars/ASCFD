@@ -31,8 +31,8 @@ class Fields:
         plt.colorbar(im)
         plt.show()
         
-        self.charge_density = np.zeros((self.inp.nx, self.inp.ny))
-        self.potential = np.zeros((self.inp.nx, self.inp.ny))
+        self.charge_density = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
+        self.potential = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
 
         self.dx = (self.inp.xlim[1] - self.inp.xlim[0]) / (self.inp.nx - 1)
         self.dy = (self.inp.ylim[1] - self.inp.ylim[0]) / (self.inp.ny - 1)
@@ -112,7 +112,8 @@ class Fields:
         
                 
     def add_charge_density(self, species_charge_density):
-        self.charge_density[:] = species_charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+        # self.charge_density[:] = species_charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+        self.charge_density[:] = species_charge_density
     
     
     def solve_poisson(self):
@@ -158,7 +159,7 @@ class Fields:
         print("rhs", rhs)
         
         # solve potential from poisson !!WITH GHOSTS!! this makes computing E = -grad(phi) easier
-        solver = solvers.Poisson2DRectangle(rect=rect, interior=rhs, boundary=boundary, X=self.inp.nx, Y=self.inp.ny)
+        solver = solvers.Poisson2DRectangle(rect=rect, interior=rhs, boundary=boundary, X=self.inp.nx_with_ghosts, Y=self.inp.ny_with_ghosts)
         
         self.potential[:] = solver.solve()
         
@@ -223,8 +224,11 @@ class Fields:
         
         dphi_dy, dphi_dx = np.gradient(phi, dy, dx)  # Mind the order: (rows, cols) → (y, x)
 
-        self.E[:, :, 0] = -dphi_dx  # Ex
-        self.E[:, :, 1] = -dphi_dy  # Ey
+        # self.E[:, :, 0] = -dphi_dx  # Ex
+        # self.E[:, :, 1] = -dphi_dy  # Ey
+        
+        self.E[:, :, 0] = -dphi_dx[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]  # Ex
+        self.E[:, :, 1] = -dphi_dy[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]  # Ey
         
         plt.quiver(self.E[::5, ::5, 0], self.E[::5, ::5, 1])
     
