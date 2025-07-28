@@ -57,7 +57,7 @@ class FluidSpecies:
         
         _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
         
-        self.bcs.apply_bcs()
+        # self.bcs.apply_bcs()
         
         for i in range(self.inp.ng, self.inp.nx + self.inp.ng):
             for j in range(self.inp.ng, self.inp.ny + self.inp.ng):
@@ -67,12 +67,21 @@ class FluidSpecies:
                         (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
                         (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
                     
+                    
+                    # if i == self.inp.nx + self.inp.ng - 1 and icomp == self.c.MUCOMP:
+                    #     print(f"[!BCF!] right flux at {i}, {j}", right_flux[icomp, i, j])
+                    #     print(f"!BCF! delta at {i}, {j}", delta)
+                    #     print(f"!BCF! old value at {i}, {j}", consU_new[icomp, i, j])
+                    #     print(f"!BCF! new value at {i}, {j}", consU_new[icomp, i, j] - delta)
+                        
+                    consU_new[icomp, i, j] = consU[icomp, i, j] - delta
+                    
                     # print("RIGHT LEFT TOP BOTTOM:", right_flux[icomp, i, j], left_flux[icomp, i, j], top_flux[icomp, i, j], bottom_flux[icomp, i, j])
                     
                     # if icomp in [self.c.RHOCOMP, self.c.ECOMP]:
                     #     consU_new[icomp, i, j] = max(1e-6, consU[icomp, i, j] - delta)
                     # else:
-                    consU_new[icomp, i, j] = consU[icomp, i, j] - delta
+                    
                     
                     # print("DELTA:", delta)
                     
@@ -126,11 +135,11 @@ class FluidSpecies:
         # print("!!AFTER REAL FLUX UPDATE!! MU TAKING IN", self.grid[self.c.MUCOMP])
         # print("!!AFTER REAL FLUX UPDATE!! RHO TAKING IN", self.grid[self.c.RHOCOMP])
         
-        # ELECTRIC FIELD UPDATE
+        # # ELECTRIC FIELD UPDATE
         charge_density = self.get_charge_density()
         self.fields.add_charge_density(charge_density)
         
-        # print("ELECTRONS ADDED CHARGE DENSITY:", charge_density)
+        # # print("ELECTRONS ADDED CHARGE DENSITY:", charge_density)
         
         self.fields.update_E()
         
@@ -151,9 +160,18 @@ class FluidSpecies:
         x_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * lorentz_force[:, :, 0]
         y_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * lorentz_force[:, :, 1]
         
+        # for j in range(0, 200):
+        #     i = 199
+        #     print(f"!BCF! before lorentz at {i}, {j}", consU_new[self.c.MUCOMP, i, j])
+        #     print(f"!BCF! x-source term to be added at {i}, {j}", x_mom_source[i, j])
+        
         # !!C!!
         consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt
         consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt
+        
+        # for j in range(self.inp.ng, self.inp.ny + self.inp.ng):
+        #     i = self.inp.nx + self.inp.ng - 1
+        #     print(f"!BCF! after lorentz at {i}, {j}", consU_new[self.c.MUCOMP, i, j])
 
         # !!C!! 
         V = self._get_V()

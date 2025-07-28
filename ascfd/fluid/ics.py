@@ -199,7 +199,7 @@ class FluidInitialConditions:
         
     def static(self):
         ic = np.zeros_like(self.grid)
-        rho0 = 1                # kg/m³  → n≈1e20 m⁻³
+        rho0 = 9e-11                # kg/m³  → n≈1e20 m⁻³
         u0 = 0.0                     # m/s
         v0 = 0.0
         T0 = 1e4                     # K, choose a reasonable electron/ion temperature
@@ -209,7 +209,7 @@ class FluidInitialConditions:
         ic[self.c.RHOCOMP] = rho0
         ic[self.c.UCOMP ] = u0  
         ic[self.c.VCOMP ] = v0
-        ic[self.c.PCOMP ] = 1
+        ic[self.c.PCOMP ] = p0
         return ic
     
     
