@@ -5,6 +5,7 @@ import numpy as np
 from mpl_toolkits.mplot3d import Axes3D  # needed for 3D projection only
 from sympy import sin, cos
 from sympy.abc import x, y
+import sympy as sp
 
 import sys
 
@@ -30,13 +31,14 @@ class Fields:
         plt.colorbar(im)
         plt.show()
         
-        self.charge_density = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
-        self.potential = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
+        self.charge_density = np.zeros((self.inp.nx, self.inp.ny))
+        self.potential = np.zeros((self.inp.nx, self.inp.ny))
 
         self.dx = (self.inp.xlim[1] - self.inp.xlim[0]) / (self.inp.nx - 1)
         self.dy = (self.inp.ylim[1] - self.inp.ylim[0]) / (self.inp.ny - 1)
         
         self.eps0 = 8.854e-12  # TODO: CHECK — Permittivity of free space
+        # self.eps0 = 1e-50
                 
                 
     def update_E(self):
@@ -112,7 +114,7 @@ class Fields:
         
                 
     def add_charge_density(self, species_charge_density):
-        self.charge_density += species_charge_density
+        self.charge_density += species_charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
         
         
     def _clear_calculation_grids(self):
@@ -122,25 +124,48 @@ class Fields:
     
     def solve_poisson(self):
         
-        # rhs = - self.charge_density / self.eps0
+        rhs = - self.charge_density / self.eps0
         
-        rhs = np.zeros_like(self.charge_density)
+        # rhs = np.zeros_like(self.charge_density)
         
         rect = ((self.inp.xlim[0], self.inp.ylim[0]), (self.inp.xlim[1], self.inp.ylim[1]))
 
-        
         boundary = {
-            "left": (0.02, "dirichlet"), # high voltage
-            "right": (0, "dirichlet"), # to low voltage
+            "left": (30, "dirichlet"), # high voltage
+            "right": (0, "neumann_x"), # to low voltage
             "top": (0, "neumann_y"),
             "bottom": (0, "neumann_y")
         }
+        
+        # # x, y = sp.symbols('x y')
+        # f_expr = sp.exp(-x)
+        
+        # # f_expr = sin(x) + cos(y) # create sympy function expression
+        # laplacian_expr = functional.get_sp_laplacian_expr(f_expr) # create sympy laplacian function expression
+
+        # f = functional.get_sp_function(f_expr) # create sympy function
+        # laplacian = functional.get_sp_function(laplacian_expr) # create sympy function
+        
+        # interior = laplacian
+        # boundary = {
+        #     "left": (f, "dirichlet"),
+        #     "right": (f, "dirichlet"),
+        #     "top": (f, "dirichlet"),
+        #     "bottom": (f, "dirichlet")
+        # }
+        
+        # boundary = {
+        #     "left": (0, "dirichlet"),
+        #     "right": (0, "neumann_x"),
+        #     "top": (0, "neumann_y"),
+        #     "bottom": (0, "neumann_y")
+        # }
         
         np.set_printoptions(threshold=sys.maxsize)
         print("rhs", rhs)
         
         # solve potential from poisson !!WITH GHOSTS!! this makes computing E = -grad(phi) easier
-        solver = solvers.Poisson2DRectangle(rect=rect, interior=rhs, boundary=boundary, X=self.inp.nx_with_ghosts, Y=self.inp.ny_with_ghosts)
+        solver = solvers.Poisson2DRectangle(rect=rect, interior=rhs, boundary=boundary, X=self.inp.nx, Y=self.inp.ny)
         
         self.potential = solver.solve()
         
@@ -206,8 +231,10 @@ class Fields:
         
         dphi_dy, dphi_dx = np.gradient(phi, dy, dx)  # Mind the order: (rows, cols) → (y, x)
 
-        self.E[:, :, 0] = -dphi_dx[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]  # Ex
-        self.E[:, :, 1] = -dphi_dy[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]  # Ey
+        self.E[:, :, 0] = -dphi_dx  # Ex
+        self.E[:, :, 1] = -dphi_dy  # Ey
+        
+        plt.quiver(self.E[::5, ::5, 0], self.E[::5, ::5, 1])
     
     
     def check_E_field(self):
