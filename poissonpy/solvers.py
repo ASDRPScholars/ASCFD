@@ -1,6 +1,6 @@
 import numpy as np
 import sympy as sp
-import scipy.sparse
+import scipy.sparse.linalg
 import types
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -148,8 +148,10 @@ class Poisson2DRectangle:
 
     def solve(self):
         # multigrid solver result bad?
-        #x = scipy.sparse.linalg.bicg(A, b)[0]
+        # x = scipy.sparse.linalg.bicg(self.A, self.b)[0]
+        
         x = scipy.sparse.linalg.spsolve(self.A, self.b)
+        
         if self.zero_mean:
             x = x[:-1]
 

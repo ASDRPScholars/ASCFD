@@ -122,7 +122,10 @@ class Fields:
     
     def solve_poisson(self):
         
-        rhs = - self.charge_density / self.eps0
+        # rhs = - self.charge_density / self.eps0
+        
+        rhs = np.zeros_like(self.charge_density)
+        
         rect = ((self.inp.xlim[0], self.inp.ylim[0]), (self.inp.xlim[1], self.inp.ylim[1]))
 
         
@@ -140,6 +143,7 @@ class Fields:
         solver = solvers.Poisson2DRectangle(rect=rect, interior=rhs, boundary=boundary, X=self.inp.nx_with_ghosts, Y=self.inp.ny_with_ghosts)
         
         self.potential = solver.solve()
+        
         
         # print("POTENTIAL FROM SOLVED POISSON IS:", self.potential)
         # print(np.shape(self.potential))
@@ -167,22 +171,43 @@ class Fields:
             
     def _compute_electric_field(self):
         """Compute E = -grad(phi) using central differences with ghost cells"""
-        ng = self.inp.ng
-        nx, ny = self.inp.nx_with_ghosts, self.inp.ny_with_ghosts
+        # ng = self.inp.ng
+        # nx, ny = self.inp.nx_with_ghosts, self.inp.ny_with_ghosts
+    
         
-        # Central differences only for interior points to avoid boundary artifacts
-        Ex = np.zeros((nx, ny))
-        Ey = np.zeros((nx, ny))
+        # # Central differences only for interior points to avoid boundary artifacts
+        # Ex = np.zeros((nx, ny))
+        # Ey = np.zeros((nx, ny))
         
-        # Use central differences only for interior points in both directions
-        Ex = -(self.potential[3:-1, 3:-1] - self.potential[1:-3, 1:-3]) / (2 * self.dx)
-        Ey = -(self.potential[3:-1, 3:-1] - self.potential[1:-3, 1:-3]) / (2 * self.dy)
+        # # Use central differences only for interior points in both directions
+        # Ex = -(self.potential[3:-1, 3:-1] - self.potential[1:-3, 1:-3]) / (2 * self.dx)
+        # Ey = -(self.potential[3:-1, 3:-1] - self.potential[1:-3, 1:-3]) / (2 * self.dy)
         
-        print(np.shape(Ex))
+        # print(np.shape(Ex))
         
-        # Extract interior domain for storage
-        self.E[:, :, 0] = Ex
-        self.E[:, :, 1] = Ey
+        # grad = -np.gradient(self.potential)
+        # print("gradiemt", grad, np.shape(grad))
+        
+        # Ey = -np.gradient(self.potential)
+        
+        # # Extract interior domain for storage
+        # self.E[:, :, 0] = Ex
+        # self.E[:, :, 1] = Ey
+        
+        phi = self.potential  # shape (200, 200)
+        
+        plt.figure()
+        im = plt.imshow(phi)
+        plt.colorbar(im)
+        plt.title("potential")
+        plt.show()
+        
+        dx, dy = self.dx, self.dy
+        
+        dphi_dy, dphi_dx = np.gradient(phi, dy, dx)  # Mind the order: (rows, cols) → (y, x)
+
+        self.E[:, :, 0] = -dphi_dx[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]  # Ex
+        self.E[:, :, 1] = -dphi_dy[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]  # Ey
     
     
     def check_E_field(self):

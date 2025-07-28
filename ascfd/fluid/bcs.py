@@ -45,6 +45,8 @@ class FluidBoundaryConditions:
                 self.f_hi[idim] = self.neumann_hi
             elif self.types_hi[idim] == "periodic":
                 self.f_hi[idim] = self.periodic_hi
+            elif self.types_hi[idim] == "inflow":
+                self.f_hi[idim] = self.inflow_hi
             else:
                 # error if unsupported boundary condition type is provided
                 raise RuntimeError(f"BC Hi Type not supported: {self.types_hi[idim]}")
@@ -161,13 +163,35 @@ class FluidBoundaryConditions:
                 for j in range(self.inp.ng, self.inp.ny + self.inp.ng):  # valid y-range
                     grid[self.c.RHOCOMP, i, j] = 5
                     grid[self.c.PCOMP, i, j] = 5e7
-                    grid[self.c.VCOMP, i, j] = 10
-                    grid[self.c.UCOMP, i, j] = 0
+                    grid[self.c.UCOMP, i, j] = 10
+                    grid[self.c.VCOMP, i, j] = 0
                     
         else:  # low boundary in y-direction
             for i in range(self.inp.ng, self.inp.nx + self.inp.ng): # valid x-range
                 for j in range(self.inp.ng): # ghost cells
                     grid[self.c.RHOCOMP, i, j] = 5
                     grid[self.c.PCOMP, i, j] = 5e7
+                    grid[self.c.UCOMP, i, j] = 0
+                    grid[self.c.VCOMP, i, j] = 10
+                    
+                    
+    def inflow_hi(self, grid, dim: int) -> None:
+
+        # neumann boundary condition at the low boundary
+
+        if dim == 0:  # low boundary in x-direction
+            for i in range(self.inp.nx + self.inp.ng, self.inp.nx + 2*self.inp.ng): # ghost cells in high x-range
+                for j in range(self.inp.ng, self.inp.ny + self.inp.ng):  # valid y-range
+                    grid[self.c.RHOCOMP, i, j] = 5
+                    grid[self.c.PCOMP, i, j] = 5e7
+                    grid[self.c.UCOMP, i, j] = -10
                     grid[self.c.VCOMP, i, j] = 0
-                    grid[self.c.UCOMP, i, j] = 10
+                    
+        else:  # low boundary in y-direction
+            for i in range(self.inp.ng, self.inp.nx + self.inp.ng): #valid x-range
+                for j in range(self.inp.ny + self.inp.ng, self.inp.ny + 2*self.inp.ng): # ghost cells in high y-range
+                    grid[self.c.RHOCOMP, i, j] = 5
+                    grid[self.c.PCOMP, i, j] = 5e7
+                    grid[self.c.UCOMP, i, j] = -10000
+                    grid[self.c.VCOMP, i, j] = 0
+                    

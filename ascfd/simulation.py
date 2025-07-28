@@ -197,7 +197,7 @@ class Simulation:
         for q in range(self.c.NUMQ):
             # Exclude ghost cells from the plot
             # plot_data = self.electrons.grid[q, self.inp.ng*5:-self.inp.ng*5, self.inp.ng*5:-self.inp.ng*5].T # TODO: why transpose?
-            plot_data = self.electrons.grid[q, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng].T # TODO: why transpose?
+            plot_data = np.flipud(self.electrons.grid[q, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]) # TODO: why transpose?
             # plot_data = self.electrons.grid[q, :, :].T
             
             # !TEMP!
