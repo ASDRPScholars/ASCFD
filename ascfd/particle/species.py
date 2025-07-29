@@ -102,11 +102,11 @@ class ParticleSpecies:
         self.particles = np.zeros((self.pc.NUMQ + 1, self.inp.n_particles))
         self.WEIGHT = self.pc.NUMQ
 
-        self.particles[self.WEIGHT, :] = self.estimate_initial_weight()
-        self.ics = ParticleInitialConditions(self.particles, self.inp, self.params)
-        
+        self.ics = ParticleInitialConditions(self.particles, self.inp, self.params)        
         self.ics.apply_ics()
-
+        
+        self.particles[self.WEIGHT, :] = self.estimate_initial_weight()
+        
         # initialize collision system for Xenon
         if params.type in ["e", "i"]:  # electrons and ions collide with neutrals
             self.collision_data = XenonCollisionData()
@@ -129,11 +129,12 @@ class ParticleSpecies:
         elif species_type == "i" and hasattr(self.simulation, 'ions'):
             return self._compute_particle_density_field(self.simulation.ions)
         elif species_type == "n" and hasattr(self.simulation, 'neutrals'):
+            print("!!GET_SPECIES_DENSITY_FIELD SEES NEUTRALS AS!!", self.simulation.neutrals.particles[self.pc.XCOMP])
             return self._compute_particle_density_field(self.simulation.neutrals)
         
         return np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
 
-    def _compute_particle_density_field(self, species):
+    def _compute_particle_density_field(self, species: "ParticleSpecies"):
         """Compute number density field from particle positions"""
         if not hasattr(species, 'particles') or species.particles.shape[1] == 0:
             return np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
@@ -143,6 +144,8 @@ class ParticleSpecies:
         for i in range(species.particles.shape[1]):
             x = species.particles[self.pc.XCOMP, i]
             y = species.particles[self.pc.YCOMP, i]
+            
+            # print("ALL WEIGHTS FOR", species.params.type, species.particles[self.WEIGHT, :])
             weight = species.particles[self.WEIGHT, i]
             
             ix = int((x - self.inp.grid_x[0]) / self.inp.dx)
@@ -165,6 +168,7 @@ class ParticleSpecies:
         
         # !DEBUG! change back to 100
         target_ppc = 1  # N_PPC
+        
         return (self.params.density * Vc) / target_ppc
 
     def update(self):
@@ -181,6 +185,7 @@ class ParticleSpecies:
         new_particles = []
         if self.params.type in ["e", "i"] and self.collision_data is not None:
             new_particles = self.process_collisions()
+            print("FROM PARTICLE.UPDATE() - new_particles is", new_particles)
 
         # particle per cell enforcement
         self.enforce_ppc()
@@ -204,7 +209,6 @@ class ParticleSpecies:
         collision_events = []
         
         neutral_density_field = self.get_species_density_field("n")
-        
         particles_to_remove = []
 
         for n in range(self.particles.shape[1]):
@@ -215,10 +219,14 @@ class ParticleSpecies:
                 
                 if event.event_type == "ionization":
                     new_particles.extend(event.products)
+                    print("!#! IONIZED")
                 elif event.event_type in ["first_excitation", "second_excitation"]:
                     self._apply_energy_loss(n, event.energy_change)
                 elif event.event_type.startswith("elastic"):
                     self._apply_elastic_scattering(n, event)
+                    
+                print(event)
+                print(event.event_type)
 
         if particles_to_remove:
             self._remove_particles(particles_to_remove)
@@ -236,16 +244,19 @@ class ParticleSpecies:
 
         grid_coords = self._get_grid_coordinates(x, y)
         if grid_coords is None:
+            print("[ATTEMPT_COLLISIONS] grid_coords is None")
             return []
 
         v_rel = np.sqrt(vx**2 + vy**2 + vz**2)
         if v_rel < 1e-10:
+            print("[ATTEMPT_COLLISIONS] v_rel < 1e-10")
             return []
 
         energy_ev = 0.5 * self.params.mass * v_rel**2 / self.collision_data.E_CHARGE
 
         neutral_density = self._interpolate_density(x, y, neutral_density_field)
         if neutral_density <= 0:
+            print("[ATTEMPT_COLLISIONS] neutral_density <= 0")
             return []
 
         events = []
