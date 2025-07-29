@@ -491,7 +491,7 @@ class ParticleSpecies:
                         self.merge_particles(idx1, idx2)
 
     def get_charge_density(self):
-        rho = np.zeros_like(self.fields.E[0])
+        rho = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
         for i in range(self.particles.shape[1]):
             x = self.particles[self.pc.XCOMP, i]
             y = self.particles[self.pc.YCOMP, i]
