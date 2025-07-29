@@ -49,9 +49,13 @@ class FluidSpecies:
         consU = self.euler.prim_to_cons(self.grid)
         consU_new = self.euler.prim_to_cons(self.grid)
         
-        print("ENERGY AFTER", consU[self.c.ECOMP])
+        self._apply_lorentz_source_terms(consU_new)
         
-        _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
+        # print("ENERGY AFTER", consU[self.c.ECOMP])
+        
+        _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.euler.cons_to_prim(consU_new), self.inp.nx, self.inp.ny, self.inp.ng)
+        
+        print("!@! OUTSIDE BEFORE FLUX new x mom is", consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng])
         
         for i in range(self.inp.ng, self.inp.nx + self.inp.ng):
             for j in range(self.inp.ng, self.inp.ny + self.inp.ng):
@@ -63,10 +67,13 @@ class FluidSpecies:
                         
                     consU_new[icomp, i, j] = consU[icomp, i, j] - delta
                     
+                    if icomp == self.c.MUCOMP:
+                        print("!!@!! FLUX DELTA FOR", consU_new[icomp, i, j], f"AT ({i}, {j}) IS", delta)
+                    
+        print("!@! OUTSIDE AFTER FLUX new x mom is", consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng])
+        # print("ENERGY BEFORE", consU_new[self.c.ECOMP])
         
-        print("ENERGY BEFORE", consU_new[self.c.ECOMP])
         
-        # self._apply_lorentz_source_terms(consU_new)
         
         self.grid[:] = self.euler.cons_to_prim(consU_new)
         
@@ -74,7 +81,7 @@ class FluidSpecies:
         
         ## --ELECTRIC FIELD UPDATE--
         charge_density = self.get_charge_density()
-        self.fields.add_charge_density(charge_density)
+        self.fields.add_charge_density(charge_density) # -!- TOGGLE -!-
         
         self.fields.update_E()
         
@@ -97,7 +104,9 @@ class FluidSpecies:
         # ignoring y_mom magnetic field in E + V x B for now since those shouldn't contribute too much
         x_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * E[:, :, 0] # * lorentz_force[:, :, 0]  
         consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt
-    
+
+        print("!@! x mom source is", x_mom_source)
+        print("!@! new x mom is", consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng])
     
         # --ENERGY UPDATE--
         # V = self._get_V()
@@ -106,9 +115,11 @@ class FluidSpecies:
         
         # simplfication cuz E dot V just equals Ex dot Vx in our case (there's no y component of E)
         energy_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * \
-            (E[:, :, 0] * self.grid[self.c.UCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng])
+            (E[:, :, 0] * consU_new[self.c.MUCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng])
             
-        print("energy_source", energy_source)
+        print("!@! Ex is", E[:, :, 0])
+        print("!@! U is", self.grid[self.c.UCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng])
+        print("!@! energy_source", energy_source)
         
         consU_new[self.c.ECOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += energy_source * self.dt
         
