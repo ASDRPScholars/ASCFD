@@ -76,6 +76,8 @@ class Simulation:
                         particle_charge = particle[self.pc.NUMQ - 1] if hasattr(self.pc, 'CHARGE') else 0.0
                         particle_mass = getattr(particle, 'mass', None)
                         
+                        # print("NEW PARTICLES ARE:", new_particles)
+                        
                         if hasattr(self, 'ions') and particle_charge > 0:
                             self.ions.add_particle(particle)
                         elif hasattr(self, 'electrons') and particle_charge < 0:
@@ -83,6 +85,7 @@ class Simulation:
                         elif hasattr(self, 'neutrals') and abs(particle_charge) < 1e-20:
                             self.neutrals.add_particle(particle)      
                 
+                print("NEW PARTICLES ARE", new_particles)
                 self.electrons.add_particles(new_particles)
                 
             else:
@@ -214,7 +217,7 @@ class Simulation:
                 plt.colorbar(im, ax=axs[q])
             
             if self.inp.particle_ics is not None:
-                axs[q].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=5, color='blue')
+                axs[q].scatter(self.neutrals.particles[self.pc.XCOMP], self.neutrals.particles[self.pc.YCOMP], s=5, color='gray')
             
             axs[q].set_xlim(self.inp.xlim)
             axs[q].set_ylim(self.inp.ylim)

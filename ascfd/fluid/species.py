@@ -53,15 +53,15 @@ class FluidSpecies:
         
         _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
         
-        # for i in range(self.inp.ng, self.inp.nx + self.inp.ng):
-        #     for j in range(self.inp.ng, self.inp.ny + self.inp.ng):
-        #         for icomp in range(self.c.NUMQ):
+        for i in range(self.inp.ng, self.inp.nx + self.inp.ng):
+            for j in range(self.inp.ng, self.inp.ny + self.inp.ng):
+                for icomp in range(self.c.NUMQ):
                     
-        #             delta = (
-        #                 (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
-        #                 (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
+                    delta = (
+                        (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
+                        (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
                         
-        #             consU_new[icomp, i, j] = consU[icomp, i, j] - delta
+                    consU_new[icomp, i, j] = consU[icomp, i, j] - delta
                     
         
         # print("ENERGY BEFORE", consU_new[self.c.ECOMP])

@@ -270,10 +270,12 @@ class ParticleSpecies:
 
         for collision_type, collision_data in collision_types.items():
             if energy_ev < collision_data["threshold"]:
+                print("NOT ENOUGH ENERGY FOR", collision_type)
                 continue
                 
             sigma = collision_data["cross_section_func"](energy_ev)
             if sigma <= 0:
+                print("NEGATIVE SIGMA FOR", collision_type)
                 continue
 
             # nu = n * sigma * v
@@ -290,6 +292,8 @@ class ParticleSpecies:
                     events.append(event)
                 # only allow one collision per timestep per particle
                 break
+            else:
+                print("NOT LUCKY MONTE CARLO FOR", collision_type)
 
         return events
 
@@ -297,9 +301,11 @@ class ParticleSpecies:
                                x: float, y: float, vx: float, vy: float, vz: float,
                                weight: float, energy_ev: float):
         
-        if collision_type == "ionization" and self.params.type == "e":
+        if collision_type == "ionization": # and self.params.type == "e":
+            print("!#!#! IONIZED!")
             return self._create_ionization_event(particle_idx, x, y, vx, vy, vz, weight, energy_ev)
-        elif collision_type in ["first_excitation", "second_excitation"] and self.params.type == "e":
+        elif collision_type in ["first_excitation", "second_excitation"]: # and self.params.type == "e":
+            print("!#!#! EXCITED!")
             return self._create_excitation_event(collision_type, particle_idx, energy_ev)
         elif collision_type.startswith("elastic"):
             return self._create_elastic_event(collision_type, particle_idx)

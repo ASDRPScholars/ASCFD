@@ -212,11 +212,11 @@ class FluidFlux:
         numFluxX = np.zeros_like(a_grid)
         numFluxY = np.zeros_like(a_grid)
         
-        print("u", u)
-        print("v", v)
-        print("p", p)
-        print("a", a)
-        print("rho", rho)
+        # print("u", u)
+        # print("v", v)
+        # print("p", p)
+        # print("a", a)
+        # print("rho", rho)
 
         # --- X-direction HLLC Flux --- 
         for i in range(a_Nghost - 1, a_Nx + a_Nghost): # Loop over x-interfaces (i+1/2)
