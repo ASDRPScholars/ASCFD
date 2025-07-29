@@ -66,48 +66,15 @@ class FluidSpecies:
         
         print("ENERGY BEFORE", consU_new[self.c.ECOMP])
         
-        self._apply_lorentz_source_terms(consU_new)
-        
-        plt.figure()
-        plt.imshow(self.grid[self.c.RHOCOMP])
-        plt.title("electron density")
-        plt.show()
-        
-        fig, axs = plt.subplots(2, 2, figsize=(10, 10))  # 1 row, 3 columns
-        axs = axs.flatten()
-
-        # Plot charge density
-        im0 = axs[0].imshow(self.grid[self.c.RHOCOMP], cmap="magma")
-        axs[0].set_title("density")
-        fig.colorbar(im0, ax=axs[0])
-
-        # Plot Ex
-        im1 = axs[1].imshow(self.grid[self.c.MUCOMP], cmap="magma")
-        axs[1].set_title("mu")
-        fig.colorbar(im1, ax=axs[1])
-
-        # Plot Ey
-        im2 = axs[2].imshow(self.grid[self.c.MVCOMP], cmap="magma")
-        axs[2].set_title("mv")
-        fig.colorbar(im2, ax=axs[2])
-        
-        # Plot E
-        im3 = axs[3].imshow(self.grid[self.c.ECOMP], cmap="magma")
-        axs[3].set_title("energy")
-        fig.colorbar(im3, ax=axs[3])
-        
-        plt.tight_layout()
-        plt.show()
+        # self._apply_lorentz_source_terms(consU_new)
         
         self.grid[:] = self.euler.cons_to_prim(consU_new)
         
         self.bcs.apply_bcs()
         
-        # # ELECTRIC FIELD UPDATE
+        ## --ELECTRIC FIELD UPDATE--
         charge_density = self.get_charge_density()
         self.fields.add_charge_density(charge_density)
-        
-        # # print("ELECTRONS ADDED CHARGE DENSITY:", charge_density)
         
         self.fields.update_E()
         
@@ -140,6 +107,9 @@ class FluidSpecies:
         # simplfication cuz E dot V just equals Ex dot Vx in our case (there's no y component of E)
         energy_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * \
             (E[:, :, 0] * self.grid[self.c.UCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng])
+            
+        print("energy_source", energy_source)
+        
         consU_new[self.c.ECOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += energy_source * self.dt
         
     

@@ -279,19 +279,20 @@ class FluidFlux:
                     flux_hllc_x = FR + SR * (UstarR - UR)
                 else: 
                     # Should not happen if SL < SR
-                    print(SL)
-                    print(SR)
+                    print("[hllc()] SL", SL)
+                    print("[hllc()] SL",SR)
                     
-                    print(rhoL)
-                    print(rhoR)
-                    print(uL)
-                    print(uR)
+                    print("[hllc()] rhoL",rhoL)
+                    print("[hllc()] rhoR",rhoR)
+                    print("[hllc()] uL",uL)
+                    print("[hllc()] uR",uR)
 
-                    print(pL)
-                    print(pR)
+                    print("[hllc()] pL",pL)
+                    print("[hllc()] pR",pR)
                     
-                    print(aL)
-                    print(aR)
+                    print("[hllc()] aL",aL)
+                    print("[hllc()] aR",aR)
+                    
                     raise ValueError(f"HLLC condition error: SL={SL}, Sstar={Sstar}, SR={SR} at i={i}, j={j}")
                 
                 numFluxX[:, i, j] = flux_hllc_x

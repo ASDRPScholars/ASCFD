@@ -45,13 +45,15 @@ class FluidEuler:
         if self.c.system == "euler2d":
             # copy density
             prim[self.c.RHOCOMP] = a_cons[self.c.RHOCOMP]
+            
             # compute velocity components
             prim[self.c.UCOMP] = a_cons[self.c.MUCOMP] / a_cons[self.c.RHOCOMP]
             prim[self.c.VCOMP] = a_cons[self.c.MVCOMP] / a_cons[self.c.RHOCOMP]
+            
             # compute pressure using kinetic energy
-            kinetic_energy = 0.5 * (prim[self.c.UCOMP]**2 + prim[self.c.VCOMP]**2)
+            kinetic_energy = 0.5 * (prim[self.c.UCOMP]**2 + prim[self.c.VCOMP]**2) # this becomes really big
             prim[self.c.PCOMP] = (self.c.gamma - 1) * (
-                a_cons[self.c.ECOMP] - a_cons[self.c.RHOCOMP] * kinetic_energy
+                a_cons[self.c.ECOMP] - a_cons[self.c.RHOCOMP] * kinetic_energy # so this goes negative
             )
 
         elif self.c.system == "mhd2d":

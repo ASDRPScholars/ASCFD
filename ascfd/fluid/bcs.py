@@ -98,15 +98,14 @@ class FluidBoundaryConditions:
 
     
     def neumann_lo(self, grid, dim: int) -> None:
-        print("!BCS! CALLED NEUMANN LO")
-        print("!BCS! CAN I READ THE MIDDLE OF GRID??", grid[1, 52, 52])
+
         # neumann boundary condition at the low boundary
         for var in range(self.c.NUMQ): # all variables in the grid
             if dim == 0:  # low boundary in x-direction
                 for i in range(self.inp.ng): # ghost cells
                     for j in range(self.inp.ng, self.inp.ny + self.inp.ng):  # valid y-range
                         grid[var, i, j] = grid[var, self.inp.ng, j]
-                        print(f"set grid[{var}, {i}, {j}] from {grid[var, i, j]} to {grid[var, self.inp.ng, j]}")
+                        
             else:  # low boundary in y-direction
                 for i in range(self.inp.ng, self.inp.nx + self.inp.ng): # valid x-range
                     for j in range(self.inp.ng): # ghost cells
