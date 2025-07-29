@@ -101,25 +101,35 @@ class FluidSpecies:
         # x_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * lorentz_force[:, :, 0]
         # y_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * lorentz_force[:, :, 0]
         
-        # ignoring y_mom magnetic field in E + V x B for now since those shouldn't contribute too much
-        x_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * E[:, :, 0] # * lorentz_force[:, :, 0]  
+        # Apply Lorentz force: F = ρq(E + v×B) to both x and y momentum
+        x_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * E[:, :, 0]
+        y_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * E[:, :, 1]
+        
         consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt
+        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt
 
-        print("!@! x mom source is", x_mom_source)
-        print("!@! new x mom is", consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng])
+        print(f"!@! Electromagnetic coupling strengths:")
+        print(f"!@! Max |Ex|: {np.max(np.abs(E[:, :, 0])):.3e}")
+        print(f"!@! Max |Ey|: {np.max(np.abs(E[:, :, 1])):.3e}")
+        print(f"!@! Max |x_mom_source|: {np.max(np.abs(x_mom_source)):.3e}")
+        print(f"!@! Max |y_mom_source|: {np.max(np.abs(y_mom_source)):.3e}")
+        print(f"!@! Max |charge_density|: {np.max(np.abs(charge_density)):.3e}")
     
         # --ENERGY UPDATE--
         # V = self._get_V()
         # energy_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * \
         #     (E[:, :, 0] * V[:, :, 0] + E[:, :, 1] * V[:, :, 1] + E[:, :, 2] * V[:, :, 2]) # cursed vector dot product on two (100, 100, 3 matricies)
         
-        # simplfication cuz E dot V just equals Ex dot Vx in our case (there's no y component of E)
+        # Energy source: ρq(E·v) = ρq(Ex*vx + Ey*vy)  
+        prim_new = self.euler.cons_to_prim(consU_new)
+        vx = prim_new[self.c.UCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+        vy = prim_new[self.c.VCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+        
         energy_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * \
-            (E[:, :, 0] * self.euler.cons_to_prim(consU_new)[self.c.UCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng])
+            (E[:, :, 0] * vx + E[:, :, 1] * vy)
             
-        print("!@! Ex is", E[:, :, 0])
-        print("!@! U is", self.grid[self.c.UCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng])
-        print("!@! energy_source", energy_source)
+        print(f"!@! Max |energy_source|: {np.max(np.abs(energy_source)):.3e}")
+        print(f"!@! Energy source range: [{np.min(energy_source):.3e}, {np.max(energy_source):.3e}]")
         
         consU_new[self.c.ECOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += energy_source * self.dt
         

@@ -87,7 +87,7 @@ class Fields:
         
         dphi_dy, dphi_dx = np.gradient(phi, dy, dx)  # Mind the order: (rows, cols) → (y, x)
 
-        # self.E[:, :, 1] = -dphi_dx  # Ey
+        self.E[:, :, 1] = -dphi_dx  # Ey
         self.E[:, :, 0] = -dphi_dy  # Ex
     
     
