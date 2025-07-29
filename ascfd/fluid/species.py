@@ -38,26 +38,20 @@ class FluidSpecies:
         
         self.check_grid(self.c)
         
-        # TODO: DELETE UNNECESSARY VALUES HERE LATER WHEN ICS.APPLY_ICS() IS DONE
-        # boring ascfd.logistics stuff for apply_ics()
-        
         self.grid[:] = self.ics.apply_ics()
-        
-        # print("HI OK THIS IS DENSITY AT ICS:", self.grid[self.c.RHOCOMP])
         
         
     def update(self):
+        
+        self.bcs.apply_bcs()
         
         print("dt is", self.dt)
         consU = self.euler.prim_to_cons(self.grid)
         consU_new = self.euler.prim_to_cons(self.grid)
         
-        # print("!START! MU", self.grid[self.c.MUCOMP])
-        # print("!START! RHO", self.grid[self.c.RHOCOMP])
+        print("ENERGY AFTER", consU[self.c.ECOMP])
         
         _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
-        
-        # self.bcs.apply_bcs()
         
         for i in range(self.inp.ng, self.inp.nx + self.inp.ng):
             for j in range(self.inp.ng, self.inp.ny + self.inp.ng):
@@ -66,29 +60,13 @@ class FluidSpecies:
                     delta = (
                         (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
                         (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
-                    
-                    
-                    # if i == self.inp.nx + self.inp.ng - 1 and icomp == self.c.MUCOMP:
-                    #     print(f"[!BCF!] right flux at {i}, {j}", right_flux[icomp, i, j])
-                    #     print(f"!BCF! delta at {i}, {j}", delta)
-                    #     print(f"!BCF! old value at {i}, {j}", consU_new[icomp, i, j])
-                    #     print(f"!BCF! new value at {i}, {j}", consU_new[icomp, i, j] - delta)
                         
                     consU_new[icomp, i, j] = consU[icomp, i, j] - delta
                     
-                    # print("RIGHT LEFT TOP BOTTOM:", right_flux[icomp, i, j], left_flux[icomp, i, j], top_flux[icomp, i, j], bottom_flux[icomp, i, j])
-                    
-                    # if icomp in [self.c.RHOCOMP, self.c.ECOMP]:
-                    #     consU_new[icomp, i, j] = max(1e-6, consU[icomp, i, j] - delta)
-                    # else:
-                    
-                    
-                    # print("DELTA:", delta)
-                    
-        # print("!AFTER FLUX! MU TAKING IN", self.grid[self.c.MUCOMP])
-        # print("!AFTER FLUX! RHO TAKING IN", self.grid[self.c.RHOCOMP])
         
-        # self._apply_lorentz_source_terms(consU_new)
+        print("ENERGY BEFORE", consU_new[self.c.ECOMP])
+        
+        self._apply_lorentz_source_terms(consU_new)
         
         plt.figure()
         plt.imshow(self.grid[self.c.RHOCOMP])
@@ -97,9 +75,6 @@ class FluidSpecies:
         
         fig, axs = plt.subplots(2, 2, figsize=(10, 10))  # 1 row, 3 columns
         axs = axs.flatten()
-        
-        # print("!FINAL BEFORE PLOT! MU TAKING IN", self.grid[self.c.MUCOMP])
-        # print("!FINAL BEFORE PLOT! RHO TAKING IN", self.grid[self.c.RHOCOMP])
 
         # Plot charge density
         im0 = axs[0].imshow(self.grid[self.c.RHOCOMP], cmap="magma")
@@ -124,16 +99,9 @@ class FluidSpecies:
         plt.tight_layout()
         plt.show()
         
-        # print("!!AFTER BCS!! MU TAKING IN", self.grid[self.c.MUCOMP])
-        # print("!!AFTER BCS!! RHO TAKING IN", self.grid[self.c.RHOCOMP])
-
-        
         self.grid[:] = self.euler.cons_to_prim(consU_new)
         
         self.bcs.apply_bcs()
-        
-        # print("!!AFTER REAL FLUX UPDATE!! MU TAKING IN", self.grid[self.c.MUCOMP])
-        # print("!!AFTER REAL FLUX UPDATE!! RHO TAKING IN", self.grid[self.c.RHOCOMP])
         
         # # ELECTRIC FIELD UPDATE
         charge_density = self.get_charge_density()
@@ -154,41 +122,29 @@ class FluidSpecies:
         
         charge_density = self.get_charge_density()
         
-        lorentz_force = (E + np.cross(V, B))
+        ## --MOMENTUM UPDATE--
+        # lorentz_force = (E + np.cross(V, B))
+        # x_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * lorentz_force[:, :, 0]
+        # y_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * lorentz_force[:, :, 0]
         
-        ## MOMENTUM UPDATE
-        x_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * lorentz_force[:, :, 0]
-        y_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * lorentz_force[:, :, 1]
-        
-        # for j in range(0, 200):
-        #     i = 199
-        #     print(f"!BCF! before lorentz at {i}, {j}", consU_new[self.c.MUCOMP, i, j])
-        #     print(f"!BCF! x-source term to be added at {i}, {j}", x_mom_source[i, j])
-        
-        # !!C!!
+        # ignoring y_mom magnetic field in E + V x B for now since those shouldn't contribute too much
+        x_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * E[:, :, 0] # * lorentz_force[:, :, 0]  
         consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt
-        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt
+    
+    
+        # --ENERGY UPDATE--
+        # V = self._get_V()
+        # energy_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * \
+        #     (E[:, :, 0] * V[:, :, 0] + E[:, :, 1] * V[:, :, 1] + E[:, :, 2] * V[:, :, 2]) # cursed vector dot product on two (100, 100, 3 matricies)
         
-        # for j in range(self.inp.ng, self.inp.ny + self.inp.ng):
-        #     i = self.inp.nx + self.inp.ng - 1
-        #     print(f"!BCF! after lorentz at {i}, {j}", consU_new[self.c.MUCOMP, i, j])
-
-        # !!C!! 
-        V = self._get_V()
-        
-        # ENERGY UPDATE
+        # simplfication cuz E dot V just equals Ex dot Vx in our case (there's no y component of E)
         energy_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * \
-            (E[:, :, 0] * V[:, :, 0] + E[:, :, 1] * V[:, :, 1] + E[:, :, 2] * V[:, :, 2]) # cursed vector dot product on two (100, 100, 3 matricies)
-        
-        # !!C!!
+            (E[:, :, 0] * self.grid[self.c.UCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng])
         consU_new[self.c.ECOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += energy_source * self.dt
         
     
     def get_charge_density(self):
         charge_density = self.params.charge * self.get_number_density()
-        # print("HI THIS IS DENSITY:", self.grid[self.c.RHOCOMP])
-        # print("HI THIS IS NUMBER DENSITY:", self.get_number_density())
-        # print("HI THIS IS CHARGE DENSITY:", charge_density)
         return charge_density
     
     

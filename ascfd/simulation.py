@@ -201,23 +201,12 @@ class Simulation:
         
         for q in range(self.c.NUMQ):
             # Exclude ghost cells from the plot
-            # plot_data = self.electrons.grid[q, self.inp.ng*5:-self.inp.ng*5, self.inp.ng*5:-self.inp.ng*5].T # TODO: why transpose?
-            plot_data = self.electrons.grid[q, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] # TODO: why transpose?
-            # plot_data = np.flipud(self.electrons.grid[q]) # TODO: why transpose?
-            # plot_data = self.electrons.grid[q, :, :].T
-            
-            # !TEMP!
-            # extent = [self.inp.grid_x[self.inp.ng*5], self.inp.grid_y[-self.inp.ng*5-1],
-            #           self.inp.grid_y[self.inp.ng*5], self.inp.grid_y[-self.inp.ng*5-1]]
-            # extent = [self.inp.grid_x[self.inp.ng], self.inp.grid_y[-self.inp.ng-1],
-            #           self.inp.grid_y[self.inp.ng], self.inp.grid_y[-self.inp.ng-1]]
-            
-            # extent = [self.inp.grid_x[self.inp.ng], self.inp.grid_y[-self.inp.ng-1],
-            #           self.inp.grid_y[self.inp.ng], self.inp.grid_y[-self.inp.ng-1]]
-
+    
+            plot_data = self.electrons.grid[q, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
             im = axs[q].imshow(plot_data.T, origin='lower', cmap='magma')
             
-            plt.colorbar(im, ax=axs[q])
+            if q != 2:
+                plt.colorbar(im, ax=axs[q])
             
             # if self.inp.particle_ics is not None:
             #     axs[q].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=50, color='blue')
@@ -227,6 +216,10 @@ class Simulation:
             axs[q].set_ylabel('y')
             
             
+        im = axs[2].imshow(self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP].T, origin='lower', cmap='coolwarm')
+        plt.colorbar(im, ax=axs[2])
+        axs[2].set_title("energy")
+        
         im = axs[4].imshow(self.fields.E[1:-1, 1:-1, 0].T, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[4])
         axs[4].set_title("electric field x")
@@ -234,8 +227,6 @@ class Simulation:
         im = axs[5].imshow(self.fields.E[1:-1, 1:-1, 1].T, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[5])
         axs[5].set_title("electric field y")
-        
-        # E_mag = np.sqrt(self.E[5:-5, 5:-5, 0]**2 + self.E[5:-5, 5:-5, 1]**2)
         
         im = axs[6].imshow(self.fields.potential.T, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[6])

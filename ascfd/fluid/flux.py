@@ -211,6 +211,12 @@ class FluidFlux:
         # These will store F_{i+1/2} and G_{j+1/2} respectively
         numFluxX = np.zeros_like(a_grid)
         numFluxY = np.zeros_like(a_grid)
+        
+        print("u", u)
+        print("v", v)
+        print("p", p)
+        print("a", a)
+        print("rho", rho)
 
         # --- X-direction HLLC Flux --- 
         for i in range(a_Nghost - 1, a_Nx + a_Nghost): # Loop over x-interfaces (i+1/2)
@@ -273,6 +279,19 @@ class FluidFlux:
                     flux_hllc_x = FR + SR * (UstarR - UR)
                 else: 
                     # Should not happen if SL < SR
+                    print(SL)
+                    print(SR)
+                    
+                    print(rhoL)
+                    print(rhoR)
+                    print(uL)
+                    print(uR)
+
+                    print(pL)
+                    print(pR)
+                    
+                    print(aL)
+                    print(aR)
                     raise ValueError(f"HLLC condition error: SL={SL}, Sstar={Sstar}, SR={SR} at i={i}, j={j}")
                 
                 numFluxX[:, i, j] = flux_hllc_x
