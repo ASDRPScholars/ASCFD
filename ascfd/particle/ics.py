@@ -12,16 +12,15 @@ class ParticleInitialConditions:
         
     def apply_ics(self):
         
-        # TODO: MAKE IT DIRECTLY MUTATE SPECIES.PARTICLES IDK WHY IT DOESN RN
         if self.inp.particle_ics == "origin":
-            np.copyto(self.particles, self.origin())
+            self.particles[:] = self.origin()
         if self.inp.particle_ics == "random":
-            np.copyto(self.particles, self.random())
+            self.particles[:] = self.random()
         if self.inp.particle_ics == "random_left_wall":
-            np.copyto(self.particles, self.random_left_wall())
+            self.particles[:] = self.random_left_wall()
     
         if self.inp.particle_ics == "random_particles_no_condition":
-            self.particles = self.random()
+            self.particles[:] = self.random()
             
         print(self.particles[self.pc.XCOMP])
         
@@ -32,6 +31,7 @@ class ParticleInitialConditions:
             
             
     def random(self):
+        print("initializing random!")
         ic_particles = np.zeros_like(self.particles)
     
         for n in range(self.inp.n_particles):

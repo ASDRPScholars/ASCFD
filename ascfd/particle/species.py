@@ -104,7 +104,8 @@ class ParticleSpecies:
 
         self.particles[self.WEIGHT, :] = self.estimate_initial_weight()
         self.ics = ParticleInitialConditions(self.particles, self.inp, self.params)
-        self.particles = self.ics.apply_ics()
+        
+        self.ics.apply_ics()
 
         # initialize collision system for Xenon
         if params.type in ["e", "i"]:  # electrons and ions collide with neutrals
@@ -165,6 +166,7 @@ class ParticleSpecies:
         return (self.params.density * Vc) / target_ppc
 
     def update(self):
+        print("!PARTICLE! update particle!")
         new_particles = []
 
         if self.params.type in ["e", "i"] and self.collision_data is not None:
@@ -464,7 +466,8 @@ class ParticleSpecies:
         self.particles[:, idx1] = merged
         self.particles = np.delete(self.particles, idx2, axis=1)
 
-    def enforce_ppc(self, min_ppc=100, max_ppc=200):
+    # !DEBUG! change back to 100
+    def enforce_ppc(self, min_ppc=10, max_ppc=200):
         cell_map = {}
         for i in range(self.particles.shape[1]):
             x = self.particles[self.pc.XCOMP, i]
