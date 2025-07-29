@@ -19,10 +19,14 @@ class Simulation:
         self.pc = ParticleConstants()
         self.fields = Fields(self.inp)
         
-        # xenon species parameters
-        e_params = SpeciesParams(-1.6e-19, 9.1e-31, 5/3, "e", density=1e18, temperature=1.0)  # electrons
-        xe_i_params = SpeciesParams(1.6e-19, 2.18e-25, 5/3, "i", density=1e18, temperature=1.0)  # Xe+ ions
-        xe_n_params = SpeciesParams(0.0, 2.18e-25, 5/3, "n", density=1e20, temperature=1.0)  # Xe neutrals
+        # Initialize plasma normalization
+        from ascfd.fluid.plasma_refs import PlasmaReferences
+        plasma_refs = PlasmaReferences(n0=1e18, T0=1000.0, species_mass=9.1e-31, species_charge=1.6e-19)
+        
+        # Normalized species parameters (dimensionless)
+        e_params = SpeciesParams(-1.0, 1.0, 5/3, "e", density=1.0, temperature=1.0)  # electrons (normalized)
+        xe_i_params = SpeciesParams(1.0, plasma_refs.m * 2.18e-25 / (9.1e-31 * plasma_refs.m), 5/3, "i", density=1.0, temperature=1.0)  # Xe+ ions  
+        xe_n_params = SpeciesParams(0.0, plasma_refs.m * 2.18e-25 / (9.1e-31 * plasma_refs.m), 5/3, "n", density=10.0, temperature=1.0)  # Xe neutrals
         
         self.electrons = FluidSpecies(e_params, self.inp, self.fields)
         
