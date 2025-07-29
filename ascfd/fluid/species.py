@@ -115,7 +115,7 @@ class FluidSpecies:
         
         # simplfication cuz E dot V just equals Ex dot Vx in our case (there's no y component of E)
         energy_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * \
-            (E[:, :, 0] * consU_new[self.c.MUCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng])
+            (E[:, :, 0] * self.euler.cons_to_prim(consU_new)[self.c.UCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng])
             
         print("!@! Ex is", E[:, :, 0])
         print("!@! U is", self.grid[self.c.UCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng])

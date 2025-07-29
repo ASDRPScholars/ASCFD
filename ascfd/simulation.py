@@ -45,8 +45,8 @@ class Simulation:
         
         # Set timestep for all species
         for species in self.all_species:
-            # species.dt = self.dt
-            species.dt = 1.283e-8
+            species.dt = self.dt
+            # species.dt = 1.283e-8
         
         # -1 is no output. Always output ICs if we are outputting.
         if self.inp.output_freq >= 0:
@@ -216,7 +216,7 @@ class Simulation:
             axs[q].set_ylabel('y')
             
             
-        im = axs[2].imshow(self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP].T, origin='lower', cmap='coolwarm')
+        im = axs[2].imshow(self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng].T, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[2])
         axs[2].set_title("energy")
         
