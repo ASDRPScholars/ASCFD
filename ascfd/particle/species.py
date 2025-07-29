@@ -162,13 +162,23 @@ class ParticleSpecies:
 
     def estimate_initial_weight(self):
         Vc = self.inp.dx * self.inp.dy
-        target_ppc = 100  # N_PPC
+        
+        # !DEBUG! change back to 100
+        target_ppc = 1  # N_PPC
         return (self.params.density * Vc) / target_ppc
 
     def update(self):
         print("!PARTICLE! update particle!")
+        
+        print("!PARTICLE! U is", self.particles[self.pc.UCOMP])
+        print("!PARTICLE! V is", self.particles[self.pc.VCOMP])
+        
+        # !DEBUG! multiply by self.dt instead of arbitrary value
+        for n in range(self.particles.shape[1]):
+            self.particles[self.pc.XCOMP, n] += self.particles[self.pc.UCOMP, n] * 0.005
+            self.particles[self.pc.YCOMP, n] += self.particles[self.pc.VCOMP, n] * 0.005
+        
         new_particles = []
-
         if self.params.type in ["e", "i"] and self.collision_data is not None:
             new_particles = self.process_collisions()
 
@@ -182,7 +192,7 @@ class ParticleSpecies:
             
             print("IONS ADDED CHARGE DENSITY:", charge_density)
             
-            # self.fields.update_E
+            self.fields.update_E()
 
         return new_particles
 
@@ -466,8 +476,8 @@ class ParticleSpecies:
         self.particles[:, idx1] = merged
         self.particles = np.delete(self.particles, idx2, axis=1)
 
-    # !DEBUG! change back to 100
-    def enforce_ppc(self, min_ppc=10, max_ppc=200):
+    # !DEBUG! change min_ppc back to 100
+    def enforce_ppc(self, min_ppc=1, max_ppc=200):
         cell_map = {}
         for i in range(self.particles.shape[1]):
             x = self.particles[self.pc.XCOMP, i]

@@ -21,7 +21,9 @@ class Simulation:
         
         # xenon species parameters
         e_params = SpeciesParams(-1.6e-19, 9.1e-31, 5/3, "e", density=1e18, temperature=1.0)  # electrons
-        xe_i_params = SpeciesParams(1.6e-19, 2.18e-25, 5/3, "i", density=1e18, temperature=1.0)  # Xe+ ions
+        
+        # !DEBUG! change ion charge back to 1.6e-19
+        xe_i_params = SpeciesParams(1, 2.18e-25, 5/3, "i", density=1e18, temperature=1.0)  # Xe+ ions
         xe_n_params = SpeciesParams(0.0, 2.18e-25, 5/3, "n", density=1e20, temperature=1.0)  # Xe neutrals
         
         self.electrons = FluidSpecies(e_params, self.inp, self.fields)
@@ -203,21 +205,26 @@ class Simulation:
         for q in range(self.c.NUMQ):
             # Exclude ghost cells from the plot
     
+            extent = [self.inp.xlim[0], self.inp.xlim[1], self.inp.ylim[0], self.inp.ylim[1]]
+            
             plot_data = self.electrons.grid[q, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-            im = axs[q].imshow(plot_data.T, origin='lower', cmap='magma')
+            im = axs[q].imshow(plot_data.T, extent=extent, origin='lower', cmap='magma')
             
             if q != 2:
                 plt.colorbar(im, ax=axs[q])
             
-            # if self.inp.particle_ics is not None:
-            #     axs[q].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=50, color='blue')
+            if self.inp.particle_ics is not None:
+                axs[q].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=5, color='blue')
             
+            axs[q].set_xlim(self.inp.xlim)
+            axs[q].set_ylim(self.inp.ylim)
+
             axs[q].set_title(self.c.variable_names[q])
             axs[q].set_xlabel('x')
             axs[q].set_ylabel('y')
             
             
-        im = axs[2].imshow(self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP].T, origin='lower', cmap='coolwarm')
+        im = axs[2].imshow(self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng].T, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[2])
         axs[2].set_title("energy")
         
