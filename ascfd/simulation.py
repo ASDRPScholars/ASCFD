@@ -206,7 +206,7 @@ class Simulation:
         for q in range(self.c.NUMQ):
             # Exclude ghost cells from the plot
     
-            plot_data = self.electrons.grid[q, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+            plot_data = self.electrons.grid[q, 10:-10, 10:-10]
             im = axs[q].imshow(plot_data.T, origin='lower', cmap='magma')
             
             if q != 2:
