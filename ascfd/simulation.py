@@ -206,7 +206,7 @@ class Simulation:
         for q in range(self.c.NUMQ):
             # Exclude ghost cells from the plot
     
-            plot_data = self.electrons.grid[q, 10:-10, 10:-10]
+            plot_data = self.electrons.grid[q]
             im = axs[q].imshow(plot_data.T, origin='lower', cmap='magma')
             
             if q != 2:
@@ -220,15 +220,15 @@ class Simulation:
             axs[q].set_ylabel('y')
             
             
-        im = axs[2].imshow(self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng].T, origin='lower', cmap='coolwarm')
+        im = axs[2].imshow(self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP].T, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[2])
         axs[2].set_title("energy")
         
-        im = axs[4].imshow(self.fields.E[1:-1, 1:-1, 0].T, origin='lower', cmap='coolwarm')
+        im = axs[4].imshow(self.fields.E[:, :, 0].T, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[4])
         axs[4].set_title("electric field x")
         
-        im = axs[5].imshow(self.fields.E[1:-1, 1:-1, 1].T, origin='lower', cmap='coolwarm')
+        im = axs[5].imshow(self.fields.E[:, :, 1].T, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[5])
         axs[5].set_title("electric field y")
         

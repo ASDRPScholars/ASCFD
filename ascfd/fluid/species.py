@@ -34,28 +34,57 @@ class FluidSpecies:
         self.bcs = FluidBoundaryConditions(self.grid, self.inp.bcs_lo, self.inp.bcs_hi, self.inp)
         self.ics = FluidInitialConditions(self.grid, self.inp, self.params)
         
+        self.grid[:] = self.ics.apply_ics()
+        
+        # Apply boundary conditions AFTER setting initial conditions
         self.bcs.apply_bcs()
         
         self.check_grid(self.c)
         
-        self.grid[:] = self.ics.apply_ics()
-        
         
     def update(self):
         
-        self.bcs.apply_bcs()
-        
         print("dt is", self.dt)
         consU = self.euler.prim_to_cons(self.grid)
-        consU_new = self.euler.prim_to_cons(self.grid)
         
-        self._apply_lorentz_source_terms(consU_new)
+        self._apply_lorentz_source_terms(consU)
+        
+        # CRITICAL: Apply BCs immediately after source terms to maintain ghost cell consistency
+        # Convert to primitive, apply BCs, then back to conservative
+        self.grid[:] = self.euler.cons_to_prim(consU)
+        
+        plt.figure()
+        plt.imshow(self.grid[self.c.UCOMP])
+        plt.title("after lorentz")
+        plt.show()
+        
+        self.bcs.apply_bcs()
+        
+        plt.figure()
+        plt.imshow(self.grid[self.c.RHOCOMP])
+        plt.title("rho after bc")
+        plt.show()
+        
+        plt.figure()
+        plt.imshow(self.grid[self.c.UCOMP])
+        plt.title("u after bc")
+        plt.show()
+        
+        plt.figure()
+        plt.imshow(self.grid[self.c.VCOMP])
+        plt.title("Uvafter bc")
+        plt.show()
+        
+        plt.figure()
+        plt.imshow(self.grid[self.c.PCOMP])
+        plt.title("P after bc")
+        plt.show()
         
         # print("ENERGY AFTER", consU[self.c.ECOMP])
+
+        _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
         
-        _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.euler.cons_to_prim(consU_new), self.inp.nx, self.inp.ny, self.inp.ng)
-        
-        print("!@! OUTSIDE BEFORE FLUX new x mom is", consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng])
+        print("!@! OUTSIDE BEFORE FLUX new x mom is", consU[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng])
         
         for i in range(self.inp.ng, self.inp.nx + self.inp.ng):
             for j in range(self.inp.ng, self.inp.ny + self.inp.ng):
@@ -65,19 +94,33 @@ class FluidSpecies:
                         (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
                         (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
                         
-                    consU_new[icomp, i, j] = consU[icomp, i, j] - delta
+                    consU[icomp, i, j] = consU[icomp, i, j] - delta
                     
                     if icomp == self.c.MUCOMP:
-                        print("!!@!! FLUX DELTA FOR", consU_new[icomp, i, j], f"AT ({i}, {j}) IS", delta)
+                        print("!!@!! FLUX DELTA FOR", consU[icomp, i, j], f"AT ({i}, {j}) IS", delta)
                     
-        print("!@! OUTSIDE AFTER FLUX new x mom is", consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng])
+        print("!@! OUTSIDE AFTER FLUX new x mom is", consU[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng])
         # print("ENERGY BEFORE", consU_new[self.c.ECOMP])
         
+        plt.figure()
+        plt.imshow(consU[self.c.MUCOMP])
+        plt.title("MU after flux")
+        plt.show()
         
+        self.grid[:] = self.euler.cons_to_prim(consU)
         
-        self.grid[:] = self.euler.cons_to_prim(consU_new)
+        plt.figure()
+        plt.imshow(self.grid[self.c.UCOMP])
+        plt.title("after flux")
+        plt.show()
         
+        # Apply BCs again after flux updates (flux also modifies interior cells only)
         self.bcs.apply_bcs()
+        
+        plt.figure()
+        plt.imshow(self.grid[self.c.UCOMP])
+        plt.title("after flux after bcs")
+        plt.show()
         
         ## --ELECTRIC FIELD UPDATE--
         charge_density = self.get_charge_density()
@@ -94,7 +137,7 @@ class FluidSpecies:
         B = self.fields.B
         V = self._get_V()
         
-        charge_density = self.get_charge_density()
+        charge_density = self.params.charge * self.grid[self.c.RHOCOMP] / self.params.mass
         
         ## --MOMENTUM UPDATE--
         # lorentz_force = (E + np.cross(V, B))
