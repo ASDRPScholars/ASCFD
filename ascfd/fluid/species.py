@@ -53,39 +53,20 @@ class FluidSpecies:
         # Convert to primitive, apply BCs, then back to conservative
         self.grid[:] = self.euler.cons_to_prim(consU)
         
-        plt.figure()
-        plt.imshow(self.grid[self.c.UCOMP])
-        plt.title("after lorentz")
-        plt.show()
-        
         self.bcs.apply_bcs()
         
         plt.figure()
         plt.imshow(self.grid[self.c.RHOCOMP])
         plt.title("rho after bc")
         plt.show()
-        
         plt.figure()
         plt.imshow(self.grid[self.c.UCOMP])
         plt.title("u after bc")
         plt.show()
-        
         plt.figure()
-        plt.imshow(self.grid[self.c.VCOMP])
-        plt.title("Uvafter bc")
-        plt.show()
-        
-        plt.figure()
-        plt.imshow(self.grid[self.c.PCOMP])
-        plt.title("P after bc")
-        plt.show()
-        
-        # print("ENERGY AFTER", consU[self.c.ECOMP])
 
         _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
-        
-        print("!@! OUTSIDE BEFORE FLUX new x mom is", consU[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng])
-        
+                
         for i in range(self.inp.ng, self.inp.nx + self.inp.ng):
             for j in range(self.inp.ng, self.inp.ny + self.inp.ng):
                 for icomp in range(self.c.NUMQ):
@@ -95,30 +76,19 @@ class FluidSpecies:
                         (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
                         
                     consU[icomp, i, j] = consU[icomp, i, j] - delta
-                    
-                    if icomp == self.c.MUCOMP:
-                        print("!!@!! FLUX DELTA FOR", consU[icomp, i, j], f"AT ({i}, {j}) IS", delta)
-                    
-        print("!@! OUTSIDE AFTER FLUX new x mom is", consU[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng])
-        # print("ENERGY BEFORE", consU_new[self.c.ECOMP])
-        
-        plt.figure()
-        plt.imshow(consU[self.c.MUCOMP])
-        plt.title("MU after flux")
-        plt.show()
         
         self.grid[:] = self.euler.cons_to_prim(consU)
         
         plt.figure()
-        plt.imshow(self.grid[self.c.UCOMP])
-        plt.title("after flux")
+        plt.imshow(self.grid[self.c.RHOCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng])
+        plt.title("rho after flux")
         plt.show()
         
         # Apply BCs again after flux updates (flux also modifies interior cells only)
         self.bcs.apply_bcs()
         
         plt.figure()
-        plt.imshow(self.grid[self.c.UCOMP])
+        plt.imshow(self.grid[self.c.RHOCOMP])
         plt.title("after flux after bcs")
         plt.show()
         
