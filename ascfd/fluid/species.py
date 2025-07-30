@@ -36,25 +36,39 @@ class FluidSpecies:
         self.bcs = FluidBoundaryConditions(self.grid, self.inp.bcs_lo, self.inp.bcs_hi, self.inp)
         self.ics = FluidInitialConditions(self.grid, self.inp, self.params)
         
+        self.grid[:] = self.ics.apply_ics()
+        
+        # Apply boundary conditions AFTER setting initial conditions
         self.bcs.apply_bcs()
         
         self.check_grid(self.c)
         
-        self.grid[:] = self.ics.apply_ics()
-        
         
     def update(self):
         
-        self.bcs.apply_bcs()
-        
         print("dt is", self.dt)
         consU = self.euler.prim_to_cons(self.grid)
-        consU_new = self.euler.prim_to_cons(self.grid)
         
-        # print("ENERGY AFTER", consU[self.c.ECOMP])
+        self._apply_lorentz_source_terms(consU)
         
+        # CRITICAL: Apply BCs immediately after source terms to maintain ghost cell consistency
+        # Convert to primitive, apply BCs, then back to conservative
+        self.grid[:] = self.euler.cons_to_prim(consU)
+        
+        self.bcs.apply_bcs()
+        
+        plt.figure()
+        plt.imshow(self.grid[self.c.RHOCOMP])
+        plt.title("rho after bc")
+        plt.show()
+        plt.figure()
+        plt.imshow(self.grid[self.c.UCOMP])
+        plt.title("u after bc")
+        plt.show()
+        plt.figure()
+
         _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
-        
+                
         for i in range(self.inp.ng, self.inp.nx + self.inp.ng):
             for j in range(self.inp.ng, self.inp.ny + self.inp.ng):
                 for icomp in range(self.c.NUMQ):
@@ -63,20 +77,26 @@ class FluidSpecies:
                         (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
                         (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
                         
-                    consU_new[icomp, i, j] = consU[icomp, i, j] - delta
-                    
+                    consU[icomp, i, j] = consU[icomp, i, j] - delta
         
-        # print("ENERGY BEFORE", consU_new[self.c.ECOMP])
+        self.grid[:] = self.euler.cons_to_prim(consU)
         
-        # self._apply_lorentz_source_terms(consU_new)
+        plt.figure()
+        plt.imshow(self.grid[self.c.RHOCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng])
+        plt.title("rho after flux")
+        plt.show()
         
-        self.grid[:] = self.euler.cons_to_prim(consU_new)
-        
+        # Apply BCs again after flux updates (flux also modifies interior cells only)
         self.bcs.apply_bcs()
+        
+        plt.figure()
+        plt.imshow(self.grid[self.c.RHOCOMP])
+        plt.title("after flux after bcs")
+        plt.show()
         
         ## --ELECTRIC FIELD UPDATE--
         charge_density = self.get_charge_density()
-        self.fields.add_charge_density(charge_density)
+        self.fields.add_charge_density(charge_density) # -!- TOGGLE -!-
         
         self.fields.update_E()
         
@@ -89,28 +109,42 @@ class FluidSpecies:
         B = self.fields.B
         # V = self._get_V()
         
-        charge_density = self.get_charge_density()
+        charge_density = self.params.charge * self.grid[self.c.RHOCOMP] / self.params.mass
         
         ## --MOMENTUM UPDATE--
         # lorentz_force = (E + np.cross(V, B))
         # x_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * lorentz_force[:, :, 0]
         # y_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * lorentz_force[:, :, 0]
         
-        # ignoring y_mom magnetic field in E + V x B for now since those shouldn't contribute too much
-        x_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * E[:, :, 0] # * lorentz_force[:, :, 0]  
+        # Apply Lorentz force: F = ρq(E + v×B) to both x and y momentum
+        x_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * E[:, :, 0]
+        y_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * E[:, :, 1]
+        
         consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt
-    
+        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt
+
+        print(f"!@! Electromagnetic coupling strengths:")
+        print(f"!@! Max |Ex|: {np.max(np.abs(E[:, :, 0])):.3e}")
+        print(f"!@! Max |Ey|: {np.max(np.abs(E[:, :, 1])):.3e}")
+        print(f"!@! Max |x_mom_source|: {np.max(np.abs(x_mom_source)):.3e}")
+        print(f"!@! Max |y_mom_source|: {np.max(np.abs(y_mom_source)):.3e}")
+        print(f"!@! Max |charge_density|: {np.max(np.abs(charge_density)):.3e}")
     
         # --ENERGY UPDATE--
         # V = self._get_V()
         # energy_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * \
         #     (E[:, :, 0] * V[:, :, 0] + E[:, :, 1] * V[:, :, 1] + E[:, :, 2] * V[:, :, 2]) # cursed vector dot product on two (100, 100, 3 matricies)
         
-        # simplfication cuz E dot V just equals Ex dot Vx in our case (there's no y component of E)
+        # Energy source: ρq(E·v) = ρq(Ex*vx + Ey*vy)  
+        prim_new = self.euler.cons_to_prim(consU_new)
+        vx = prim_new[self.c.UCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+        vy = prim_new[self.c.VCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+        
         energy_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * \
-            (E[:, :, 0] * self.grid[self.c.UCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng])
+            (E[:, :, 0] * vx + E[:, :, 1] * vy)
             
-        print("energy_source", energy_source)
+        print(f"!@! Max |energy_source|: {np.max(np.abs(energy_source)):.3e}")
+        print(f"!@! Energy source range: [{np.min(energy_source):.3e}, {np.max(energy_source):.3e}]")
         
         consU_new[self.c.ECOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += energy_source * self.dt
         

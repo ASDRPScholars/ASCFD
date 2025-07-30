@@ -213,19 +213,36 @@ class FluidInitialConditions:
     #     return ic
     
     ## wip tame
+    # def tame_static(self):
+    #     ic = np.zeros_like(self.grid)
+    #     rho0 = 9.11e-13                # kg/m³  → n≈1e20 m⁻³
+    #     u0 = 0.0                     # m/s
+    #     v0 = 0.0
+    #     T0 = 10                     # K, choose a reasonable electron/ion temperature
+    #     p0 = rho0/self.params.mass * self.c.k_B * T0  # ideal‑gas law: n kT
+    #     E0 = p0/(self.c.gamma-1) + 0.5*rho0*(u0**2+v0**2)
+        
+    #     ic[self.c.RHOCOMP] = 9.11e-13
+    #     ic[self.c.UCOMP ] = 0  
+    #     ic[self.c.VCOMP ] = 0
+    #     ic[self.c.PCOMP ] = p0
+    #     return ic
+    
+    #normalized
     def tame_static(self):
         ic = np.zeros_like(self.grid)
-        rho0 = 9.11e-13                # kg/m³  → n≈1e20 m⁻³
-        u0 = 0.0                     # m/s
-        v0 = 0.0
-        T0 = 10                     # K, choose a reasonable electron/ion temperature
-        p0 = rho0/self.params.mass * self.c.k_B * T0  # ideal‑gas law: n kT
-        E0 = p0/(self.c.gamma-1) + 0.5*rho0*(u0**2+v0**2)
-        
-        ic[self.c.RHOCOMP] = 9.11e-13
-        ic[self.c.UCOMP ] = 0  
-        ic[self.c.VCOMP ] = 0
-        ic[self.c.PCOMP ] = p0
+
+        # Normalized values (order unity)
+        rho_norm = 1.0                  # ρ/ρ_ref = 1
+        u_norm = 0.0                    # u/v_ref = 0  
+        v_norm = 0.0                    # v/v_ref = 0
+        T_norm = 1.0                    # T/T_ref = 1
+        p_norm = rho_norm * T_norm      # p/p_ref = (ρ/ρ_ref)(T/T_ref)
+
+        ic[self.c.RHOCOMP] = rho_norm
+        ic[self.c.UCOMP] = u_norm
+        ic[self.c.VCOMP] = v_norm
+        ic[self.c.PCOMP] = p_norm
         return ic
     
     

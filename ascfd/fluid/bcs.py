@@ -110,6 +110,13 @@ class FluidBoundaryConditions:
                 for i in range(self.inp.ng, self.inp.nx + self.inp.ng): # valid x-range
                     for j in range(self.inp.ng): # ghost cells
                         grid[var, i, j] = grid[var, i, self.inp.ng]
+                        
+        # Handle corners for low boundaries
+        for var in range(self.c.NUMQ):
+            # Bottom-left corner (lo-x, lo-y)
+            for i in range(self.inp.ng):
+                for j in range(self.inp.ng):
+                    grid[var, i, j] = grid[var, self.inp.ng, self.inp.ng]
 
     
     def neumann_hi(self, grid, dim: int) -> None:
@@ -122,8 +129,25 @@ class FluidBoundaryConditions:
                         grid[var, i, j] = grid[var, self.inp.nx + self.inp.ng - 1, j]
             else:  # y-direction
                 for i in range(self.inp.ng, self.inp.nx + self.inp.ng):
-                    for j in range(self.inp.ny + self.inp.ng, self.inp.ny + 2*self.inp.ng): # valid x-range
-                        grid[var, i, j] = grid[var, i, self.inp.ny + self.inp.ng - 1] # ghost cells
+                    for j in range(self.inp.ny + self.inp.ng, self.inp.ny + 2*self.inp.ng): # ghost cells
+                        grid[var, i, j] = grid[var, i, self.inp.ny + self.inp.ng - 1]
+                        
+        # Handle corners for high boundaries
+        for var in range(self.c.NUMQ):
+            # Top-right corner (hi-x, hi-y)
+            for i in range(self.inp.nx + self.inp.ng, self.inp.nx + 2*self.inp.ng):
+                for j in range(self.inp.ny + self.inp.ng, self.inp.ny + 2*self.inp.ng):
+                    grid[var, i, j] = grid[var, self.inp.nx + self.inp.ng - 1, self.inp.ny + self.inp.ng - 1]
+            
+            # Top-left corner (lo-x, hi-y)
+            for i in range(self.inp.ng):
+                for j in range(self.inp.ny + self.inp.ng, self.inp.ny + 2*self.inp.ng):
+                    grid[var, i, j] = grid[var, self.inp.ng, self.inp.ny + self.inp.ng - 1]
+            
+            # Bottom-right corner (hi-x, lo-y)
+            for i in range(self.inp.nx + self.inp.ng, self.inp.nx + 2*self.inp.ng):
+                for j in range(self.inp.ng):
+                    grid[var, i, j] = grid[var, self.inp.nx + self.inp.ng - 1, self.inp.ng]
 
     
     def periodic_lo(self, grid, dim: int) -> None:

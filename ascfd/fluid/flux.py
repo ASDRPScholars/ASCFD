@@ -293,6 +293,10 @@ class FluidFlux:
                     print("[hllc()] aL",aL)
                     print("[hllc()] aR",aR)
                     
+                    zero = np.zeros_like(a_grid)
+                    
+                    print("FLUX UDPATE")
+                    # return (zero, zero, zero, zero, zero)
                     raise ValueError(f"HLLC condition error: SL={SL}, Sstar={Sstar}, SR={SR} at i={i}, j={j}")
                 
                 numFluxX[:, i, j] = flux_hllc_x

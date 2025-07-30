@@ -1,4 +1,5 @@
 from ascfd.inputs import Inputs
+from ascfd.fluid.plasma_refs import PlasmaReferences
 
 class FluidConstants:
 
@@ -8,6 +9,15 @@ class FluidConstants:
         self.gamma = 1.4
         self.g = 9.81
         self.system = a_inputs.system
+        
+        # Initialize plasma normalization for Hall thruster simulations
+        # Using electron parameters as reference
+        self.plasma_refs = PlasmaReferences(
+            n0=1e18,        # 1e18 m⁻³ - typical Hall thruster plasma density
+            T0=1000.0,      # 1000 K - electron temperature
+            species_mass=9.1e-31,   # electron mass
+            species_charge=1.6e-19  # elementary charge
+        )
 
         # Define constants and variables for the Euler 2D system
         if a_inputs.system == "euler2d":

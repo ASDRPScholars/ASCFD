@@ -20,12 +20,14 @@ class Simulation:
         self.pc = ParticleConstants()
         self.fields = Fields(self.inp)
         
-        # xenon species parameters
-        e_params = SpeciesParams(-1.6e-19, 9.1e-31, 5/3, "e", density=1e18, temperature=1.0)  # electrons
+        # Initialize plasma normalization
+        from ascfd.fluid.plasma_refs import PlasmaReferences
+        plasma_refs = PlasmaReferences(n0=1e18, T0=1000.0, species_mass=9.1e-31, species_charge=1.6e-19)
         
-        # !DEBUG! change ion charge back to 1.6e-19
-        xe_i_params = SpeciesParams(1, 2.18e-25, 5/3, "i", density=1e18, temperature=1.0)  # Xe+ ions
-        xe_n_params = SpeciesParams(0.0, 2.18e-25, 5/3, "n", density=1e20, temperature=1.0)  # Xe neutrals
+        # Normalized species parameters (dimensionless)
+        e_params = SpeciesParams(-1.0, 1.0, 5/3, "e", density=1.0, temperature=1.0)  # electrons (normalized)
+        xe_i_params = SpeciesParams(1.0, plasma_refs.m * 2.18e-25 / (9.1e-31 * plasma_refs.m), 5/3, "i", density=1.0, temperature=1.0)  # Xe+ ions  
+        xe_n_params = SpeciesParams(0.0, plasma_refs.m * 2.18e-25 / (9.1e-31 * plasma_refs.m), 5/3, "n", density=10.0, temperature=1.0)  # Xe neutrals
         
         self.electrons = FluidSpecies(e_params, self.inp, self.fields, self)
         
@@ -241,11 +243,11 @@ class Simulation:
         plt.colorbar(im, ax=axs[2])
         axs[2].set_title("energy")
         
-        im = axs[4].imshow(self.fields.E[1:-1, 1:-1, 0].T, origin='lower', cmap='coolwarm')
+        im = axs[4].imshow(self.fields.E[:, :, 0].T, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[4])
         axs[4].set_title("electric field x")
         
-        im = axs[5].imshow(self.fields.E[1:-1, 1:-1, 1].T, origin='lower', cmap='coolwarm')
+        im = axs[5].imshow(self.fields.E[:, :, 1].T, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[5])
         axs[5].set_title("electric field y")
         
