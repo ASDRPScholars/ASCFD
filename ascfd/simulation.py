@@ -39,7 +39,7 @@ class Simulation:
             # self.ions.set_simulation(self)
             # self.pelectrons.set_simulation(self)
             
-            self.all_species = [self.electrons, self.neutrals, self.ions]
+            self.all_species = [self.electrons, self.pelectrons, self.neutrals, self.ions]
         else:
             self.all_species = [self.electrons]
         

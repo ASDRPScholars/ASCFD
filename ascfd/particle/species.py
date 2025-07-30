@@ -25,21 +25,21 @@ class XenonCollisionData:
         
         # Electron-Xenon collision data
         self.electron_collisions = {
-            "elastic": {
-                "threshold": 0.0,  
-                "cross_section_func": self._elastic_cross_section
-            },
-            "first_excitation": {
-                "threshold": 19.82,  # eV
-                "cross_section_func": self._excitation_cross_section_1
+            "ionization": {
+                "threshold": 24.59,  # eV
+                "cross_section_func": self._ionization_cross_section
             },
             "second_excitation": {
                 "threshold": 20.61,  # eV  
                 "cross_section_func": self._excitation_cross_section_2
             },
-            "ionization": {
-                "threshold": 24.59,  # eV
-                "cross_section_func": self._ionization_cross_section
+            "first_excitation": {
+                "threshold": 19.82,  # eV
+                "cross_section_func": self._excitation_cross_section_1
+            },
+            "elastic": {
+                "threshold": 0.0,  
+                "cross_section_func": self._elastic_cross_section
             }
         }
         
@@ -184,6 +184,8 @@ class ParticleSpecies:
         print("!PARTICLE! U is", self.particles[self.pc.UCOMP])
         print("!PARTICLE! V is", self.particles[self.pc.VCOMP])
         
+        print("!#@! TYPE", self.params.type)
+        
         if self.params.type != "e":
             # TODO: add leapfrog algorithm here!
             # !DEBUG! multiply by self.dt instead of arbitrary value
@@ -196,6 +198,7 @@ class ParticleSpecies:
         new_particles = []
         
         if self.params.type in ["e", "i"] and self.collision_data is not None:
+            print("!#@! PROCESS COLLISIONS FOR", self.params.type)
             new_particles = self.process_collisions()
             print("FROM PARTICLE.UPDATE() - new_particles is", new_particles)
 
@@ -216,6 +219,7 @@ class ParticleSpecies:
 
 
     def process_collisions(self):
+        print("!#@! PROCESS COLLISIONS cALLED FOR", self.params.type)
         if self.params.type not in ["e", "i"] or self.collision_data is None:
             return []
 
@@ -225,6 +229,9 @@ class ParticleSpecies:
         neutral_density_field = self.get_species_density_field("n")
         particles_to_remove = []
 
+        print("!#@! PROCESS COLLISIONS FOR", self.params.type)
+        print("N PARTICLES", self.particles.shape[1])
+        
         for n in range(self.particles.shape[1]):
             events = self._attempt_collisions(n, neutral_density_field)
             
@@ -249,6 +256,7 @@ class ParticleSpecies:
         return new_particles
 
     def _attempt_collisions(self, particle_idx: int, neutral_density_field: np.ndarray):
+        print("!#! ATTEMPT COLLISION FOR", self.params.type)
         x = self.particles[self.pc.XCOMP, particle_idx]
         y = self.particles[self.pc.YCOMP, particle_idx]
         vx = self.particles[self.pc.UCOMP, particle_idx]
@@ -264,6 +272,7 @@ class ParticleSpecies:
         v_rel = np.sqrt(vx**2 + vy**2 + vz**2)
         if v_rel < 1e-10:
             print("[ATTEMPT_COLLISIONS] v_rel < 1e-10")
+            print("v_rel is", v_rel)
             return []
 
         energy_ev = 0.5 * self.params.mass * v_rel**2 / self.collision_data.E_CHARGE
