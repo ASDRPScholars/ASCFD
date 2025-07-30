@@ -49,17 +49,17 @@ class FluidSpecies:
         print("dt is", self.dt)
         consU = self.euler.prim_to_cons(self.grid)
 
-        _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
+        # _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
                 
-        for i in range(self.inp.ng, self.inp.nx + self.inp.ng):
-            for j in range(self.inp.ng, self.inp.ny + self.inp.ng):
-                for icomp in range(self.c.NUMQ):
+        # for i in range(self.inp.ng, self.inp.nx + self.inp.ng):
+        #     for j in range(self.inp.ng, self.inp.ny + self.inp.ng):
+        #         for icomp in range(self.c.NUMQ):
                     
-                    delta = (
-                        (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
-                        (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
+        #             delta = (
+        #                 (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
+        #                 (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
                         
-                    consU[icomp, i, j] = consU[icomp, i, j] - delta
+        #             consU[icomp, i, j] = consU[icomp, i, j] - delta
                     
         # self._apply_lorentz_source_terms(consU)
         
@@ -96,9 +96,12 @@ class FluidSpecies:
         
         ## --ELECTRIC FIELD UPDATE--
         charge_density = self.get_charge_density()
-        self.fields.add_charge_density(charge_density) # -!- TOGGLE -!-
         
-        self.fields.update_E()
+        self.fields.clear_charge_density()
+        self.fields.add_charge_density(charge_density) # -!- TOGGLE -!-
+        print("FROM ELECTRONS ADDED:", charge_density)
+        
+        # self.fields.update_E()
         
         # TODO: call self.ebs.apply_ebs() once embedded boundaries are brought in
     

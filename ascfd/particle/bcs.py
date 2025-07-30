@@ -12,7 +12,7 @@ class ParticleBoundaryConditions:
         
         
     def apply_bcs(self):
-        self.apply_inflow_lo()
+        # self.apply_inflow_lo()
         self.remove_particles()
         
         

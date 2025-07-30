@@ -57,8 +57,10 @@ class Fields:
         
                 
     def add_charge_density(self, species_charge_density):
-        self.charge_density[:] = species_charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+        self.charge_density[:] += species_charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
     
+    def clear_charge_density(self):
+        self.charge_density[:] = 0
     
     def solve_poisson(self):
         

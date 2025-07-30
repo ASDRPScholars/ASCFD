@@ -40,6 +40,9 @@ class FluidInitialConditions:
 
             elif self.inp.fluid_ics == "tame_static":
                 return self.tame_static()
+            
+            elif self.inp.fluid_ics == "e_cloud_test":
+                return self.e_cloud_test()
                 
             elif self.inp.fluid_ics == "kelvin_helmholtz":
                 self.grid = self.kelvin_helmholtz_2d()
@@ -245,4 +248,29 @@ class FluidInitialConditions:
         ic[self.c.PCOMP] = p_norm
         return ic
     
+    
+    def e_cloud_test(self):
+        ic = np.zeros_like(self.grid)
+
+        # Create meshgrid of x-values
+        nx, ny = self.inp.nx, self.inp.ny
+        ng = self.inp.ng
+        dx = self.inp.dx
+        x_start = self.inp.xlim[0]
+
+        for i in range(ng, nx + ng):
+            x = x_start + (i - ng + 0.5) * dx  # cell center x-position
+
+            for j in range(ng, ny + ng):
+                if 0.7 < x < 0.8:
+                    ic[self.c.RHOCOMP, i, j] = 10.0
+                    ic[self.c.PCOMP, i, j] = 1000.0
+                else:
+                    ic[self.c.RHOCOMP, i, j] = 0.1
+                    ic[self.c.PCOMP, i, j] = 10.0
+
+                ic[self.c.UCOMP, i, j] = 0.0
+                ic[self.c.VCOMP, i, j] = 0.0
+
+        return ic
     

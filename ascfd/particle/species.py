@@ -207,7 +207,7 @@ class ParticleSpecies:
             self.enforce_ppc()
 
         # update electric field with current charge distribution
-        if self.params.type != "e" and hasattr(self, 'get_charge_density'):
+        if self.params.type == "i" and hasattr(self, 'get_charge_density'):
             charge_density = self.get_charge_density()
             self.fields.add_charge_density(charge_density)
             
