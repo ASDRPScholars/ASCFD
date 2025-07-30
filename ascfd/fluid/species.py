@@ -69,15 +69,15 @@ class FluidSpecies:
         
         self.bcs.apply_bcs()
         
-        plt.figure()
-        plt.imshow(self.grid[self.c.RHOCOMP])
-        plt.title("rho after bc")
-        plt.show()
-        plt.figure()
-        plt.imshow(self.grid[self.c.UCOMP])
-        plt.title("u after bc")
-        plt.show()
-        plt.figure()
+        # plt.figure()
+        # plt.imshow(self.grid[self.c.RHOCOMP])
+        # plt.title("rho after bc")
+        # plt.show()
+        # plt.figure()
+        # plt.imshow(self.grid[self.c.UCOMP])
+        # plt.title("u after bc")
+        # plt.show()
+        # plt.figure()
         
         # self.grid[:] = self.euler.cons_to_prim(consU)
         
@@ -99,7 +99,7 @@ class FluidSpecies:
         
         self.fields.clear_charge_density()
         self.fields.add_charge_density(charge_density) # -!- TOGGLE -!-
-        print("FROM ELECTRONS ADDED:", charge_density)
+        # print("FROM ELECTRONS ADDED:", charge_density)
         
         # self.fields.update_E()
         

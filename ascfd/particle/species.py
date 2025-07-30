@@ -83,7 +83,11 @@ class XenonCollisionData:
     def _ionization_cross_section(self, energy_ev):
         if energy_ev < 24.59:
             return 0.0
-        return 1.5e-16 * np.log(energy_ev / 24.59) if energy_ev > 24.59 else 0.0
+        
+        # return 1.5e-16 * np.log(energy_ev / 24.59) if energy_ev > 24.59 else 0.0
+        
+        # !NORM! - do we need to divide by dx^2? - honestly im choosing the coefficient completely arbitrairly lol
+        return 1.5 * np.log(energy_ev / 24.59)
     
     def _ion_elastic_cross_section(self, energy_ev):
         return 1e-15  
@@ -275,7 +279,8 @@ class ParticleSpecies:
             print("v_rel is", v_rel)
             return []
 
-        energy_ev = 0.5 * self.params.mass * v_rel**2 / self.collision_data.E_CHARGE
+        # !NORM! energy_ev = 0.5 * self.params.mass * v_rel**2 / self.collision_data.E_CHARGE
+        energy_ev = 0.5 * self.params.mass * v_rel**2
 
         neutral_density = self._interpolate_density(x, y, neutral_density_field)
         if neutral_density <= 0:
@@ -304,6 +309,11 @@ class ParticleSpecies:
             # nu = n * sigma * v
             nu_collision = neutral_density * sigma * v_rel
             P_collision = 1.0 - np.exp(-nu_collision * self.dt)
+            
+            print("PROBABILITY IS", P_collision)
+            print("NEUTRAL DENSITY IS", neutral_density)
+            print("SIGMA IS", sigma)
+            print("ELECTRON SPEED IS", v_rel)
 
             # monte carlo
             if np.random.rand() < P_collision:
@@ -344,7 +354,8 @@ class ParticleSpecies:
         if available_energy_ev <= 0:
             return None
 
-        available_energy_j = available_energy_ev * self.collision_data.E_CHARGE
+        # !NORM! available_energy_j = available_energy_ev * self.collision_data.E_CHARGE
+        available_energy_j = available_energy_ev
         
         ion = np.zeros(self.pc.NUMQ + 1)
         ion[self.pc.XCOMP] = x
@@ -359,7 +370,9 @@ class ParticleSpecies:
         if available_energy_ev > 0:
             electron_energy_fraction = 0.8
             electron_energy_j = available_energy_j * electron_energy_fraction
-            electron_mass = 9.1e-31  # kg
+            
+            # !NORM! electron_mass = 9.1e-31  # kg
+            electron_mass = 1  # normalized
             electron_speed = np.sqrt(2 * electron_energy_j / electron_mass)
             
             theta = np.random.uniform(0, 2 * np.pi)
@@ -370,7 +383,8 @@ class ParticleSpecies:
                 electron[self.pc.WCOMP] = electron_speed * np.cos(phi)
 
             ion_energy_j = available_energy_j * (1 - electron_energy_fraction)
-            xenon_mass = 2.18e-25
+            # !NORM! xenon_mass = 2.18e-25
+            xenon_mass = 99
             ion_speed = np.sqrt(2 * ion_energy_j / xenon_mass)
             ion_theta = np.random.uniform(0, 2 * np.pi)
             ion[self.pc.UCOMP] = ion_speed * np.cos(ion_theta) * 0.1
