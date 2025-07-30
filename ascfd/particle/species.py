@@ -4,6 +4,7 @@ from ascfd.fluid.species import FluidSpecies
 from ascfd.inputs import Inputs
 from ascfd.params import SpeciesParams
 from ascfd.fields.fields import Fields
+from ascfd.particle.bcs import ParticleBoundaryConditions
 # from ascfd.simulation import Simulation
 
 import numpy as np
@@ -108,6 +109,8 @@ class ParticleSpecies:
             self.ics.apply_ics()
             self.particles[self.WEIGHT, :] = self.estimate_initial_weight()
             
+            self.bcs = ParticleBoundaryConditions(self, self.inp, self.params)
+            
         else:
             print("P ELECTRONS INITED WITH", self.particles)
             print("P ELECTRONS SHAPE", np.shape(self.particles))
@@ -170,13 +173,7 @@ class ParticleSpecies:
             print(f"Warning: Invalid particle data format for species {self.params.type}")
 
     def estimate_initial_weight(self):
-        Vc = self.inp.dx * self.inp.dy
-        
-        # !DEBUG! change back to 100
-        target_ppc = 1  # N_PPC
-        
-        return (self.params.density * Vc) / target_ppc
-
+        return (self.params.density * self.inp.dx * self.inp.dy) / self.inp.n_ppc
 
     def update(self):
         print("!PARTICLE! update particle!")
@@ -187,11 +184,14 @@ class ParticleSpecies:
         print("!#@! TYPE", self.params.type)
         
         if self.params.type != "e":
+            self.bcs.apply_bcs()
+            
             # TODO: add leapfrog algorithm here!
             # !DEBUG! multiply by self.dt instead of arbitrary value
             for n in range(self.particles.shape[1]):
                 self.particles[self.pc.XCOMP, n] += self.particles[self.pc.UCOMP, n] * self.dt
                 self.particles[self.pc.YCOMP, n] += self.particles[self.pc.VCOMP, n] * self.dt
+            
         else:
             self.particles = self.simulation.electrons.convert_to_particles()
         

@@ -27,9 +27,9 @@ class Simulation:
         # Normalized species parameters (dimensionless)
         
         # !APPROX! assuming m_i / m_e is only 100
-        e_params = SpeciesParams(-1.0, 1.0, 5/3, "e", density=1.0, temperature=1.0)  # electrons (normalized)
-        xe_i_params = SpeciesParams(1.0, 100, 5/3, "i", density=1.0, temperature=1.0)  # Xe+ ions  
-        xe_n_params = SpeciesParams(0.0, 100, 5/3, "n", density=10.0, temperature=1.0)  # Xe neutrals
+        e_params = SpeciesParams(-1.0, 1.0, 5/3, "e", density=1.0, temperature=100.0)  # electrons (normalized)
+        xe_i_params = SpeciesParams(1.0, 100, 5/3, "i", density=1.0, temperature=10.0)  # Xe+ ions  
+        xe_n_params = SpeciesParams(0.0, 100, 5/3, "n", density=10.0, temperature=10.0)  # Xe neutrals
         
         self.electrons = FluidSpecies(e_params, self.inp, self.fields, self)
         

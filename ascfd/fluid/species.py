@@ -48,8 +48,20 @@ class FluidSpecies:
         
         print("dt is", self.dt)
         consU = self.euler.prim_to_cons(self.grid)
-        
-        self._apply_lorentz_source_terms(consU)
+
+        _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
+                
+        for i in range(self.inp.ng, self.inp.nx + self.inp.ng):
+            for j in range(self.inp.ng, self.inp.ny + self.inp.ng):
+                for icomp in range(self.c.NUMQ):
+                    
+                    delta = (
+                        (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
+                        (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
+                        
+                    consU[icomp, i, j] = consU[icomp, i, j] - delta
+                    
+        # self._apply_lorentz_source_terms(consU)
         
         # CRITICAL: Apply BCs immediately after source terms to maintain ghost cell consistency
         # Convert to primitive, apply BCs, then back to conservative
@@ -66,33 +78,21 @@ class FluidSpecies:
         plt.title("u after bc")
         plt.show()
         plt.figure()
-
-        _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
-                
-        for i in range(self.inp.ng, self.inp.nx + self.inp.ng):
-            for j in range(self.inp.ng, self.inp.ny + self.inp.ng):
-                for icomp in range(self.c.NUMQ):
-                    
-                    delta = (
-                        (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
-                        (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
-                        
-                    consU[icomp, i, j] = consU[icomp, i, j] - delta
         
-        self.grid[:] = self.euler.cons_to_prim(consU)
+        # self.grid[:] = self.euler.cons_to_prim(consU)
         
-        plt.figure()
-        plt.imshow(self.grid[self.c.RHOCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng])
-        plt.title("rho after flux")
-        plt.show()
+        # plt.figure()
+        # plt.imshow(self.grid[self.c.RHOCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng])
+        # plt.title("rho after flux")
+        # plt.show()
         
-        # Apply BCs again after flux updates (flux also modifies interior cells only)
-        self.bcs.apply_bcs()
+        # # Apply BCs again after flux updates (flux also modifies interior cells only)
+        # self.bcs.apply_bcs()
         
-        plt.figure()
-        plt.imshow(self.grid[self.c.RHOCOMP])
-        plt.title("after flux after bcs")
-        plt.show()
+        # plt.figure()
+        # plt.imshow(self.grid[self.c.RHOCOMP])
+        # plt.title("after flux after bcs")
+        # plt.show()
         
         ## --ELECTRIC FIELD UPDATE--
         charge_density = self.get_charge_density()
@@ -168,7 +168,8 @@ class FluidSpecies:
         n_particles = self.inp.n_ppc * self.inp.nx * self.inp.ny
         ic_particles = np.zeros((self.pc.NUMQ + 1, n_particles))
         
-        kB = 1.380649e-23
+        # kB = 1.380649e-23
+        kB = 1
         v_th = np.sqrt(2 * kB * self.params.temperature / self.params.mass)
         
         p_idx = 0 
@@ -183,8 +184,8 @@ class FluidSpecies:
                     rho = self.grid[self.c.RHOCOMP, i, j]
                     p = self.grid[self.c.PCOMP, i, j]
                     
-                    # TODO: use global v_th or use this?
-                    v_th = np.sqrt(2 * p / rho)
+                    # # TODO: use global v_th or use this?
+                    # v_th = np.sqrt(2 * p / rho)
                     
                     weight = rho * self.inp.dx * self.inp.dy / self.inp.n_ppc
                     
