@@ -25,9 +25,11 @@ class Simulation:
         plasma_refs = PlasmaReferences(n0=1e18, T0=1000.0, species_mass=9.1e-31, species_charge=1.6e-19)
         
         # Normalized species parameters (dimensionless)
+        
+        # !APPROX! assuming m_i / m_e is only 100
         e_params = SpeciesParams(-1.0, 1.0, 5/3, "e", density=1.0, temperature=1.0)  # electrons (normalized)
-        xe_i_params = SpeciesParams(1.0, plasma_refs.m * 2.18e-25 / (9.1e-31 * plasma_refs.m), 5/3, "i", density=1.0, temperature=1.0)  # Xe+ ions  
-        xe_n_params = SpeciesParams(0.0, plasma_refs.m * 2.18e-25 / (9.1e-31 * plasma_refs.m), 5/3, "n", density=10.0, temperature=1.0)  # Xe neutrals
+        xe_i_params = SpeciesParams(1.0, 100, 5/3, "i", density=1.0, temperature=1.0)  # Xe+ ions  
+        xe_n_params = SpeciesParams(0.0, 100, 5/3, "n", density=10.0, temperature=1.0)  # Xe neutrals
         
         self.electrons = FluidSpecies(e_params, self.inp, self.fields, self)
         
@@ -229,7 +231,7 @@ class Simulation:
                 print("!!SIMULATION!! p electrons u:", self.pelectrons.particles[self.pc.UCOMP])
                 print("!!SIMULATION!! p electrons v:", self.pelectrons.particles[self.pc.VCOMP])
                 
-                axs[q].scatter(self.pelectrons.particles[self.pc.XCOMP], self.pelectrons.particles[self.pc.YCOMP], s=5, color='blue')
+                axs[q].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=5, color='blue')
             
             axs[q].set_xlim(self.inp.xlim)
             axs[q].set_ylim(self.inp.ylim)
@@ -243,19 +245,19 @@ class Simulation:
         plt.colorbar(im, ax=axs[2])
         axs[2].set_title("energy")
         
-        im = axs[4].imshow(self.fields.E[:, :, 0].T, origin='lower', cmap='coolwarm')
+        im = axs[4].imshow(self.fields.E[:, :, 0].T, extent=extent, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[4])
         axs[4].set_title("electric field x")
         
-        im = axs[5].imshow(self.fields.E[:, :, 1].T, origin='lower', cmap='coolwarm')
+        im = axs[5].imshow(self.fields.E[:, :, 1].T, extent=extent, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[5])
         axs[5].set_title("electric field y")
         
-        im = axs[6].imshow(self.fields.potential.T, origin='lower', cmap='coolwarm')
+        im = axs[6].imshow(self.fields.potential.T, extent=extent, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[6])
         axs[6].set_title("electric potential")
         
-        im = axs[7].imshow(self.fields.charge_density.T, origin='lower', cmap='coolwarm')
+        im = axs[7].imshow(self.fields.charge_density.T, extent=extent, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[7])
         axs[7].set_title("charge density")
         

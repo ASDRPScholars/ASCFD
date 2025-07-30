@@ -181,8 +181,8 @@ class ParticleSpecies:
     def update(self):
         print("!PARTICLE! update particle!")
         
-        print("!PARTICLE! U is", self.particles[self.pc.UCOMP])
-        print("!PARTICLE! V is", self.particles[self.pc.VCOMP])
+        print(f"!PARTICLE! U for {self.params.type} is", self.particles[self.pc.UCOMP])
+        print(f"!PARTICLE! V for {self.params.type} is", self.particles[self.pc.VCOMP])
         
         print("!#@! TYPE", self.params.type)
         
@@ -190,8 +190,8 @@ class ParticleSpecies:
             # TODO: add leapfrog algorithm here!
             # !DEBUG! multiply by self.dt instead of arbitrary value
             for n in range(self.particles.shape[1]):
-                self.particles[self.pc.XCOMP, n] += self.particles[self.pc.UCOMP, n] * 0.005
-                self.particles[self.pc.YCOMP, n] += self.particles[self.pc.VCOMP, n] * 0.005
+                self.particles[self.pc.XCOMP, n] += self.particles[self.pc.UCOMP, n] * self.dt
+                self.particles[self.pc.YCOMP, n] += self.particles[self.pc.VCOMP, n] * self.dt
         else:
             self.particles = self.simulation.electrons.convert_to_particles()
         

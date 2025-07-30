@@ -65,9 +65,16 @@ class ParticleInitialConditions:
         return ic_particles
     
     def sample_maxwellian_velocity(self):
-        kB = 1.380649e-23
+        # kB = 1.380649e-23
+        kB = 1
         v_th = np.sqrt(2 * kB * self.params.temperature / self.params.mass)
+        print("!$! IC!", self.params.temperature)
+        print(self.params.mass)
+        print(v_th)
 
+        if self.params.temperature <= 0:
+            return 0.0, 0.0, 0.0
+    
         R1, R2 = np.random.rand(2)
         R3, R4 = np.random.rand(2)
 
@@ -75,7 +82,6 @@ class ParticleInitialConditions:
         vy = v_th * np.sqrt(-1 * np.log(R1)) * np.sin(2 * np.pi * R2)
         vz = v_th * np.sqrt(-1 * np.log(R3)) * np.cos(2 * np.pi * R4)   
 
-        if self.params.temperature <= 0:
-            return 0.0, 0.0, 0.0
+        print(vx, vy, vz)
 
         return vx, vy, vz
