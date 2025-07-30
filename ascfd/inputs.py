@@ -71,13 +71,13 @@ class Inputs:
 
         # Particle
         self.particle_ics = self.get_config_value(config, "Particle", "particle_ics", mandatory = False, default=None)
-        self.n_particles_per_cell = self.get_config_value(config, "Particle", "n_particles_per_cell", mandatory = False, default = 0, type_func = int)
+        self.n_ppc = self.get_config_value(config, "Particle", "n_ppc", mandatory = False, default = 0, type_func = int)
         self.particle_flow_type = self.get_config_value(config, "Particle", "flow_type", mandatory = False, default = None)
         self.seeding_per_timestep = self.get_config_value(config, "Particle", "seeding_per_timestep", mandatory = False, default = 0, type_func = int)
         self.bounce_back_multiplier = self.get_config_value(config, "Particle", "bounce_back_multiplier", mandatory = False, default = 1.0, type_func = float)
         self.max_number_of_bounces = self.get_config_value(config, "Particle", "max_number_of_bounces", mandatory = False, default = 3, type_func = int)
         
-        self.n_particles = self.n_particles_per_cell * self.nx_with_ghosts * self.ny_with_ghosts
+        self.n_particles = self.n_ppc * self.nx_with_ghosts * self.ny_with_ghosts
         
         # Electric Field
         self.E_ics = self.get_config_value(config, "Fields", "E_ics")
