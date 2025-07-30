@@ -7,6 +7,7 @@ from ascfd.params import SpeciesParams
 from ascfd.fluid.bcs import FluidBoundaryConditions
 from ascfd.fluid.flux import FluidFlux
 from ascfd.fields.fields import Fields
+# from ascfd.simulation import Simulation
 
 import ascfd.fluid.ics as ics
 
@@ -16,7 +17,7 @@ import matplotlib.pyplot as plt
 import sys
 
 class FluidSpecies:
-    def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields):
+    def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields, simulation):
         print("INITIALIZED ELECTRONS")
         self.c = FluidConstants(a_inputs)
         self.pc = ParticleConstants()
@@ -24,6 +25,7 @@ class FluidSpecies:
         self.flux = FluidFlux(self.c, a_inputs.flux)
         
         self.fields = fields
+        self.simulation = simulation
         
         self.inp = a_inputs
         self.params = params
@@ -85,7 +87,7 @@ class FluidSpecies:
 
         E = self.fields.E
         B = self.fields.B
-        V = self._get_V()
+        # V = self._get_V()
         
         charge_density = self.get_charge_density()
         
@@ -121,6 +123,57 @@ class FluidSpecies:
     def get_number_density(self):
         number_density = self.grid[self.c.RHOCOMP] / self.params.mass
         return number_density
+    
+    
+    def convert_to_particles(self):
+        "Converts Eulerian fluid to particles, assuming a drifting Maxwellian velocity distribution."
+        
+        WEIGHT = self.pc.NUMQ
+        
+        # TODO: DO WE ACTUALLY NEED n_ppc particle electrons??
+        n_particles = self.inp.n_ppc * self.inp.nx * self.inp.ny
+        ic_particles = np.zeros((self.pc.NUMQ + 1, n_particles))
+        
+        kB = 1.380649e-23
+        v_th = np.sqrt(2 * kB * self.params.temperature / self.params.mass)
+        
+        p_idx = 0 
+        
+        while p_idx < n_particles:
+            for i in range (self.inp.ng, self.inp.nx + self.inp.ng):
+                for j in range(self.inp.ng, self.inp.ny + self.inp.ng):
+                    
+                    vx_drift = self.grid[self.c.UCOMP, i, j]
+                    vy_drift = self.grid[self.c.VCOMP, i, j]
+                    
+                    rho = self.grid[self.c.RHOCOMP, i, j]
+                    p = self.grid[self.c.PCOMP, i, j]
+                    
+                    # TODO: use global v_th or use this?
+                    v_th = np.sqrt(2 * p / rho)
+                    
+                    weight = rho * self.inp.dx * self.inp.dy / self.inp.n_ppc
+                    
+                    for n in range (self.inp.n_ppc):
+                        R1, R2 = np.random.rand(2)
+                        R3, R4 = np.random.rand(2)
+
+                        vx = v_th * np.sqrt(-1 * np.log(R1)) * np.cos(2 * np.pi * R2)
+                        vy = v_th * np.sqrt(-1 * np.log(R1)) * np.sin(2 * np.pi * R2)
+                        vz = v_th * np.sqrt(-1 * np.log(R3)) * np.cos(2 * np.pi * R4)
+                        
+                        x_offset = np.random.uniform(-0.4999, 0.5)
+                        y_offset = np.random.uniform(-0.4999, 0.5)
+                        
+                        ic_particles[self.pc.XCOMP, p_idx] = (i + x_offset - self.inp.ng) * self.inp.dx 
+                        ic_particles[self.pc.YCOMP, p_idx] = (j + y_offset - self.inp.ng) * self.inp.dy 
+                        ic_particles[self.pc.UCOMP, p_idx] = vx + vx_drift
+                        ic_particles[self.pc.VCOMP, p_idx] = vy + vy_drift
+                        ic_particles[WEIGHT, p_idx] = weight
+                        
+                        p_idx += 1
+
+        return ic_particles
     
     
     def add_particles(self, new_particles_data):

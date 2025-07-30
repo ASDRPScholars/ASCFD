@@ -4,6 +4,7 @@ from ascfd.fluid.species import FluidSpecies
 from ascfd.inputs import Inputs
 from ascfd.params import SpeciesParams
 from ascfd.fields.fields import Fields
+# from ascfd.simulation import Simulation
 
 import numpy as np
 from scipy.spatial import cKDTree
@@ -90,34 +91,39 @@ class XenonCollisionData:
         return 5e-16
 
 class ParticleSpecies:
-    def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields):
+    def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields, simulation):
         self.pc = ParticleConstants()
         self.fields = fields
 
         self.inp = a_inputs
         self.params = params
         self.dt = None
-        self.simulation = None 
+        self.simulation = simulation 
 
         self.particles = np.zeros((self.pc.NUMQ + 1, self.inp.n_particles))
         self.WEIGHT = self.pc.NUMQ
 
-        self.ics = ParticleInitialConditions(self.particles, self.inp, self.params)        
-        self.ics.apply_ics()
-        
-        self.particles[self.WEIGHT, :] = self.estimate_initial_weight()
+        if self.params.type != "e":
+            self.ics = ParticleInitialConditions(self.particles, self.inp, self.params)        
+            self.ics.apply_ics()
+            self.particles[self.WEIGHT, :] = self.estimate_initial_weight()
+            
+        else:
+            print("P ELECTRONS INITED WITH", self.particles)
+            print("P ELECTRONS SHAPE", np.shape(self.particles))
+            self.particles = self.simulation.electrons.convert_to_particles()
         
         # initialize collision system for Xenon
-        if params.type in ["e", "i"]:  # electrons and ions collide with neutrals
+        if self.params.type in ["e", "i"]:  # electrons and ions collide with neutrals
             self.collision_data = XenonCollisionData()
         else:
             self.collision_data = None
         
         self.collision_events = []
 
-    def set_simulation(self, simulation):
-        """Allow access to other species through simulation reference"""
-        self.simulation = simulation
+    # def set_simulation(self, simulation):
+    #     """Allow access to other species through simulation reference"""
+    #     self.simulation = simulation
 
     def get_species_density_field(self, species_type: str):
         """Get density field of another species"""
@@ -125,7 +131,7 @@ class ParticleSpecies:
             return np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
         
         if species_type == "e" and hasattr(self.simulation, 'electrons'):
-            return self._compute_particle_density_field(self.simulation.electrons)
+            return self.simulation.electrons.get_number_density()
         elif species_type == "i" and hasattr(self.simulation, 'ions'):
             return self._compute_particle_density_field(self.simulation.ions)
         elif species_type == "n" and hasattr(self.simulation, 'neutrals'):
@@ -171,27 +177,34 @@ class ParticleSpecies:
         
         return (self.params.density * Vc) / target_ppc
 
+
     def update(self):
         print("!PARTICLE! update particle!")
         
         print("!PARTICLE! U is", self.particles[self.pc.UCOMP])
         print("!PARTICLE! V is", self.particles[self.pc.VCOMP])
         
-        # !DEBUG! multiply by self.dt instead of arbitrary value
-        for n in range(self.particles.shape[1]):
-            self.particles[self.pc.XCOMP, n] += self.particles[self.pc.UCOMP, n] * 0.005
-            self.particles[self.pc.YCOMP, n] += self.particles[self.pc.VCOMP, n] * 0.005
+        if self.params.type != "e":
+            # TODO: add leapfrog algorithm here!
+            # !DEBUG! multiply by self.dt instead of arbitrary value
+            for n in range(self.particles.shape[1]):
+                self.particles[self.pc.XCOMP, n] += self.particles[self.pc.UCOMP, n] * 0.005
+                self.particles[self.pc.YCOMP, n] += self.particles[self.pc.VCOMP, n] * 0.005
+        else:
+            self.particles = self.simulation.electrons.convert_to_particles()
         
         new_particles = []
+        
         if self.params.type in ["e", "i"] and self.collision_data is not None:
             new_particles = self.process_collisions()
             print("FROM PARTICLE.UPDATE() - new_particles is", new_particles)
 
         # particle per cell enforcement
-        self.enforce_ppc()
+        if self.params.type != "e":
+            self.enforce_ppc()
 
         # update electric field with current charge distribution
-        if hasattr(self, 'get_charge_density'):
+        if self.params.type != "e" and hasattr(self, 'get_charge_density'):
             charge_density = self.get_charge_density()
             self.fields.add_charge_density(charge_density)
             
@@ -200,6 +213,7 @@ class ParticleSpecies:
             self.fields.update_E()
 
         return new_particles
+
 
     def process_collisions(self):
         if self.params.type not in ["e", "i"] or self.collision_data is None:
@@ -301,10 +315,10 @@ class ParticleSpecies:
                                x: float, y: float, vx: float, vy: float, vz: float,
                                weight: float, energy_ev: float):
         
-        if collision_type == "ionization": # and self.params.type == "e":
+        if collision_type == "ionization" and self.params.type == "e":
             print("!#!#! IONIZED!")
             return self._create_ionization_event(particle_idx, x, y, vx, vy, vz, weight, energy_ev)
-        elif collision_type in ["first_excitation", "second_excitation"]: # and self.params.type == "e":
+        elif collision_type in ["first_excitation", "second_excitation"] and self.params.type == "e":
             print("!#!#! EXCITED!")
             return self._create_excitation_event(collision_type, particle_idx, energy_ev)
         elif collision_type.startswith("elastic"):

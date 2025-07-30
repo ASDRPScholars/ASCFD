@@ -10,6 +10,7 @@ from ascfd.fields.fields import Fields
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import sys
 import subprocess
 
 class Simulation:
@@ -26,15 +27,17 @@ class Simulation:
         xe_i_params = SpeciesParams(1, 2.18e-25, 5/3, "i", density=1e18, temperature=1.0)  # Xe+ ions
         xe_n_params = SpeciesParams(0.0, 2.18e-25, 5/3, "n", density=1e20, temperature=1.0)  # Xe neutrals
         
-        self.electrons = FluidSpecies(e_params, self.inp, self.fields)
+        self.electrons = FluidSpecies(e_params, self.inp, self.fields, self)
         
         if self.inp.particle_ics is not None:
-            self.neutrals = ParticleSpecies(xe_n_params, self.inp, self.fields)
-            self.ions = ParticleSpecies(xe_i_params, self.inp, self.fields)
+            self.neutrals = ParticleSpecies(xe_n_params, self.inp, self.fields, self)
+            self.ions = ParticleSpecies(xe_i_params, self.inp, self.fields, self)
+            self.pelectrons = ParticleSpecies(e_params, self.inp, self.fields, self)
             
             # simulation reference so species can access each other
-            self.neutrals.set_simulation(self)
-            self.ions.set_simulation(self)
+            # self.neutrals.set_simulation(self)
+            # self.ions.set_simulation(self)
+            # self.pelectrons.set_simulation(self)
             
             self.all_species = [self.electrons, self.neutrals, self.ions]
         else:
@@ -47,8 +50,8 @@ class Simulation:
         
         # Set timestep for all species
         for species in self.all_species:
-            # species.dt = self.dt
-            species.dt = 1.283e-8
+            species.dt = self.dt
+            # species.dt = 1.283e-8
         
         # -1 is no output. Always output ICs if we are outputting.
         if self.inp.output_freq >= 0:
@@ -217,7 +220,14 @@ class Simulation:
                 plt.colorbar(im, ax=axs[q])
             
             if self.inp.particle_ics is not None:
-                axs[q].scatter(self.neutrals.particles[self.pc.XCOMP], self.neutrals.particles[self.pc.YCOMP], s=5, color='gray')
+                np.set_printoptions(threshold=sys.maxsize)
+                
+                print("!!SIMULATION!! p electrons x:", self.pelectrons.particles[self.pc.XCOMP])
+                print("!!SIMULATION!! p electrons y:", self.pelectrons.particles[self.pc.YCOMP])
+                print("!!SIMULATION!! p electrons u:", self.pelectrons.particles[self.pc.UCOMP])
+                print("!!SIMULATION!! p electrons v:", self.pelectrons.particles[self.pc.VCOMP])
+                
+                axs[q].scatter(self.pelectrons.particles[self.pc.XCOMP], self.pelectrons.particles[self.pc.YCOMP], s=5, color='blue')
             
             axs[q].set_xlim(self.inp.xlim)
             axs[q].set_ylim(self.inp.ylim)
