@@ -450,6 +450,7 @@ class ParticleSpecies:
 
     def _get_free_slot(self):
         """Get a free slot index for new particle"""
+        # First, try to use a recycled slot
         if self.free_slots:
             slot = self.free_slots.popleft()
             # Ensure slot is valid
@@ -457,20 +458,28 @@ class ParticleSpecies:
                 print(f"ERROR: free slot {slot} >= array size {self.particles.shape[1]}")
                 return None
             return slot
-        elif self.active_count < min(self.capacity, self.particles.shape[1]):
+        
+        # Next, try to use a new slot within current array bounds
+        current_array_size = self.particles.shape[1]
+        if self.active_count < current_array_size:
+            slot = self.active_count
+            self.active_count += 1
+            return slot
+        
+        # Need to expand capacity - array is full
+        if current_array_size >= self.capacity:
+            old_size = self.particles.shape[1]
+            self._expand_capacity()
+            new_size = self.particles.shape[1]
+            print(f"Expanded array from {old_size} to {new_size} (capacity now {self.capacity})")
+            
+            # After expansion, active_count should be valid
             slot = self.active_count
             self.active_count += 1
             return slot
         else:
-            # Need to expand capacity
-            old_size = self.particles.shape[1]
-            self._expand_capacity()
-            new_size = self.particles.shape[1]
-            print(f"Expanded capacity from {old_size} to {new_size}")
-            
-            slot = self.active_count
-            self.active_count += 1
-            return slot
+            print(f"ERROR: active_count {self.active_count} >= array_size {current_array_size} but capacity {self.capacity} > array_size")
+            return None
     
     def _expand_capacity(self):
         """Double the particle array capacity when needed"""
@@ -498,6 +507,12 @@ class ParticleSpecies:
         self.is_active = new_is_active
         
         print(f"Expanded {self.params.type}: {old_components} components, copied {copy_size} particles and {copy_active_size} active flags. New shape: {self.particles.shape}")
+        
+        # Verify expansion worked
+        if self.particles.shape[1] != self.capacity:
+            print(f"ERROR: Array expansion failed! Expected size {self.capacity}, got {self.particles.shape[1]}")
+        if len(self.is_active) != self.capacity:
+            print(f"ERROR: is_active expansion failed! Expected size {self.capacity}, got {len(self.is_active)}")
     
     def add_particle(self, particle_data):
         """Efficiently add particle using slot-based management"""
@@ -636,12 +651,18 @@ class ParticleSpecies:
         actual_array_size = self.particles.shape[1]
         safe_capacity = min(self.capacity, actual_array_size, len(self.is_active))
         
-        # Debug info if there's a mismatch
-        if self.capacity != actual_array_size:
+        # Debug info if there's a mismatch (but don't spam the console)
+        if self.capacity != actual_array_size and hasattr(self, '_last_mismatch_warning'):
+            if self._last_mismatch_warning != (self.capacity, actual_array_size):
+                print(f"WARNING: capacity mismatch! self.capacity={self.capacity}, array_size={actual_array_size}, is_active_len={len(self.is_active)}")
+                self._last_mismatch_warning = (self.capacity, actual_array_size)
+        elif self.capacity != actual_array_size:
             print(f"WARNING: capacity mismatch! self.capacity={self.capacity}, array_size={actual_array_size}, is_active_len={len(self.is_active)}")
+            self._last_mismatch_warning = (self.capacity, actual_array_size)
         
         active_indices = [i for i in range(safe_capacity) if i < len(self.is_active) and self.is_active[i]]
-        print(f"Processing {len(active_indices)} active particles out of {safe_capacity} capacity")
+        if len(active_indices) < 100:  # Only print for small numbers to avoid spam
+            print(f"Processing {len(active_indices)} active particles out of {safe_capacity} capacity")
         
         for n in active_indices:
             events = self._attempt_collisions(n, neutral_density_field)
