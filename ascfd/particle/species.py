@@ -208,9 +208,16 @@ class ParticleSpecies:
         if self.params.type in ["i", "n"]:
             # TODO: add leapfrog algorithm here!
             # !DEBUG! multiply by self.dt instead of arbitrary value
-            for n in range(self.particles.shape[1]):
+            for n in range(self.particles.shape[1]): 
+                if self.params.type == "i":
+                    #TODO: ADD BACK DT LATER
+                    x_source, y_source = self.get_coloumb_source(n)
+                    self.particles[self.pc.UCOMP, n] += x_source * 100
+                    self.particles[self.pc.VCOMP, n] += y_source * 100
+                    
                 self.particles[self.pc.XCOMP, n] += self.particles[self.pc.UCOMP, n] * self.dt
                 self.particles[self.pc.YCOMP, n] += self.particles[self.pc.VCOMP, n] * self.dt
+                
             
         else:
             self.particles = self.simulation.electrons.convert_to_particles()
@@ -581,3 +588,18 @@ class ParticleSpecies:
             if 0 <= ix < self.inp.nx_with_ghosts and 0 <= iy < self.inp.ny_with_ghosts:
                 rho[ix, iy] += self.params.charge
         return rho
+    
+    def get_coloumb_source(self, idx):
+        x = self.particles[self.pc.XCOMP, idx]
+        y = self.particles[self.pc.YCOMP, idx]
+        
+        ix = int((x - self.inp.grid_x[0]) / self.inp.dx)
+        iy = int((y - self.inp.grid_y[0]) / self.inp.dy)
+        
+        if 0 <= ix < self.inp.nx and 0 <= iy < self.inp.ny:
+            x_source = self.fields.E[ix, iy, 0]
+            y_source = self.fields.E[ix, iy, 1]
+        else:
+            return 0, 0
+                
+        return x_source, y_source
