@@ -920,7 +920,7 @@ class ParticleSpecies:
     def _get_grid_coordinates(self, x: float, y: float):
         ix = int((x - self.inp.grid_x[0]) / self.inp.dx)
         iy = int((y - self.inp.grid_y[0]) / self.inp.dy)
-        if 0 <= ix < self.inp.nx_with_ghosts and 0 <= iy < self.inp.ny_with_ghosts:
+        if self.inp.ng <= ix < self.inp.nx + self.inp.ng and self.inp.ng <= iy < self.inp.ny + self.inp.ng:
             return ix, iy
         return None
 

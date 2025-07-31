@@ -23,7 +23,7 @@ class Fields:
         
         self.ics = FieldInitialConditions(self.E, self.B, self.inp)
         
-        self.B = self.ics.apply_B_ics()
+        # self.B = self.ics.apply_B_ics()
         self.ics.apply_E_ics()
         
         plt.figure()
@@ -75,7 +75,7 @@ class Fields:
             "bottom": (0, "neumann_y") # BECOMES RIGHT
         }
         
-        solver = solvers.Poisson2DRectangle(rect=rect, interior=rhs, boundary=boundary, X=self.inp.nx, Y=self.inp.ny)
+        solver = solvers.Poisson2DRectangle(rect=rect, interior=rhs, boundary=boundary, X=self.inp.ny, Y=self.inp.nx)
         
         self.potential[:] = solver.solve()
 
