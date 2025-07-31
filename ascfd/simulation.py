@@ -82,11 +82,12 @@ class Simulation:
                 
                 print("NUMBER OF NEW PARTICLES:", len(new_particles))
                 
-                for particle in new_particles:
-                    # print("NEW PARTICLES ARE", new_particles)
-                    
-                    # !TEMP! only add ions and electrons for ionization
-                    self.ions.add_particle(particle)
+                # Add all new particles at once (more efficient than per-particle loop)
+                if new_particles:
+                    # Add to ions and fluid electrons as before
+                    for particle in new_particles:
+                        self.ions.add_particle(particle)
+                    # Add all particles to fluid electrons at once
                     self.electrons.add_particles(new_particles)
                     
                     # if hasattr(particle, '__len__') and len(particle) == self.pc.NUMQ + 1:

@@ -17,8 +17,7 @@ class ParticleBoundaryConditions:
         
         
     def apply_inflow_lo(self):
-        new_particles = []
-    
+        """Apply inflow boundary condition using efficient particle management"""
         for j in range(self.inp.ny):
             particle_data = np.zeros(self.pc.NUMQ + 1)
             
@@ -47,10 +46,8 @@ class ParticleBoundaryConditions:
             if self.pc.WCOMP < self.pc.NUMQ:
                 particle_data[self.pc.WCOMP] = vz
                 
-            new_particles.append(particle_data.reshape(-1, 1))
-              
-        self.particle_species.particles = np.hstack([self.particle_species.particles] + new_particles)  
-        # return np.hstack([self.particles] + new_particles)
+            # Use efficient particle addition instead of np.hstack
+            self.particle_species.add_particle(particle_data)
     
     
     def remove_particles(self):
