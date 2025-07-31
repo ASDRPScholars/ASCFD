@@ -359,6 +359,13 @@ class ParticleSpecies:
             print("P ELECTRONS SHAPE", np.shape(self.particles))
             self.particles = self.simulation.electrons.convert_to_particles()
         
+        self.ics.apply_ics()
+
+        # initialize velocity offset for leap-frog scheme
+        # for first timestep, we need v^(-1/2), so we calculate it as v^(1/2) - dt*a
+        if self.params.type in ["e", "i"]:  # only for charged particles
+            self._initialize_leapfrog_velocities()
+
         # initialize collision system for Xenon
         if self.params.type in ["e", "i"]:  # electrons and ions collide with neutrals
             self.collision_data = XenonCollisionData()
@@ -433,6 +440,23 @@ class ParticleSpecies:
             
         if self.params.type in ["i", "n"]:
             # TODO: add leapfrog algorithm here!
+            for n in range(self.particles.shape[1]):
+                x = self.particles[self.pc.XCOMP, n]
+                y = self.particles[self.pc.YCOMP, n]
+            
+                Ex, Ey = self._interpolate_electric_field(x, y)
+        
+                # a = (q/m) * E
+                ax = (self.params.charge / self.params.mass) * Ex
+                ay = (self.params.charge / self.params.mass) * Ey
+        
+                # v^(n+1/2) = v^(n-1/2) + Δt * a
+                self.particles[self.pc.UCOMP, n] += self.dt * ax
+                self.particles[self.pc.VCOMP, n] += self.dt * ay
+        
+                # x^(n+1) = x^n + Δt * v^(n+1/2)
+                self.particles[self.pc.XCOMP, n] += self.dt * self.particles[self.pc.UCOMP, n]
+                self.particles[self.pc.YCOMP, n] += self.dt * self.particles[self.pc.VCOMP, n]
             # !DEBUG! multiply by self.dt instead of arbitrary value
             for n in range(self.particles.shape[1]): 
                 if self.params.type == "i":
@@ -448,6 +472,7 @@ class ParticleSpecies:
         else:
             self.particles = self.simulation.electrons.convert_to_particles()
         
+    
         new_particles = []
         
         if self.params.type in ["e", "i"] and self.collision_data is not None:
@@ -459,13 +484,12 @@ class ParticleSpecies:
         if self.params.type != "e":
             self.enforce_ppc()
 
-        # update electric field with current charge distribution
-        if self.params.type == "i" and hasattr(self, 'get_charge_density') and self.particles.shape[1] > 0:
+        if hasattr(self, 'get_charge_density'):
             charge_density = self.get_charge_density()
             self.fields.add_charge_density(charge_density)
-            
+        
             print("IONS ADDED CHARGE DENSITY:", charge_density)
-            
+        
             self.fields.update_E()
 
         return new_particles
@@ -752,6 +776,49 @@ class ParticleSpecies:
             density_field[ix+1, iy+1] * wx * wy
         )
         return max(density, 0.0)
+    
+    def _interpolate_electric_field(self, x: float, y: float):
+        x_grid = (x - self.inp.grid_x[0]) / self.inp.dx
+        y_grid = (y - self.inp.grid_y[0]) / self.inp.dy
+    
+        ix = int(np.floor(x_grid))
+        iy = int(np.floor(y_grid))
+    
+        if ix < 0 or ix >= self.inp.nx_with_ghosts-1 or iy < 0 or iy >= self.inp.ny_with_ghosts-1:
+            return 0.0, 0.0
+    
+        wx = x_grid - ix
+        wy = y_grid - iy
+    
+        Ex = (
+            self.fields.E[ix, iy, 0] * (1 - wx) * (1 - wy) +
+            self.fields.E[ix+1, iy, 0] * wx * (1 - wy) +
+            self.fields.E[ix, iy+1, 0] * (1 - wx) * wy +
+            self.fields.E[ix+1, iy+1, 0] * wx * wy
+        )
+    
+        Ey = (
+            self.fields.E[ix, iy, 1] * (1 - wx) * (1 - wy) +
+            self.fields.E[ix+1, iy, 1] * wx * (1 - wy) +
+            self.fields.E[ix, iy+1, 1] * (1 - wx) * wy +
+            self.fields.E[ix+1, iy+1, 1] * wx * wy
+        )
+    
+        return Ex, Ey
+    
+    def _initialize_leapfrog_velocities(self):
+        for n in range(self.particles.shape[1]):
+            x = self.particles[self.pc.XCOMP, n]
+            y = self.particles[self.pc.YCOMP, n]
+        
+            Ex, Ey = self._interpolate_electric_field(x, y)
+        
+            ax = (self.params.charge / self.params.mass) * Ex
+            ay = (self.params.charge / self.params.mass) * Ey
+        
+            # v^(-1/2) = v^(1/2) - dt*a (backward half step)
+            self.particles[self.pc.UCOMP, n] -= 0.5 * self.dt * ax
+            self.particles[self.pc.VCOMP, n] -= 0.5 * self.dt * ay
 
     def _remove_particles(self, indices_to_remove: list[int]):
         if not indices_to_remove:
