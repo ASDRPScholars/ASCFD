@@ -87,7 +87,7 @@ class XenonCollisionData:
         # return 1.5e-16 * np.log(energy_ev / 24.59) if energy_ev > 24.59 else 0.0
         
         # !NORM! - do we need to divide by dx^2? - honestly im choosing the coefficient completely arbitrairly lol
-        return 1.5 * np.log(energy_ev / 24.59)
+        return 1.5e-2 * np.log(energy_ev / 24.59)
     
     def _ion_elastic_cross_section(self, energy_ev):
         return 1e-15  
@@ -105,16 +105,29 @@ class ParticleSpecies:
         self.dt = None
         self.simulation = simulation 
 
-        self.particles = np.zeros((self.pc.NUMQ + 1, self.inp.n_particles))
         self.WEIGHT = self.pc.NUMQ
 
-        if self.params.type != "e":
+        if self.params.type != "i":
+            self.particles = np.zeros((self.pc.NUMQ + 1, self.inp.n_particles))
+            
+        if self.params.type == "n":
             self.ics = ParticleInitialConditions(self.particles, self.inp, self.params)        
             self.ics.apply_ics()
+            
             self.particles[self.WEIGHT, :] = self.estimate_initial_weight()
             
-            self.bcs = ParticleBoundaryConditions(self, self.inp, self.params)
+        if self.params.type == "i":
+            self.particles = np.zeros((self.pc.NUMQ + 1, 1))
+            self.particles[self.pc.XCOMP, 0] = 0.5 * self.inp.nx
+            self.particles[self.pc.YCOMP, 0] = 0.5 * self.inp.nx
+            self.particles[self.pc.UCOMP, 0] = 100
+            self.particles[self.pc.VCOMP, 0] = 0
+            self.particles[self.WEIGHT, 0] = 0
             
+            # self.particles[self.WEIGHT, :] = self.estimate_initial_weight()
+            
+        if self.params.type in ["i", "n"]:
+            self.bcs = ParticleBoundaryConditions(self, self.inp, self.params)
         else:
             print("P ELECTRONS INITED WITH", self.particles)
             print("P ELECTRONS SHAPE", np.shape(self.particles))
@@ -173,6 +186,8 @@ class ParticleSpecies:
         if isinstance(particle_data, np.ndarray) and particle_data.shape[0] == self.pc.NUMQ + 1:
             # add as new column
             self.particles = np.hstack([self.particles, particle_data.reshape(-1, 1)])
+            print(self.params.type, "!%! added particle!")
+
         else:
             print(f"Warning: Invalid particle data format for species {self.params.type}")
 
@@ -187,9 +202,10 @@ class ParticleSpecies:
         
         print("!#@! TYPE", self.params.type)
         
-        if self.params.type != "e":
+        if self.params.type == "n":
             self.bcs.apply_bcs()
             
+        if self.params.type in ["i", "n"]:
             # TODO: add leapfrog algorithm here!
             # !DEBUG! multiply by self.dt instead of arbitrary value
             for n in range(self.particles.shape[1]):
@@ -211,7 +227,7 @@ class ParticleSpecies:
             self.enforce_ppc()
 
         # update electric field with current charge distribution
-        if self.params.type == "i" and hasattr(self, 'get_charge_density'):
+        if self.params.type == "i" and hasattr(self, 'get_charge_density') and self.particles.shape[1] > 0:
             charge_density = self.get_charge_density()
             self.fields.add_charge_density(charge_density)
             
@@ -265,7 +281,7 @@ class ParticleSpecies:
         y = self.particles[self.pc.YCOMP, particle_idx]
         vx = self.particles[self.pc.UCOMP, particle_idx]
         vy = self.particles[self.pc.VCOMP, particle_idx]
-        vz = self.particles[self.pc.WCOMP, particle_idx] if self.pc.WCOMP < self.pc.NUMQ else 0.0
+        vz = self.particles[self.pc.WCOMP, particle_idx] if (self.pc.WCOMP < self.pc.NUMQ or self.params.type == "e") else 0.0
         weight = self.particles[self.WEIGHT, particle_idx]
 
         grid_coords = self._get_grid_coordinates(x, y)
@@ -556,6 +572,7 @@ class ParticleSpecies:
 
     def get_charge_density(self):
         rho = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
+        
         for i in range(self.particles.shape[1]):
             x = self.particles[self.pc.XCOMP, i]
             y = self.particles[self.pc.YCOMP, i]

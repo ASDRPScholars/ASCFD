@@ -12,7 +12,7 @@ class ParticleBoundaryConditions:
         
         
     def apply_bcs(self):
-        # self.apply_inflow_lo()
+        self.apply_inflow_lo()
         self.remove_particles()
         
         
@@ -40,7 +40,7 @@ class ParticleBoundaryConditions:
             
             particle_data[self.pc.XCOMP] = x_offset * self.inp.dx
             particle_data[self.pc.YCOMP] = (j + y_offset) * self.inp.dy
-            particle_data[self.pc.UCOMP] = vx + 3
+            particle_data[self.pc.UCOMP] = vx + 20
             particle_data[self.pc.VCOMP] = vy
             particle_data[WEIGHT] = weight
             

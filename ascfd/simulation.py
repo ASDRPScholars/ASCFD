@@ -56,8 +56,8 @@ class Simulation:
         
         # Set timestep for all species
         for species in self.all_species:
-            species.dt = self.dt
-            # species.dt = 1.283e-8
+            # species.dt = self.dt
+            species.dt = 0.002
         
         # -1 is no output. Always output ICs if we are outputting.
         if self.inp.output_freq >= 0:
@@ -80,22 +80,27 @@ class Simulation:
                     if new_particles_from_species:
                         new_particles.extend(new_particles_from_species)
                 
-                for particle in new_particles:
-                    if hasattr(particle, '__len__') and len(particle) == self.pc.NUMQ + 1:
-                        particle_charge = particle[self.pc.NUMQ - 1] if hasattr(self.pc, 'CHARGE') else 0.0
-                        particle_mass = getattr(particle, 'mass', None)
-                        
-                        # print("NEW PARTICLES ARE:", new_particles)
-                        
-                        if hasattr(self, 'ions') and particle_charge > 0:
-                            self.ions.add_particle(particle)
-                        elif hasattr(self, 'electrons') and particle_charge < 0:
-                            pass
-                        elif hasattr(self, 'neutrals') and abs(particle_charge) < 1e-20:
-                            self.neutrals.add_particle(particle)      
+                print("NUMBER OF NEW PARTICLES:", len(new_particles))
                 
-                print("NEW PARTICLES ARE", new_particles)
-                self.electrons.add_particles(new_particles)
+                for particle in new_particles:
+                    # print("NEW PARTICLES ARE", new_particles)
+                    
+                    # !TEMP! only add ions and electrons for ionization
+                    self.ions.add_particle(particle)
+                    self.electrons.add_particles(new_particles)
+                    
+                    # if hasattr(particle, '__len__') and len(particle) == self.pc.NUMQ + 1:
+                    #     particle_charge = particle[self.pc.NUMQ - 1] if hasattr(self.pc, 'CHARGE') else 0.0
+                    #     particle_mass = getattr(particle, 'mass', None)
+                        
+                    #     # print("NEW PARTICLES ARE:", new_particles)
+                        
+                    #     if hasattr(self, 'ions') and particle_charge > 0:
+                    #         self.ions.add_particle(particle)
+                    #     elif hasattr(self, 'electrons') and particle_charge < 0:
+                    #         pass
+                    #     elif hasattr(self, 'neutrals') and abs(particle_charge) < 1e-20:
+                    #         self.neutrals.add_particle(particle)      
                 
             else:
                 raise ValueError(f"Unknown time stepper: {self.inp.timeStepper}")
@@ -234,6 +239,7 @@ class Simulation:
                 print("!!SIMULATION!! p electrons v:", self.pelectrons.particles[self.pc.VCOMP])
                 
                 axs[q].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=5, color='blue')
+                axs[q].scatter(self.neutrals.particles[self.pc.XCOMP], self.neutrals.particles[self.pc.YCOMP], s=5, color='gray', alpha=0.5)
             
             axs[q].set_xlim(self.inp.xlim)
             axs[q].set_ylim(self.inp.ylim)

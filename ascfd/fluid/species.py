@@ -169,7 +169,9 @@ class FluidSpecies:
         
         # TODO: DO WE ACTUALLY NEED n_ppc particle electrons??
         n_particles = self.inp.n_ppc * self.inp.nx * self.inp.ny
-        ic_particles = np.zeros((self.pc.NUMQ + 1, n_particles))
+        
+        # TODO: !TEMP! Z VELOCITY FOR ENERGY
+        ic_particles = np.zeros((self.pc.NUMQ + 2, n_particles))
         
         # kB = 1.380649e-23
         kB = 1
@@ -183,6 +185,12 @@ class FluidSpecies:
                     
                     vx_drift = self.grid[self.c.UCOMP, i, j]
                     vy_drift = self.grid[self.c.VCOMP, i, j]
+                    
+                    # #TODO !TEMP! - replace with gaussian?
+                    if 0.7 * self.inp.nx <= i <= 0.8 * self.inp.nx:
+                        vz_drift = 1000
+                    else:
+                        vz_drift = 0
                     
                     rho = self.grid[self.c.RHOCOMP, i, j]
                     p = self.grid[self.c.PCOMP, i, j]
@@ -207,6 +215,7 @@ class FluidSpecies:
                         ic_particles[self.pc.YCOMP, p_idx] = (j + y_offset - self.inp.ng) * self.inp.dy 
                         ic_particles[self.pc.UCOMP, p_idx] = vx + vx_drift
                         ic_particles[self.pc.VCOMP, p_idx] = vy + vy_drift
+                        ic_particles[self.pc.WCOMP, p_idx] = vz + vz_drift
                         ic_particles[WEIGHT, p_idx] = weight
                         
                         p_idx += 1
