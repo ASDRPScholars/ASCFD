@@ -42,55 +42,69 @@ class FluidSpecies:
         self.check_grid(self.c)
         
         
+    def plot_a(self, title):
+        
+        fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+
+        # Titles and components
+        components = [
+            (self.c.RHOCOMP, "rho"),
+            (self.c.UCOMP, "u"),
+            (self.c.VCOMP, "v"),
+            (self.c.PCOMP, "p")
+        ]
+
+        for ax, (comp, label) in zip(axes.flat, components):
+            # if comp == self.c.RHOCOMP:
+            #     im = ax.imshow(self.grid[comp, 2*self.inp.ng:-2*self.inp.ng, 2*self.inp.ng:-2*self.inp.ng])
+            # else:
+            im = ax.imshow(self.grid[comp])
+            ax.set_title(f"{label} {title}")
+            plt.colorbar(im, ax=ax)
+            # plt.scatter(1, 5)
+            # plt.scatter(1, 3)
+            # plt.scatter(1, 7)
+
+        plt.tight_layout()
+        plt.show()
+        
     def update(self):
-        
         print("dt is", self.dt)
-        consU = self.euler.prim_to_cons(self.grid)
-        
-        self._apply_lorentz_source_terms(consU)
-        
-        # CRITICAL: Apply BCs immediately after source terms to maintain ghost cell consistency
-        # Convert to primitive, apply BCs, then back to conservative
-        self.grid[:] = self.euler.cons_to_prim(consU)
         
         self.bcs.apply_bcs()
+        consU = self.euler.prim_to_cons(self.grid)
         
-        plt.figure()
-        plt.imshow(self.grid[self.c.RHOCOMP])
-        plt.title("rho after bc")
-        plt.show()
-        plt.figure()
-        plt.imshow(self.grid[self.c.UCOMP])
-        plt.title("u after bc")
-        plt.show()
-        plt.figure()
+        self.plot_a(title="before flux")
 
         _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
-                
+        
         for i in range(self.inp.ng, self.inp.nx + self.inp.ng):
             for j in range(self.inp.ng, self.inp.ny + self.inp.ng):
                 for icomp in range(self.c.NUMQ):
                     
                     delta = (
-                        (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
-                        (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
+                        (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) )
+                        # +
+                        # (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
+                        
+                    print(f"REAL REAL RIGHT FLUX MINUS LEFT FLUX FOR {i}, {j}", right_flux[icomp, i, j] - left_flux[icomp, i, j])
+                    print("REAL REAL REAL DELTA", delta)
+                    print()
                         
                     consU[icomp, i, j] = consU[icomp, i, j] - delta
         
         self.grid[:] = self.euler.cons_to_prim(consU)
+        # self.grid[:, 1] = 1000
+        self.plot_a(title="RIGHT BEFORE LORENTZ RIGHT AFTER FLUX")
         
-        plt.figure()
-        plt.imshow(self.grid[self.c.RHOCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng])
-        plt.title("rho after flux")
-        plt.show()
+        self._apply_lorentz_source_terms(consU)
+        self.grid[:] = self.euler.cons_to_prim(consU)
+        
+        self.plot_a("AFTER LORENTZ")
         
         # Apply BCs again after flux updates (flux also modifies interior cells only)
         self.bcs.apply_bcs()
-        
-        plt.figure()
-        plt.imshow(self.grid[self.c.RHOCOMP])
-        plt.title("after flux after bcs")
-        plt.show()
+        self.plot_a("AFTER FINAL BCS")
         
         ## --ELECTRIC FIELD UPDATE--
         charge_density = self.get_charge_density()
@@ -118,8 +132,8 @@ class FluidSpecies:
         x_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * E[:, :, 0]
         y_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * E[:, :, 1]
         
-        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt
-        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt
+        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += x_mom_source
+        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += y_mom_source
 
         print(f"!@! Electromagnetic coupling strengths:")
         print(f"!@! Max |Ex|: {np.max(np.abs(E[:, :, 0])):.3e}")
@@ -144,7 +158,7 @@ class FluidSpecies:
         print(f"!@! Max |energy_source|: {np.max(np.abs(energy_source)):.3e}")
         print(f"!@! Energy source range: [{np.min(energy_source):.3e}, {np.max(energy_source):.3e}]")
         
-        consU_new[self.c.ECOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += energy_source * self.dt
+        consU_new[self.c.ECOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += energy_source
         
     
     def get_charge_density(self):
