@@ -58,63 +58,21 @@ class FluidFlux:
 
         for i in range(a_Nghost - 1, a_Nx + a_Nghost):
             for j in range(a_Nghost - 1, a_Ny + a_Nghost):
-                # Fix boundary interface asymmetry in sound speed calculation
-                a_left = a[i, j]
-                a_right = a[i+1, j]
-                a_bottom = a[i, j]
-                a_top = a[i, j+1]
-                
-                # At boundary interfaces, use interior cell sound speed for both states
-                if i == a_Nghost - 1:  # Left boundary interface
-                    a_left = a[a_Nghost, j]  # Use first interior cell
-                if i == a_Nx + a_Nghost - 1:  # Right boundary interface  
-                    a_right = a[a_Nx + a_Nghost - 1, j]  # Use last interior cell
-                if j == a_Nghost - 1:  # Bottom boundary interface
-                    a_bottom = a[i, a_Nghost]  # Use first interior cell
-                if j == a_Ny + a_Nghost - 1:  # Top boundary interface
-                    a_top = a[i, a_Ny + a_Nghost - 1]  # Use last interior cell
-                
                 sMaxX = max(
-                    np.abs(a_grid[self.c.UCOMP, i, j]) + a_left,
-                    np.abs(a_grid[self.c.UCOMP, i+1, j]) + a_right
+                    np.abs(a_grid[self.c.UCOMP, i, j]) + a[i, j],
+                    np.abs(a_grid[self.c.UCOMP, i+1, j]) + a[i+1, j]
                 )
                 sMaxY = max(
-                    np.abs(a_grid[self.c.VCOMP, i, j]) + a_bottom,
-                    np.abs(a_grid[self.c.VCOMP, i, j+1]) + a_top
+                    np.abs(a_grid[self.c.VCOMP, i, j]) + a[i, j],
+                    np.abs(a_grid[self.c.VCOMP, i, j+1]) + a[i, j+1]
                 )
 
                 # compute flux components for each variable
                 for icomp in range(self.c.NUMQ):
-                    # numFluxX_plus[icomp, i, j] = 0.5 * (fx[icomp, i+1, j] + fx[icomp, i, j]) - 0.5 * sMaxX * (consU[icomp, i+1, j] - consU[icomp, i, j])
-                    # numFluxX_minus[icomp, i, j] = 0.5 * (fx[icomp, i, j] + fx[icomp, i-1, j]) - 0.5 * sMaxX * (consU[icomp, i, j] - consU[icomp, i-1, j])
-                    # numFluxY_plus[icomp, i, j] = 0.5 * (fy[icomp, i, j+1] + fy[icomp, i, j]) - 0.5 * sMaxY * (consU[icomp, i, j+1] - consU[icomp, i, j])
-                    # numFluxY_minus[icomp, i, j] = 0.5 * (fy[icomp, i, j] + fy[icomp, i, j-1]) - 0.5 * sMaxY * (consU[icomp, i, j] - consU[icomp, i, j-1])
-                    
-                    numFluxX_plus[icomp, i, j] = fx[icomp, i+1, j]
-                    numFluxX_minus[icomp, i, j] = fx[icomp, i-1, j]
-                    numFluxY_plus[icomp, i, j] = fx[icomp, i, j+1]
-                    numFluxY_minus[icomp, i, j] = fx[icomp, i, j-1]
-                    
-                    if icomp == self.c.RHOCOMP and i in [0, 1, 2, 3, 4, 5, 6, 7, 50, 90]:
-                        print(f"--FLUX-- for {i}, {j}")
-                        print("SMAXX IS", sMaxX)
-                        print("SMAXY IS", sMaxX)
-                        
-                        print("RIGHT FLUX MINUS LEFT FLUX", fx[icomp, i+1, j] - fx[icomp, i-1, j])
-                        print("REAL RIGHT FLUX MINUS LEFT FLUX", numFluxX_plus[icomp, i, j] - numFluxX_minus[icomp, i, j])
-
-                        # print("RIGHT FLUX IS", fx[icomp, i+1, j])
-                        # print("LEFT FLUX IS", fx[icomp, i-1, j])
-                        # print("TOP FLUX IS",fx[icomp, i, j+1])
-                        # print("BOTTOM FLUX IS", fx[icomp, i, j-1])
-                        # print("RIGHT FLUX IS", numFluxX_plus[icomp, i, j])
-                        # print("LEFT FLUX IS", numFluxX_minus[icomp, i, j])
-                        # print("TOP FLUX IS", numFluxY_plus[icomp, i, j])
-                        # print("BOTTOM FLUX IS", numFluxX_minus[icomp, i, j])
-                        # print("INDIVIDUAL FLUX", fx[icomp, i, j])
-                        print("U I SEE", a_grid[self.c.UCOMP, i, j])
-                        
-                        print("")
+                    numFluxX_plus[icomp, i, j] = 0.5 * (fx[icomp, i+1, j] + fx[icomp, i, j]) - 0.5 * sMaxX * (consU[icomp, i+1, j] - consU[icomp, i, j])
+                    numFluxX_minus[icomp, i, j] = 0.5 * (fx[icomp, i, j] + fx[icomp, i-1, j]) - 0.5 * sMaxX * (consU[icomp, i, j] - consU[icomp, i-1, j])
+                    numFluxY_plus[icomp, i, j] = 0.5 * (fy[icomp, i, j+1] + fy[icomp, i, j]) - 0.5 * sMaxY * (consU[icomp, i, j+1] - consU[icomp, i, j])
+                    numFluxY_minus[icomp, i, j] = 0.5 * (fy[icomp, i, j] + fy[icomp, i, j-1]) - 0.5 * sMaxY * (consU[icomp, i, j] - consU[icomp, i, j-1])
 
         return consU, numFluxX_plus, numFluxX_minus, numFluxY_plus, numFluxY_minus
     
@@ -138,18 +96,12 @@ class FluidFlux:
         j_start = a_Nghost - 1
         j_end = a_Ny + a_Nghost
         
-        # Calculate wave speeds with boundary interface symmetry fix
+        # Calculate wave speeds
         u_abs = np.abs(a_grid[self.c.UCOMP, i_start:i_end, j_start:j_end])
         u_abs_right = np.abs(a_grid[self.c.UCOMP, i_start+1:i_end+1, j_start:j_end])
         
         sound_speed = a[i_start:i_end, j_start:j_end]
         sound_speed_right = a[i_start+1:i_end+1, j_start:j_end]
-        
-        # Fix boundary interface asymmetry: use interior sound speeds at ghost-interior interfaces
-        # Left boundary interface (i=ng-1): use interior sound speed for both left and right
-        sound_speed[0, :] = a[a_Nghost, j_start:j_end]  # Use first interior cell sound speed
-        # Right boundary interface (i=nx+ng-1): use interior sound speed for both left and right  
-        sound_speed_right[-1, :] = a[a_Nx + a_Nghost - 1, j_start:j_end]  # Use last interior cell sound speed
         
         sMaxX = np.maximum(u_abs + sound_speed, u_abs_right + sound_speed_right)
         
@@ -158,20 +110,7 @@ class FluidFlux:
         
         sound_speed_up = a[i_start:i_end, j_start+1:j_end+1]
         
-        # Fix boundary interface asymmetry for y-direction
-        # Create copies to avoid modifying original arrays
-        sound_speed_y = a[i_start:i_end, j_start:j_end].copy()
-        sound_speed_up = a[i_start:i_end, j_start+1:j_end+1].copy()
-        
-        # Bottom boundary interface (j=ng-1): use interior sound speed for both bottom and top
-        sound_speed_y[:, 0] = a[i_start:i_end, a_Nghost]  # Bottom state uses interior
-        sound_speed_up[:, 0] = a[i_start:i_end, a_Nghost]  # Top state uses same interior
-        
-        # Top boundary interface (j=ny+ng-1): use interior sound speed for both bottom and top  
-        sound_speed_y[:, -1] = a[i_start:i_end, a_Ny + a_Nghost - 1]  # Bottom state uses interior
-        sound_speed_up[:, -1] = a[i_start:i_end, a_Ny + a_Nghost - 1]  # Top state uses same interior
-        
-        sMaxY = np.maximum(v_abs + sound_speed_y, v_abs_up + sound_speed_up)
+        sMaxY = np.maximum(v_abs + sound_speed, v_abs_up + sound_speed_up)
         
         # Initialize flux arrays
         numFluxX_plus = np.zeros_like(a_grid)
@@ -303,12 +242,6 @@ class FluidFlux:
                 FR = fx[:, i+1, j]
                 UR = consU[:, i+1, j]
                 
-                # Fix boundary interface asymmetry in sound speed calculation
-                if i == a_Nghost - 1:  # Left boundary interface
-                    aL = a[a_Nghost, j]  # Use first interior cell sound speed
-                if i == a_Nx + a_Nghost - 1:  # Right boundary interface
-                    aR = a[a_Nx + a_Nghost - 1, j]  # Use last interior cell sound speed
-                
                 # Estimate wave speeds (Davis estimates)
                 SL = min(uL - aL, uR - aR)
                 SR = max(uL + aL, uR + aR)
@@ -391,12 +324,6 @@ class FluidFlux:
                 HR = (consU[self.c.ECOMP, i, j+1] + pR) / rhoR
                 GR = fy[:, i, j+1] # Use y-flux G
                 UR = consU[:, i, j+1]
-
-                # Fix boundary interface asymmetry in sound speed calculation
-                if j == a_Nghost - 1:  # Bottom boundary interface
-                    aL = a[i, a_Nghost]  # Use first interior cell sound speed
-                if j == a_Ny + a_Nghost - 1:  # Top boundary interface
-                    aR = a[i, a_Ny + a_Nghost - 1]  # Use last interior cell sound speed
 
                 # Estimate wave speeds (using v instead of u)
                 SL = min(vL - aL, vR - aR)
