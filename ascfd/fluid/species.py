@@ -188,9 +188,9 @@ class FluidSpecies:
                     
                     # #TODO !TEMP! - replace with gaussian?
                     if 0.7 * self.inp.nx <= i <= 0.8 * self.inp.nx:
-                        vz_drift = 1000
+                        vz_drift = 100
                     else:
-                        vz_drift = 0
+                        vz_drift = 1
                     
                     rho = self.grid[self.c.RHOCOMP, i, j]
                     p = self.grid[self.c.PCOMP, i, j]
