@@ -69,7 +69,7 @@ class Fields:
         boundary = {
             "left": (0, "neumann_x"), # BECOMES BOTTOM
             "right": (0, "neumann_x"), # BECOMES TOP
-            "top": (3, "dirichlet"), # BECOMES LEFT
+            "top": (10, "dirichlet"), # BECOMES LEFT
             "bottom": (0, "neumann_y") # BECOMES RIGHT
         }
         
