@@ -358,13 +358,11 @@ class ParticleSpecies:
             print("P ELECTRONS INITED WITH", self.particles)
             print("P ELECTRONS SHAPE", np.shape(self.particles))
             self.particles = self.simulation.electrons.convert_to_particles()
-        
-        self.ics.apply_ics()
 
         # initialize velocity offset for leap-frog scheme
         # for first timestep, we need v^(-1/2), so we calculate it as v^(1/2) - dt*a
-        if self.params.type in ["e", "i"]:  # only for charged particles
-            self._initialize_leapfrog_velocities()
+        # if self.params.type == "i":  # only for charged particles
+        #     self._initialize_leapfrog_velocities()
 
         # initialize collision system for Xenon
         if self.params.type in ["e", "i"]:  # electrons and ions collide with neutrals
@@ -445,29 +443,19 @@ class ParticleSpecies:
                 y = self.particles[self.pc.YCOMP, n]
             
                 Ex, Ey = self._interpolate_electric_field(x, y)
+                # Ex, Ey = self.get_coloumb_source(n)
         
                 # a = (q/m) * E
                 ax = (self.params.charge / self.params.mass) * Ex
                 ay = (self.params.charge / self.params.mass) * Ey
         
                 # v^(n+1/2) = v^(n-1/2) + Δt * a
-                self.particles[self.pc.UCOMP, n] += self.dt * ax
-                self.particles[self.pc.VCOMP, n] += self.dt * ay
+                self.particles[self.pc.UCOMP, n] += self.dt * ax * 1000000000
+                self.particles[self.pc.VCOMP, n] += self.dt * ay * 1000000000
         
                 # x^(n+1) = x^n + Δt * v^(n+1/2)
                 self.particles[self.pc.XCOMP, n] += self.dt * self.particles[self.pc.UCOMP, n]
                 self.particles[self.pc.YCOMP, n] += self.dt * self.particles[self.pc.VCOMP, n]
-            # !DEBUG! multiply by self.dt instead of arbitrary value
-            for n in range(self.particles.shape[1]): 
-                if self.params.type == "i":
-                    #TODO: ADD BACK DT LATER
-                    x_source, y_source = self.get_coloumb_source(n)
-                    self.particles[self.pc.UCOMP, n] += x_source * 100
-                    self.particles[self.pc.VCOMP, n] += y_source * 100
-                    
-                self.particles[self.pc.XCOMP, n] += self.particles[self.pc.UCOMP, n] * self.dt
-                self.particles[self.pc.YCOMP, n] += self.particles[self.pc.VCOMP, n] * self.dt
-                
             
         else:
             self.particles = self.simulation.electrons.convert_to_particles()
@@ -526,8 +514,13 @@ class ParticleSpecies:
                 print(event)
                 print(event.event_type)
 
+            if not self._get_grid_coordinates(self.particles[self.pc.XCOMP, n], self.particles[self.pc.YCOMP, n]):
+                particles_to_remove.append(n)
+
         if particles_to_remove:
+            print("!%! BEFORE REMOVE THERE ARE:", self.particles.shape[1])
             self._remove_particles(particles_to_remove)
+            print("!%! AFTER REMOVE THERE ARE:", self.particles.shape[1])
 
         self.collision_events.extend(collision_events)
         return new_particles
@@ -780,45 +773,77 @@ class ParticleSpecies:
     def _interpolate_electric_field(self, x: float, y: float):
         x_grid = (x - self.inp.grid_x[0]) / self.inp.dx
         y_grid = (y - self.inp.grid_y[0]) / self.inp.dy
-    
+
         ix = int(np.floor(x_grid))
         iy = int(np.floor(y_grid))
-    
-        if ix < 0 or ix >= self.inp.nx_with_ghosts-1 or iy < 0 or iy >= self.inp.ny_with_ghosts-1:
-            return 0.0, 0.0
-    
-        wx = x_grid - ix
-        wy = y_grid - iy
-    
-        Ex = (
-            self.fields.E[ix, iy, 0] * (1 - wx) * (1 - wy) +
-            self.fields.E[ix+1, iy, 0] * wx * (1 - wy) +
-            self.fields.E[ix, iy+1, 0] * (1 - wx) * wy +
-            self.fields.E[ix+1, iy+1, 0] * wx * wy
-        )
-    
-        Ey = (
-            self.fields.E[ix, iy, 1] * (1 - wx) * (1 - wy) +
-            self.fields.E[ix+1, iy, 1] * wx * (1 - wy) +
-            self.fields.E[ix, iy+1, 1] * (1 - wx) * wy +
-            self.fields.E[ix+1, iy+1, 1] * wx * wy
-        )
-    
-        return Ex, Ey
-    
+        
+        # Get array dimensions
+        nx_max = self.fields.E.shape[0] - 1
+        ny_max = self.fields.E.shape[1] - 1
+        
+        # Check if base point is within bounds
+        if 0 <= ix <= nx_max and 0 <= iy <= ny_max:
+            wx = x_grid - ix
+            wy = y_grid - iy
+            
+            # Check availability of each interpolation point and adjust accordingly
+            # Bottom-left point (ix, iy) - always available if we're here
+            Ex = self.fields.E[ix, iy, 0] * (1 - wx) * (1 - wy)
+            Ey = self.fields.E[ix, iy, 1] * (1 - wx) * (1 - wy)
+            
+            # Bottom-right point (ix+1, iy)
+            if ix + 1 <= nx_max:
+                Ex += self.fields.E[ix+1, iy, 0] * wx * (1 - wy)
+                Ey += self.fields.E[ix+1, iy, 1] * wx * (1 - wy)
+            else:
+                # Use bottom-left point with adjusted weight
+                Ex += self.fields.E[ix, iy, 0] * wx * (1 - wy)
+                Ey += self.fields.E[ix, iy, 1] * wx * (1 - wy)
+            
+            # Top-left point (ix, iy+1)
+            if iy + 1 <= ny_max:
+                Ex += self.fields.E[ix, iy+1, 0] * (1 - wx) * wy
+                Ey += self.fields.E[ix, iy+1, 1] * (1 - wx) * wy
+            else:
+                # Use bottom-left point with adjusted weight
+                Ex += self.fields.E[ix, iy, 0] * (1 - wx) * wy
+                Ey += self.fields.E[ix, iy, 1] * (1 - wx) * wy
+            
+            # Top-right point (ix+1, iy+1)
+            if ix + 1 <= nx_max and iy + 1 <= ny_max:
+                Ex += self.fields.E[ix+1, iy+1, 0] * wx * wy
+                Ey += self.fields.E[ix+1, iy+1, 1] * wx * wy
+            elif ix + 1 <= nx_max:
+                # Use bottom-right point
+                Ex += self.fields.E[ix+1, iy, 0] * wx * wy
+                Ey += self.fields.E[ix+1, iy, 1] * wx * wy
+            elif iy + 1 <= ny_max:
+                # Use top-left point
+                Ex += self.fields.E[ix, iy+1, 0] * wx * wy
+                Ey += self.fields.E[ix, iy+1, 1] * wx * wy
+            else:
+                # Use bottom-left point
+                Ex += self.fields.E[ix, iy, 0] * wx * wy
+                Ey += self.fields.E[ix, iy, 1] * wx * wy
+            
+            return Ex, Ey
+        
+        # If completely outside bounds, return zero field
+        return 0.0, 0.0
+
     def _initialize_leapfrog_velocities(self):
-        for n in range(self.particles.shape[1]):
-            x = self.particles[self.pc.XCOMP, n]
-            y = self.particles[self.pc.YCOMP, n]
-        
-            Ex, Ey = self._interpolate_electric_field(x, y)
-        
-            ax = (self.params.charge / self.params.mass) * Ex
-            ay = (self.params.charge / self.params.mass) * Ey
-        
-            # v^(-1/2) = v^(1/2) - dt*a (backward half step)
-            self.particles[self.pc.UCOMP, n] -= 0.5 * self.dt * ax
-            self.particles[self.pc.VCOMP, n] -= 0.5 * self.dt * ay
+        n = 0
+        x = self.particles[self.pc.XCOMP, n]
+        y = self.particles[self.pc.YCOMP, n]
+    
+        Ex, Ey = self._interpolate_electric_field(x, y)
+    
+        ax = (self.params.charge / self.params.mass) * Ex
+        ay = (self.params.charge / self.params.mass) * Ey
+    
+        # v^(-1/2) = v^(1/2) - dt*a (backward half step)
+        self.particles[self.pc.UCOMP, n] -= 0.5 * self.dt * ax
+        self.particles[self.pc.VCOMP, n] -= 0.5 * self.dt * ay
 
     def _remove_particles(self, indices_to_remove: list[int]):
         if not indices_to_remove:
