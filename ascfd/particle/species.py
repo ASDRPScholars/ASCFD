@@ -386,7 +386,7 @@ class ParticleSpecies:
         elif species_type == "i" and hasattr(self.simulation, 'ions'):
             return self._compute_particle_density_field(self.simulation.ions)
         elif species_type == "n" and hasattr(self.simulation, 'neutrals'):
-            print("!!GET_SPECIES_DENSITY_FIELD SEES NEUTRALS AS!!", self.simulation.neutrals.particles[self.pc.XCOMP])
+            # print("!!GET_SPECIES_DENSITY_FIELD SEES NEUTRALS AS!!", self.simulation.neutrals.particles[self.pc.XCOMP])
             return self._compute_particle_density_field(self.simulation.neutrals)
         
         return np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
@@ -426,12 +426,14 @@ class ParticleSpecies:
         return (self.params.density * self.inp.dx * self.inp.dy) / self.inp.n_ppc
 
     def update(self):
-        print("!PARTICLE! update particle!")
+        # print("!PARTICLE! update particle!")
         
-        print(f"!PARTICLE! U for {self.params.type} is", self.particles[self.pc.UCOMP])
-        print(f"!PARTICLE! V for {self.params.type} is", self.particles[self.pc.VCOMP])
+        # print(f"!PARTICLE! U for {self.params.type} is", self.particles[self.pc.UCOMP])
+        # print(f"!PARTICLE! V for {self.params.type} is", self.particles[self.pc.VCOMP])
         
-        print("!#@! TYPE", self.params.type)
+        # print("!#@! TYPE", self.params.type)
+
+        particles_to_remove = []
         
         if self.params.type == "n":
             self.bcs.apply_bcs()
@@ -456,17 +458,24 @@ class ParticleSpecies:
                 # x^(n+1) = x^n + Δt * v^(n+1/2)
                 self.particles[self.pc.XCOMP, n] += self.dt * self.particles[self.pc.UCOMP, n]
                 self.particles[self.pc.YCOMP, n] += self.dt * self.particles[self.pc.VCOMP, n]
+
+                if self._get_grid_coordinates(self.particles[self.pc.XCOMP, n], self.particles[self.pc.YCOMP, n]) is None:
+                    particles_to_remove.append(n)
             
         else:
             self.particles = self.simulation.electrons.convert_to_particles()
-        
+
+        if particles_to_remove:
+            print("!%! BEFORE REMOVE THERE ARE:", self.particles.shape[1])
+            self._remove_particles(particles_to_remove)
+            print("!%! AFTER REMOVE THERE ARE:", self.particles.shape[1])
     
         new_particles = []
         
         if self.params.type in ["e", "i"] and self.collision_data is not None:
-            print("!#@! PROCESS COLLISIONS FOR", self.params.type)
+            # print("!#@! PROCESS COLLISIONS FOR", self.params.type)
             new_particles = self.process_collisions()
-            print("FROM PARTICLE.UPDATE() - new_particles is", new_particles)
+            # print("FROM PARTICLE.UPDATE() - new_particles is", new_particles)
 
         # particle per cell enforcement
         if self.params.type != "e":
@@ -484,7 +493,7 @@ class ParticleSpecies:
 
 
     def process_collisions(self):
-        print("!#@! PROCESS COLLISIONS cALLED FOR", self.params.type)
+        # print("!#@! PROCESS COLLISIONS cALLED FOR", self.params.type)
         if self.params.type not in ["e", "i"] or self.collision_data is None:
             return []
 
@@ -494,8 +503,8 @@ class ParticleSpecies:
         neutral_density_field = self.get_species_density_field("n")
         particles_to_remove = []
 
-        print("!#@! PROCESS COLLISIONS FOR", self.params.type)
-        print("N PARTICLES", self.particles.shape[1])
+        # print("!#@! PROCESS COLLISIONS FOR", self.params.type)
+        # print("N PARTICLES", self.particles.shape[1])
         
         for n in range(self.particles.shape[1]):
             events = self._attempt_collisions(n, neutral_density_field)
@@ -513,14 +522,6 @@ class ParticleSpecies:
                     
                 print(event)
                 print(event.event_type)
-
-            if not self._get_grid_coordinates(self.particles[self.pc.XCOMP, n], self.particles[self.pc.YCOMP, n]):
-                particles_to_remove.append(n)
-
-        if particles_to_remove:
-            print("!%! BEFORE REMOVE THERE ARE:", self.particles.shape[1])
-            self._remove_particles(particles_to_remove)
-            print("!%! AFTER REMOVE THERE ARE:", self.particles.shape[1])
 
         self.collision_events.extend(collision_events)
         return new_particles
