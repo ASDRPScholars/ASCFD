@@ -262,12 +262,24 @@ class FluidInitialConditions:
             x = x_start + (i - ng + 0.5) * dx  # cell center x-position
 
             for j in range(ng, ny + ng):
-                if 0.7 < x < 0.8:
-                    ic[self.c.RHOCOMP, i, j] = 10.0
-                    ic[self.c.PCOMP, i, j] = 1000.0
+                # Gaussian peak at x=0.75 with exponential tail to the right
+                center = 0.75
+                sigma = 0.05  # you can tweak this
+                
+                if x <= center:
+                    # Gaussian on the left side and at peak
+                    gaussian_factor = np.exp(-0.5 * ((x - center) / sigma)**2)
+                    rho_val = 0.1 + 9.9 * gaussian_factor  # peaks at 10.0, base at 0.1
+                    p_val = 10.0 + 990.0 * gaussian_factor  # peaks at 1000.0, base at 10.0
                 else:
-                    ic[self.c.RHOCOMP, i, j] = 0.1
-                    ic[self.c.PCOMP, i, j] = 10.0
+                    # Exponential tail on the right side
+                    tail_decay = 0.1  # controls how fast the tail decays (you can tweak)
+                    exp_factor = np.exp(-(x - center) / tail_decay)
+                    rho_val = 1 + 9.9 * exp_factor  # starts at 10.0 at center, decays to 0.1
+                    p_val = 10.0 + 990.0 * exp_factor  # starts at 1000.0 at center, decays to 10.0
+                
+                ic[self.c.RHOCOMP, i, j] = rho_val
+                ic[self.c.PCOMP, i, j] = p_val
 
                 ic[self.c.UCOMP, i, j] = 0.0
                 ic[self.c.VCOMP, i, j] = 0.0

@@ -56,8 +56,8 @@ class Simulation:
         
         # Set timestep for all species
         for species in self.all_species:
-            # species.dt = self.dt
-            species.dt = 0.002
+            species.dt = self.dt
+            # species.dt = 0.002
         
         # -1 is no output. Always output ICs if we are outputting.
         if self.inp.output_freq >= 0:
@@ -238,8 +238,8 @@ class Simulation:
                 print("!!SIMULATION!! p electrons u:", self.pelectrons.particles[self.pc.UCOMP])
                 print("!!SIMULATION!! p electrons v:", self.pelectrons.particles[self.pc.VCOMP])
                 
+                axs[q].scatter(self.neutrals.particles[self.pc.XCOMP], self.neutrals.particles[self.pc.YCOMP], s=5, color='gray', alpha=0.2)
                 axs[q].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=5, color='blue')
-                axs[q].scatter(self.neutrals.particles[self.pc.XCOMP], self.neutrals.particles[self.pc.YCOMP], s=5, color='gray', alpha=0.5)
             
             axs[q].set_xlim(self.inp.xlim)
             axs[q].set_ylim(self.inp.ylim)

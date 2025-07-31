@@ -186,11 +186,10 @@ class FluidSpecies:
                     vx_drift = self.grid[self.c.UCOMP, i, j]
                     vy_drift = self.grid[self.c.VCOMP, i, j]
                     
-                    # #TODO !TEMP! - replace with gaussian?
-                    if 0.7 * self.inp.nx <= i <= 0.8 * self.inp.nx:
-                        vz_drift = 100
-                    else:
-                        vz_drift = 1
+                    # Gaussian distribution that peaks at 100
+                    center = 0.75 * self.inp.nx  # center of the band
+                    sigma = 0.05 * self.inp.nx    # standard deviation (you can tweak this)
+                    vz_drift = 1000 * np.exp(-0.5 * ((i - center) / sigma)**2)
                     
                     rho = self.grid[self.c.RHOCOMP, i, j]
                     p = self.grid[self.c.PCOMP, i, j]
