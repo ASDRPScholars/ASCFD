@@ -3,7 +3,6 @@ import sympy as sp
 import scipy.sparse.linalg
 import types
 import matplotlib.pyplot as plt
-import seaborn as sns
 
 from . import functional, helpers
 

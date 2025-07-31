@@ -509,7 +509,7 @@ class ParticleSpecies:
         return new_particles
 
     def _attempt_collisions(self, particle_idx: int, neutral_density_field: np.ndarray):
-        print("!#! ATTEMPT COLLISION FOR", self.params.type)
+        # print("!#! ATTEMPT COLLISION FOR", self.params.type)
         x = self.particles[self.pc.XCOMP, particle_idx]
         y = self.particles[self.pc.YCOMP, particle_idx]
         vx = self.particles[self.pc.UCOMP, particle_idx]
@@ -519,12 +519,12 @@ class ParticleSpecies:
 
         grid_coords = self._get_grid_coordinates(x, y)
         if grid_coords is None:
-            print("[ATTEMPT_COLLISIONS] grid_coords is None")
+            #print("[ATTEMPT_COLLISIONS] grid_coords is None")
             return []
 
         v_rel = np.sqrt(vx**2 + vy**2 + vz**2)
         if v_rel < 1e-10:
-            print("[ATTEMPT_COLLISIONS] v_rel < 1e-10")
+            #print("[ATTEMPT_COLLISIONS] v_rel < 1e-10")
             print("v_rel is", v_rel)
             return []
 
@@ -533,7 +533,7 @@ class ParticleSpecies:
 
         neutral_density = self._interpolate_density(x, y, neutral_density_field)
         if neutral_density <= 0:
-            print("[ATTEMPT_COLLISIONS] neutral_density <= 0")
+            #print("[ATTEMPT_COLLISIONS] neutral_density <= 0")
             return []
 
         events = []
@@ -547,22 +547,22 @@ class ParticleSpecies:
 
         for collision_type, collision_data in collision_types.items():
             if energy_ev < collision_data["threshold"]:
-                print("NOT ENOUGH ENERGY FOR", collision_type)
+                #print("NOT ENOUGH ENERGY FOR", collision_type)
                 continue
                 
             sigma = collision_data["cross_section_func"](energy_ev) * 1e17
             if sigma <= 0:
-                print("NEGATIVE SIGMA FOR", collision_type)
+                #print("NEGATIVE SIGMA FOR", collision_type)
                 continue
 
             # nu = n * sigma * v
             nu_collision = neutral_density * sigma * v_rel
             P_collision = 1.0 - np.exp(-nu_collision * self.dt)
             
-            print("PROBABILITY IS", P_collision)
-            print("NEUTRAL DENSITY IS", neutral_density)
-            print("SIGMA IS", sigma)
-            print("ELECTRON SPEED IS", v_rel)
+            # print("PROBABILITY IS", P_collision)
+            # print("NEUTRAL DENSITY IS", neutral_density)
+            # print("SIGMA IS", sigma)
+            # print("ELECTRON SPEED IS", v_rel)
 
             # monte carlo
             if np.random.rand() < P_collision:
@@ -574,8 +574,8 @@ class ParticleSpecies:
                     events.append(event)
                 # only allow one collision per timestep per particle
                 break
-            else:
-                print("NOT LUCKY MONTE CARLO FOR", collision_type)
+            #else:
+                #print("NOT LUCKY MONTE CARLO FOR", collision_type)
 
         return events
 
