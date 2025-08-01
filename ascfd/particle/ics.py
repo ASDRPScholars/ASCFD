@@ -35,7 +35,7 @@ class ParticleInitialConditions:
         ic_particles = np.zeros_like(self.particles)
     
         for n in range(self.inp.n_particles):
-            random_x, random_y = np.random.rand(), np.random.rand()
+            random_x, random_y = np.random.rand() * (self.inp.xlim[1] - self.inp.xlim[0]), np.random.rand() * (self.inp.ylim[1] - self.inp.ylim[0])
             vx, vy, vz = self.sample_maxwellian_velocity()
 
             ic_particles[self.pc.XCOMP, n] = random_x
