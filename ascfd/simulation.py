@@ -39,13 +39,15 @@ class Simulation:
             self.neutrals = ParticleSpecies(xe_n_params, self.inp, self.fields, self)
             self.ions = ParticleSpecies(xe_i_params, self.inp, self.fields, self)
             self.pelectrons = ParticleSpecies(e_params, self.inp, self.fields, self)
+
+            self.electrons.pelectrons = self.pelectrons
             
             # simulation reference so species can access each other
             # self.neutrals.set_simulation(self)
             # self.ions.set_simulation(self)
             # self.pelectrons.set_simulation(self)
             
-            self.all_species = [self.electrons, self.pelectrons, self.neutrals, self.ions]
+            self.all_species = [self.electrons, self.neutrals, self.ions]
         else:
             self.all_species = [self.electrons]
         
@@ -59,6 +61,8 @@ class Simulation:
         for species in self.all_species:
             species.dt = self.dt
             # species.dt = 0.002
+
+        self.pelectrons.dt = self.dt
         
         # -1 is no output. Always output ICs if we are outputting.
         if self.inp.output_freq >= 0:
@@ -66,14 +70,11 @@ class Simulation:
         
 
     def run(self):
-        # !TEMP!
         while (self.t < self.inp.t_finish) and self.timestep < self.inp.nt:
             print("do we enter run loop?")
             print("\033[1m" + f"Timestep: {self.timestep}, Current time: {self.t}" + "\033[0m")
             
             if self.inp.timeStepper == "RK1":
-                # self.electrons.update()
-                
                 new_particles = []
                 
                 for species in self.all_species:
@@ -89,20 +90,7 @@ class Simulation:
                     for particle in new_particles:
                         self.ions.add_particle(particle)
                     # Add all particles to fluid electrons at once
-                    self.electrons.add_particles(new_particles)
-                    
-                    # if hasattr(particle, '__len__') and len(particle) == self.pc.NUMQ + 1:
-                    #     particle_charge = particle[self.pc.NUMQ - 1] if hasattr(self.pc, 'CHARGE') else 0.0
-                    #     particle_mass = getattr(particle, 'mass', None)
-                        
-                    #     # print("NEW PARTICLES ARE:", new_particles)
-                        
-                    #     if hasattr(self, 'ions') and particle_charge > 0:
-                    #         self.ions.add_particle(particle)
-                    #     elif hasattr(self, 'electrons') and particle_charge < 0:
-                    #         pass
-                    #     elif hasattr(self, 'neutrals') and abs(particle_charge) < 1e-20:
-                    #         self.neutrals.add_particle(particle)      
+                    self.electrons.add_particles(new_particles)   
                 
             else:
                 raise ValueError(f"Unknown time stepper: {self.inp.timeStepper}")

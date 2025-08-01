@@ -335,6 +335,8 @@ class ParticleSpecies:
         self.WEIGHT = self.pc.NUMQ
         
         self.num_collisions = np.zeros((self.inp.nx, self.inp.ny))
+        self.cross_section_grid = np.zeros((self.inp.nx, self.inp.ny))
+        self.sigma_temp_storage = [[[] for _ in range(self.inp.ny)] for _ in range(self.inp.nx)]
         
         # Pre-allocate particle arrays with 3x initial capacity for growth
         initial_capacity = max(self.inp.n_particles * 3, 1000) if self.params.type != "i" else 1000
@@ -674,9 +676,6 @@ class ParticleSpecies:
                 # if not np.isnan(self.particles[self.pc.XCOMP, n]) and not np.isnan(self.particles[self.pc.YCOMP, n]) is not None:
                 if (self._get_grid_coordinates(self.particles[self.pc.XCOMP, n], self.particles[self.pc.YCOMP, n]) is None):
                     particles_to_remove.append(n)
-            
-        else:
-            self.particles = self.simulation.electrons.convert_to_particles()
 
         if particles_to_remove:
             active_before = np.sum(self.is_active)
@@ -824,6 +823,12 @@ class ParticleSpecies:
                 continue
                 
             sigma = collision_data["cross_section_func"](energy_ev) * 1e17
+            
+            # Deposit sigma onto grid for cross section tracking
+            i, j = self._get_grid_coordinates(x, y)
+            if 0 <= i < self.inp.nx and 0 <= j < self.inp.ny:
+                self.sigma_temp_storage[i][j].append(sigma)
+            
             if sigma <= 0:
                 #print("NEGATIVE SIGMA FOR", collision_type)
                 continue
@@ -1039,6 +1044,15 @@ class ParticleSpecies:
         if self.inp.ng < ix < self.inp.nx - 2 and self.inp.ng - 1 < iy < self.inp.ny + self.inp.ng - 2:
             return ix, iy
         return None
+
+    def update_cross_section_grid(self):
+        """Average sigma values from temporary storage and update cross_section_grid"""
+        for i in range(self.inp.nx):
+            for j in range(self.inp.ny):
+                if len(self.sigma_temp_storage[i][j]) > 0:
+                    self.cross_section_grid[i, j] = np.mean(self.sigma_temp_storage[i][j])
+                    # Clear the temporary storage after averaging
+                    self.sigma_temp_storage[i][j].clear()
 
     # go from bulk/field density -> density at a specific particle's (x, y)
     def _interpolate_density(self, x: float, y: float, density_field: np.ndarray):

@@ -7,6 +7,7 @@ from ascfd.params import SpeciesParams
 from ascfd.fluid.bcs import FluidBoundaryConditions
 from ascfd.fluid.flux import FluidFlux
 from ascfd.fields.fields import Fields
+
 # from ascfd.simulation import Simulation
 
 import ascfd.fluid.ics as ics
@@ -26,6 +27,7 @@ class FluidSpecies:
         
         self.fields = fields
         self.simulation = simulation
+        self.pelectrons = None
         
         self.inp = a_inputs
         self.params = params
@@ -61,50 +63,64 @@ class FluidSpecies:
                         
                     consU[icomp, i, j] = consU[icomp, i, j] - delta
                     
+        ## --LORENTZ UPDATE--
         self._apply_lorentz_source_terms(consU)
+
+        ## --P ELECTRONS UPDATE + COLLISIONAL DAMPING--
+        new_particle_array = self.convert_to_particles()
         
-        # CRITICAL: Apply BCs immediately after source terms to maintain ghost cell consistency
-        # Convert to primitive, apply BCs, then back to conservative
+        # Clear existing particles and properly initialize with new ones
+        self.pelectrons.active_count = 0
+        self.pelectrons.is_active.fill(False)
+        self.pelectrons.free_slots.clear()
+        
+        # Add particles from converted array
+        n_new_particles = new_particle_array.shape[1]
+        for i in range(n_new_particles):
+            if i < self.pelectrons.capacity:
+                self.pelectrons.particles[:, i] = new_particle_array[:, i]
+                self.pelectrons.is_active[i] = True
+                self.pelectrons.active_count += 1
+        
+        new_particles = self.pelectrons.update()
+        self.pelectrons.update_cross_section_grid()
+        sigma = self.pelectrons.cross_section_grid
+        
+        self._apply_damping_source_terms(sigma, consU)
+
+        ##
         self.grid[:] = self.euler.cons_to_prim(consU)
-        
         self.bcs.apply_bcs()
-        
-        # plt.figure()
-        # plt.imshow(self.grid[self.c.RHOCOMP])
-        # plt.title("rho after bc")
-        # plt.show()
-        # plt.figure()
-        # plt.imshow(self.grid[self.c.UCOMP])
-        # plt.title("u after bc")
-        # plt.show()
-        # plt.figure()
-        
-        # self.grid[:] = self.euler.cons_to_prim(consU)
-        
-        # plt.figure()
-        # plt.imshow(self.grid[self.c.RHOCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng])
-        # plt.title("rho after flux")
-        # plt.show()
-        
-        # # Apply BCs again after flux updates (flux also modifies interior cells only)
-        # self.bcs.apply_bcs()
-        
-        # plt.figure()
-        # plt.imshow(self.grid[self.c.RHOCOMP])
-        # plt.title("after flux after bcs")
-        # plt.show()
         
         ## --ELECTRIC FIELD UPDATE--
         charge_density = self.get_charge_density()
         
         self.fields.clear_charge_density()
         self.fields.add_charge_density(charge_density) # -!- TOGGLE -!-
-        # print("FROM ELECTRONS ADDED:", charge_density)
-        
+
         self.fields.update_E()
-        
-        # TODO: call self.ebs.apply_ebs() once embedded boundaries are brought in
+
+        return new_particles
     
+
+    def _apply_damping_source_terms(self, sigma, consU_new):
+        # --COLLISION DAMPING--
+        n_n = self.simulation.neutrals._compute_particle_density_field(self.simulation.neutrals)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] + 0.01
+        rho_e = self.grid[self.c.RHOCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+        V_x = self._get_V()[:, :, 0]
+
+        np.set_printoptions(threshold=sys.maxsize)
+        print("SIGMA", sigma)
+        print("n_n", n_n)
+        print("rho_e", rho_e)
+        print("V_x", V_x)
+
+        damping_source = sigma * n_n * rho_e * V_x
+
+        print("!*! MIN MAX OF damping_source IS", np.min(damping_source), np.max(damping_source))
+
+        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += damping_source * self.dt * 100
+
     
     def _apply_lorentz_source_terms(self, consU_new):
 
@@ -181,31 +197,8 @@ class FluidSpecies:
         print(f"!@! Max |charge_density|: {np.max(np.abs(charge_density)):.3e}")
         print(f"!@! Max |z_velocity|: {np.max(np.abs(self.grid[self.c.WCOMP])):.3e}")
     
-    
-        # --COLLISION DIFFUSION--
-        # --COLLISION DIFFUSION--
-        particle_number_density = self.simulation.neutrals._compute_particle_density_field(self.simulation.neutrals)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] + 0.01
+        # OK ALL IT IS: a * sigma(e) * n_n * rho_e * V_e
 
-        print("!*! MIN MAX OF PARTICLE_NUMBER_DENSITY IS", np.min(particle_number_density), np.max(particle_number_density))
-
-        # Calculate collision frequency from your particle collisions
-        nu_collision_grid = self.simulation.neutrals.num_collisions / (particle_number_density * self.dt) + 0.01# avoid div by zero
-
-        # Cyclotron frequency
-        omega_ce = self.params.charge * self.fields.B[:, :, 1] / self.params.mass
-
-        # Unmagnetized mobility (this is your baseline)
-        mu_0 = self.params.charge / (self.params.mass * nu_collision_grid)
-
-        # Magnetization parameter
-        magnetization = omega_ce / nu_collision_grid
-
-        # Reduced mobility due to magnetization
-        mu_x_eff = 0.2 * mu_0 / (1 + magnetization**2)
-
-        print("!*! min, max of mu_x_eff", np.min(mu_x_eff), np.max(mu_x_eff))
-        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] -= mu_x_eff * self.dt
-        
         # --ENERGY UPDATE--
         # V = self._get_V()
         # energy_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * \
@@ -300,8 +293,8 @@ class FluidSpecies:
                         vz = 0.0  # TEMP: Remove thermal z-velocity to see spatial drift
                         
                         # Debug: Check thermal vs drift magnitudes
-                        if abs(vz_drift) > 1e-10 or (i % 10 == 0 and j % 10 == 0):  # Sample some cells
-                            print(f"!DEBUG! Cell ({i-self.inp.ng}, {j-self.inp.ng}): v_th={v_th:.3e}, vz_thermal={vz:.3e}, vz_drift={vz_drift:.3e}, ratio={abs(vz_drift/vz) if abs(vz) > 1e-12 else 0:.3e}")
+                        # if abs(vz_drift) > 1e-10 or (i % 10 == 0 and j % 10 == 0):  # Sample some cells
+                        #     print(f"!DEBUG! Cell ({i-self.inp.ng}, {j-self.inp.ng}): v_th={v_th:.3e}, vz_thermal={vz:.3e}, vz_drift={vz_drift:.3e}, ratio={abs(vz_drift/vz) if abs(vz) > 1e-12 else 0:.3e}")
                         
                         x_offset = np.random.uniform(-0.4999, 0.5)
                         y_offset = np.random.uniform(-0.4999, 0.5)
