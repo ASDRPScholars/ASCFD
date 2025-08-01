@@ -204,9 +204,9 @@ class FluidBoundaryConditions:
             print("CALLING HIGH INFLOW X")
             for i in range(self.inp.nx + self.inp.ng, self.inp.nx + 2*self.inp.ng): # ghost cells in high x-range
                 for j in range(self.inp.ng, self.inp.ny + self.inp.ng):  # valid y-range
-                    grid[self.c.RHOCOMP, i, j] = 9.11e-13
-                    grid[self.c.PCOMP, i, j] = 9.11e-13/9.1e-31 * self.c.k_B * 10
-                    grid[self.c.UCOMP, i, j] = -2e5
+                    grid[self.c.RHOCOMP, i, j] = 1
+                    grid[self.c.PCOMP, i, j] = 1
+                    grid[self.c.UCOMP, i, j] = -1
                     grid[self.c.VCOMP, i, j] = 0
                     
         else:  # hi boundary in y-direction

@@ -23,7 +23,7 @@ class Fields:
         
         self.ics = FieldInitialConditions(self.E, self.B, self.inp)
         
-        # self.B = self.ics.apply_B_ics()
+        self.B = self.ics.apply_B_ics()
         self.ics.apply_E_ics()
         
         plt.figure()

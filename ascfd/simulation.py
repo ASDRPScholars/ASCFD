@@ -53,6 +53,7 @@ class Simulation:
         self.t = self.inp.t0
         self.timestep = 0
         self.dt = self.get_dt()
+        # self.dt = 0.002
         
         # Set timestep for all species
         for species in self.all_species:

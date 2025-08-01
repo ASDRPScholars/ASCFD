@@ -49,19 +49,19 @@ class FluidSpecies:
         print("dt is", self.dt)
         consU = self.euler.prim_to_cons(self.grid)
 
-        # _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
+        _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
                 
-        # for i in range(self.inp.ng, self.inp.nx + self.inp.ng):
-        #     for j in range(self.inp.ng, self.inp.ny + self.inp.ng):
-        #         for icomp in range(self.c.NUMQ):
+        for i in range(self.inp.ng, self.inp.nx + self.inp.ng):
+            for j in range(self.inp.ng, self.inp.ny + self.inp.ng):
+                for icomp in range(self.c.NUMQ):
                     
-        #             delta = (
-        #                 (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
-        #                 (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
+                    delta = (
+                        (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
+                        (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
                         
-        #             consU[icomp, i, j] = consU[icomp, i, j] - delta
+                    consU[icomp, i, j] = consU[icomp, i, j] - delta
                     
-        # self._apply_lorentz_source_terms(consU)
+        self._apply_lorentz_source_terms(consU)
         
         # CRITICAL: Apply BCs immediately after source terms to maintain ghost cell consistency
         # Convert to primitive, apply BCs, then back to conservative
@@ -101,7 +101,7 @@ class FluidSpecies:
         self.fields.add_charge_density(charge_density) # -!- TOGGLE -!-
         # print("FROM ELECTRONS ADDED:", charge_density)
         
-        # self.fields.update_E()
+        self.fields.update_E()
         
         # TODO: call self.ebs.apply_ebs() once embedded boundaries are brought in
     
@@ -123,8 +123,8 @@ class FluidSpecies:
         x_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * E[:, :, 0]
         y_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * E[:, :, 1]
         
-        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt
-        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt
+        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt * 100
+        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt * 100
 
         print(f"!@! Electromagnetic coupling strengths:")
         print(f"!@! Max |Ex|: {np.max(np.abs(E[:, :, 0])):.3e}")
@@ -144,12 +144,12 @@ class FluidSpecies:
         vy = prim_new[self.c.VCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
         
         energy_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * \
-            (E[:, :, 0] * vx + E[:, :, 1] * vy)
+            (E[:, :, 0] * vx + E[:, :, 1] * vy) 
             
         print(f"!@! Max |energy_source|: {np.max(np.abs(energy_source)):.3e}")
         print(f"!@! Energy source range: [{np.min(energy_source):.3e}, {np.max(energy_source):.3e}]")
         
-        consU_new[self.c.ECOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += energy_source * self.dt
+        consU_new[self.c.ECOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += energy_source * self.dt * 100
         
     
     def get_charge_density(self):
@@ -186,10 +186,10 @@ class FluidSpecies:
                     vx_drift = self.grid[self.c.UCOMP, i, j]
                     vy_drift = self.grid[self.c.VCOMP, i, j]
                     
-                    # Gaussian distribution that peaks at 100
-                    center = 0.75 * self.inp.nx  # center of the band
-                    sigma = 0.05 * self.inp.nx    # standard deviation (you can tweak this)
-                    vz_drift = 1000 * np.exp(-0.5 * ((i - center) / sigma)**2)
+                    # # Gaussian distribution that peaks at 100
+                    # center = 0.75 * self.inp.nx  # center of the band
+                    # sigma = 0.05 * self.inp.nx    # standard deviation (you can tweak this)
+                    # vz_drift = 1000 * np.exp(-0.5 * ((i - center) / sigma)**2)
                     
                     rho = self.grid[self.c.RHOCOMP, i, j]
                     p = self.grid[self.c.PCOMP, i, j]
@@ -214,7 +214,7 @@ class FluidSpecies:
                         ic_particles[self.pc.YCOMP, p_idx] = (j + y_offset - self.inp.ng) * self.inp.dy 
                         ic_particles[self.pc.UCOMP, p_idx] = vx + vx_drift
                         ic_particles[self.pc.VCOMP, p_idx] = vy + vy_drift
-                        ic_particles[self.pc.WCOMP, p_idx] = vz + vz_drift
+                        ic_particles[self.pc.WCOMP, p_idx] = vz # + vz_drift
                         ic_particles[WEIGHT, p_idx] = weight
                         
                         p_idx += 1

@@ -44,7 +44,9 @@ class FieldInitialConditions:
         print(f"Gaussian 1D at x_c: {B_max * np.exp(-((x_c - x_c) / sigma) ** 2)}")
         
         # Broadcast to 2D
-        ic_grid[:, :, 1] = gaussian_1d[np.newaxis, :]
+        print(np.shape(ic_grid))
+        print(np.shape(gaussian_1d))
+        ic_grid[:, :, 1] = gaussian_1d[:, np.newaxis]
         
         print(f"ic_grid max after assignment: {ic_grid.max()}")
         
