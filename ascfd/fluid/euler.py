@@ -13,11 +13,12 @@ class FluidEuler:
               
         if self.c.system == "euler2d":
             cons[self.c.RHOCOMP] = a_prim[self.c.RHOCOMP] # density stays the same
-            cons[self.c.MUCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.UCOMP] # momentum components x & y
+            cons[self.c.MUCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.UCOMP] # momentum components x, y, z
             cons[self.c.MVCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.VCOMP]
-             # compute total energy
+            cons[self.c.MWCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.WCOMP] # z-momentum (2.5D)
+             # compute total energy including z-velocity
             E = (a_prim[self.c.PCOMP] / ((self.c.gamma - 1) * a_prim[self.c.RHOCOMP]) + 
-                 0.5 * (a_prim[self.c.UCOMP]**2 + a_prim[self.c.VCOMP]**2))
+                 0.5 * (a_prim[self.c.UCOMP]**2 + a_prim[self.c.VCOMP]**2 + a_prim[self.c.WCOMP]**2))
             cons[self.c.ECOMP] = E * a_prim[self.c.RHOCOMP]
 
         elif self.c.system == "mhd2d":
@@ -46,14 +47,15 @@ class FluidEuler:
             # copy density
             prim[self.c.RHOCOMP] = a_cons[self.c.RHOCOMP]
             
-            # compute velocity components
+            # compute velocity components including z-velocity
             prim[self.c.UCOMP] = a_cons[self.c.MUCOMP] / a_cons[self.c.RHOCOMP]
             prim[self.c.VCOMP] = a_cons[self.c.MVCOMP] / a_cons[self.c.RHOCOMP]
+            prim[self.c.WCOMP] = a_cons[self.c.MWCOMP] / a_cons[self.c.RHOCOMP] # z-velocity (2.5D)
             
-            # compute pressure using kinetic energy
-            kinetic_energy = 0.5 * (prim[self.c.UCOMP]**2 + prim[self.c.VCOMP]**2) # this becomes really big
+            # compute pressure using kinetic energy including z-component
+            kinetic_energy = 0.5 * (prim[self.c.UCOMP]**2 + prim[self.c.VCOMP]**2 + prim[self.c.WCOMP]**2)
             prim[self.c.PCOMP] = (self.c.gamma - 1) * (
-                a_cons[self.c.ECOMP] - a_cons[self.c.RHOCOMP] * kinetic_energy # so this goes negative
+                a_cons[self.c.ECOMP] - a_cons[self.c.RHOCOMP] * kinetic_energy
             )
 
         elif self.c.system == "mhd2d":
@@ -90,20 +92,25 @@ class FluidEuler:
             v = a_prim[self.c.VCOMP] # y-velocity
             p = a_prim[self.c.PCOMP] # pressure
             
+            # For 2.5D, w is not transported spatially but contributes to energy
+            w = a_prim[self.c.WCOMP] if hasattr(self.c, 'WCOMP') else 0.0
+            
             # compute total energy 
             e = p / ((self.c.gamma - 1) * rho) # internal energy (from ideal gas law)
-            E = rho * (e + 0.5 * (u**2 + v**2)) # total energy: internal + kinetic
+            E = rho * (e + 0.5 * (u**2 + v**2 + w**2)) # total energy: internal + kinetic (including z)
             
             # flux in x-direction
             flux_x[self.c.RHOCOMP] = rho * u # mass flux
             flux_x[self.c.MUCOMP] = rho * u**2 + p # momentum flux in x 
             flux_x[self.c.MVCOMP] = rho * u * v # momentum flux in y 
+            flux_x[self.c.MWCOMP] = rho * u * w # z-momentum flux (passively advected)
             flux_x[self.c.ECOMP] = (E + p) * u # energy flux
             
             # flux in y-direction
             flux_y[self.c.RHOCOMP] = rho * v # mass flux
             flux_y[self.c.MUCOMP] = rho * u * v - self.c.g # momentum flux in x 
             flux_y[self.c.MVCOMP] = rho * v**2 + p # momentum flux in y 
+            flux_y[self.c.MWCOMP] = rho * v * w # z-momentum flux (passively advected)
             flux_y[self.c.ECOMP] = (E + p) * v # energy flux
 
         elif self.c.system == "mhd2d":

@@ -22,19 +22,21 @@ class FluidConstants:
         # Define constants and variables for the Euler 2D system
         if a_inputs.system == "euler2d":
             
-            #primitive variables (Density, X-Velocity, Y-Velocity, Pressure)
+            #primitive variables (Density, X-Velocity, Y-Velocity, Z-Velocity, Pressure)
             self.RHOCOMP = 0 # Density
             self.UCOMP = 1 # X-component of velocity
             self.VCOMP = 2 # Y-component of velocity
-            self.PCOMP = 3 # Pressure
+            self.WCOMP = 3 # Z-component of velocity (azimuthal/out-of-plane)
+            self.PCOMP = 4 # Pressure
  
-             #conserved variables (Density, Momentum-X, Momentum-Y, Energy)
+             #conserved variables (Density, Momentum-X, Momentum-Y, Momentum-Z, Energy)
             self.MUCOMP = 1 # X-component of momentum
             self.MVCOMP = 2 # Y-component of momentum
-            self.ECOMP = 3 # Total energy (thermal + kinetic)
+            self.MWCOMP = 3 # Z-component of momentum (azimuthal/out-of-plane)
+            self.ECOMP = 4 # Total energy (thermal + kinetic)
 
             # number of variables in the system
-            self.NUMQ = 4
+            self.NUMQ = 5
 
             self.system = "euler2d"
 
@@ -42,7 +44,7 @@ class FluidConstants:
             
             self.k_B = 1.380649e-23
 
-            self.variable_names = ["Density", "X-Velocity", "Y-Velocity", "Pressure"]
+            self.variable_names = ["Density", "X-Velocity", "Y-Velocity", "Z-Velocity", "Pressure"]
 
             self.NS = 1 
             

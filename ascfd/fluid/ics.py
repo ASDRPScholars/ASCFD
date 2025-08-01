@@ -85,7 +85,9 @@ class FluidInitialConditions:
             return np.ones_like(a_x) * 10
         elif a_var == 2: #VCOMP
             return np.ones_like(a_x) * 10
-        elif a_var == 3: #PCOMP
+        elif a_var == 3: #WCOMP (z-velocity)
+            return np.zeros_like(a_x)  # Start with zero azimuthal velocity
+        elif a_var == 4: #PCOMP
             return np.ones_like(a_x)
         else:
             return 0
@@ -245,6 +247,7 @@ class FluidInitialConditions:
         ic[self.c.RHOCOMP] = rho_norm
         ic[self.c.UCOMP] = u_norm
         ic[self.c.VCOMP] = v_norm
+        ic[self.c.WCOMP] = 0.0  # Initialize z-velocity to zero
         ic[self.c.PCOMP] = p_norm
         return ic
     
@@ -283,6 +286,7 @@ class FluidInitialConditions:
 
                 ic[self.c.UCOMP, i, j] = 0.0
                 ic[self.c.VCOMP, i, j] = 0.0
+                ic[self.c.WCOMP, i, j] = 0.0  # Initialize z-velocity to zero
 
         return ic
     

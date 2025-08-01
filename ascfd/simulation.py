@@ -259,9 +259,9 @@ class Simulation:
         plt.colorbar(im, ax=axs[4])
         axs[4].set_title("electric field x")
         
-        im = axs[5].imshow(self.fields.E[:, :, 1].T, extent=extent, origin='lower', cmap='coolwarm')
+        im = axs[5].imshow(self.fields.B[:, :, 1].T, extent=extent, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[5])
-        axs[5].set_title("electric field y")
+        axs[5].set_title("mag field")
         
         im = axs[6].imshow(self.fields.potential.T, extent=extent, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[6])

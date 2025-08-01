@@ -119,32 +119,58 @@ class FluidSpecies:
         # x_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * lorentz_force[:, :, 0]
         # y_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * lorentz_force[:, :, 0]
         
-        # Apply Lorentz force: F = ρq(E + v×B) to both x and y momentum
+        # Apply Lorentz force: F = ρq(E + v×B) to x, y, and z momentum
         x_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * E[:, :, 0]
         y_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * E[:, :, 1]
         
+        # Z-momentum can be deposited from v×B cross product (azimuthal component)
+        # For now, using electric field z-component if available, otherwise zero
+        # if E.shape[2] > 2:
+        #     z_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * E[:, :, 2]
+        if True:
+            # Magnetic field cross product could deposit z-momentum even with 2D E-field
+            # v×B = (vy*Bz - vz*By, vz*Bx - vx*Bz, vx*By - vy*Bx)
+            # For 2D simulation, typically Bz is the only non-zero B component
+            prim_current = self.euler.cons_to_prim(consU_new)
+            vx = prim_current[self.c.UCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+            vy = prim_current[self.c.VCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+            if B.shape[2] > 2:
+                Bz = B[:, :, 2]
+                z_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * (vx * B[:, :, 1] - vy * B[:, :, 0]) * 10
+            else:
+                z_mom_source = np.zeros_like(x_mom_source)
+        
         consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt * 100
         consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt * 100
+        consU_new[self.c.MWCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += z_mom_source * self.dt * 100
 
         print(f"!@! Electromagnetic coupling strengths:")
         print(f"!@! Max |Ex|: {np.max(np.abs(E[:, :, 0])):.3e}")
         print(f"!@! Max |Ey|: {np.max(np.abs(E[:, :, 1])):.3e}")
-        print(f"!@! Max |x_mom_source|: {np.max(np.abs(x_mom_source)):.3e}")
-        print(f"!@! Max |y_mom_source|: {np.max(np.abs(y_mom_source)):.3e}")
+        # print(f"!@! Max |x_mom_source|: {np.max(np.abs(x_mom_source)):.3e}")
+        # print(f"!@! Max |y_mom_source|: {np.max(np.abs(y_mom_source)):.3e}")
+        print(f"!@! Max |z_mom_source|: {np.max(np.abs(z_mom_source)):.3e}")
         print(f"!@! Max |charge_density|: {np.max(np.abs(charge_density)):.3e}")
+        print(f"!@! Max |z_velocity|: {np.max(np.abs(self.grid[self.c.WCOMP])):.3e}")
     
         # --ENERGY UPDATE--
         # V = self._get_V()
         # energy_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * \
         #     (E[:, :, 0] * V[:, :, 0] + E[:, :, 1] * V[:, :, 1] + E[:, :, 2] * V[:, :, 2]) # cursed vector dot product on two (100, 100, 3 matricies)
         
-        # Energy source: ρq(E·v) = ρq(Ex*vx + Ey*vy)  
+        # Energy source: ρq(E·v) = ρq(Ex*vx + Ey*vy + Ez*vz)  
         prim_new = self.euler.cons_to_prim(consU_new)
         vx = prim_new[self.c.UCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
         vy = prim_new[self.c.VCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+        vz = prim_new[self.c.WCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
         
-        energy_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * \
-            (E[:, :, 0] * vx + E[:, :, 1] * vy) 
+        # Include z-component in energy calculation
+        if E.shape[2] > 2:
+            energy_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * \
+                (E[:, :, 0] * vx + E[:, :, 1] * vy + E[:, :, 2] * vz)
+        else:
+            energy_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * \
+                (E[:, :, 0] * vx + E[:, :, 1] * vy) 
             
         print(f"!@! Max |energy_source|: {np.max(np.abs(energy_source)):.3e}")
         print(f"!@! Energy source range: [{np.min(energy_source):.3e}, {np.max(energy_source):.3e}]")
@@ -185,11 +211,7 @@ class FluidSpecies:
                     
                     vx_drift = self.grid[self.c.UCOMP, i, j]
                     vy_drift = self.grid[self.c.VCOMP, i, j]
-                    
-                    # # Gaussian distribution that peaks at 100
-                    # center = 0.75 * self.inp.nx  # center of the band
-                    # sigma = 0.05 * self.inp.nx    # standard deviation (you can tweak this)
-                    # vz_drift = 1000 * np.exp(-0.5 * ((i - center) / sigma)**2)
+                    vz_drift = self.grid[self.c.WCOMP, i, j]  # Extract z-velocity from fluid grid
                     
                     rho = self.grid[self.c.RHOCOMP, i, j]
                     p = self.grid[self.c.PCOMP, i, j]
@@ -214,7 +236,7 @@ class FluidSpecies:
                         ic_particles[self.pc.YCOMP, p_idx] = (j + y_offset - self.inp.ng) * self.inp.dy 
                         ic_particles[self.pc.UCOMP, p_idx] = vx + vx_drift
                         ic_particles[self.pc.VCOMP, p_idx] = vy + vy_drift
-                        ic_particles[self.pc.WCOMP, p_idx] = vz # + vz_drift
+                        ic_particles[self.pc.WCOMP, p_idx] = vz + vz_drift  # Include z-drift from fluid grid
                         ic_particles[WEIGHT, p_idx] = weight
                         
                         p_idx += 1
@@ -313,8 +335,8 @@ class FluidSpecies:
     
     def _get_V(self):
         
-        w_array = np.zeros_like(self.grid[self.c.UCOMP])
-        V = np.array([self.grid[self.c.UCOMP], self.grid[self.c.VCOMP], w_array])
+        # Use actual z-velocity from grid instead of zeros
+        V = np.array([self.grid[self.c.UCOMP], self.grid[self.c.VCOMP], self.grid[self.c.WCOMP]])
         
         # change (3, 104, 104) to (100, 100, 3)
         V = np.transpose(V, (1, 2, 0))
