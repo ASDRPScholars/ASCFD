@@ -150,7 +150,7 @@ class FluidSpecies:
                 # Physical saturation: momentum source decreases as vz increases
                 # This represents realistic Hall thruster physics where azimuthal velocity 
                 # eventually saturates due to collisions, geometry, etc.
-                v_sat = 0.5  # Saturation velocity scale
+                v_sat = 0.2  # Saturation velocity scale
                 saturation_factor = 1.0 / (1.0 + (np.abs(vz) / v_sat)**2)  # Smooth saturation
                 
                 z_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * cross_product * saturation_factor * 100
@@ -181,6 +181,31 @@ class FluidSpecies:
         print(f"!@! Max |charge_density|: {np.max(np.abs(charge_density)):.3e}")
         print(f"!@! Max |z_velocity|: {np.max(np.abs(self.grid[self.c.WCOMP])):.3e}")
     
+    
+        # --COLLISION DIFFUSION--
+        # --COLLISION DIFFUSION--
+        particle_number_density = self.simulation.neutrals._compute_particle_density_field(self.simulation.neutrals)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] + 0.01
+
+        print("!*! MIN MAX OF PARTICLE_NUMBER_DENSITY IS", np.min(particle_number_density), np.max(particle_number_density))
+
+        # Calculate collision frequency from your particle collisions
+        nu_collision_grid = self.simulation.neutrals.num_collisions / (particle_number_density * self.dt) + 0.01# avoid div by zero
+
+        # Cyclotron frequency
+        omega_ce = self.params.charge * self.fields.B[:, :, 1] / self.params.mass
+
+        # Unmagnetized mobility (this is your baseline)
+        mu_0 = self.params.charge / (self.params.mass * nu_collision_grid)
+
+        # Magnetization parameter
+        magnetization = omega_ce / nu_collision_grid
+
+        # Reduced mobility due to magnetization
+        mu_x_eff = 0.2 * mu_0 / (1 + magnetization**2)
+
+        print("!*! min, max of mu_x_eff", np.min(mu_x_eff), np.max(mu_x_eff))
+        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] -= mu_x_eff * self.dt
+        
         # --ENERGY UPDATE--
         # V = self._get_V()
         # energy_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * \

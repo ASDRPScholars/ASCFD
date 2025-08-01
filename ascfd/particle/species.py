@@ -334,6 +334,8 @@ class ParticleSpecies:
 
         self.WEIGHT = self.pc.NUMQ
         
+        self.num_collisions = np.zeros((self.inp.nx, self.inp.ny))
+        
         # Pre-allocate particle arrays with 3x initial capacity for growth
         initial_capacity = max(self.inp.n_particles * 3, 1000) if self.params.type != "i" else 1000
         self.capacity = initial_capacity
@@ -594,6 +596,8 @@ class ParticleSpecies:
         return (self.params.density * self.inp.dx * self.inp.dy) / self.inp.n_ppc
 
     def update(self):
+        
+        self.num_collisions.fill(0)
         # print("!PARTICLE! update particle!")
         
         # print(f"!PARTICLE! U for {self.params.type} is", self.particles[self.pc.UCOMP])
@@ -841,6 +845,9 @@ class ParticleSpecies:
                 )
                 if event:
                     events.append(event)
+                    i, j = self._get_grid_coordinates(x, y)
+                    if i < self.inp.nx and j < self.inp.ny:
+                        self.num_collisions[i, j] += 1
                 # only allow one collision per timestep per particle
                 break
             #else:
