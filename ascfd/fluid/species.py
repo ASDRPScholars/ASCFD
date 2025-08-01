@@ -109,17 +109,17 @@ class FluidSpecies:
         rho_e = self.grid[self.c.RHOCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
         V_x = self._get_V()[:, :, 0]
 
-        np.set_printoptions(threshold=sys.maxsize)
-        print("SIGMA", sigma)
-        print("n_n", n_n)
-        print("rho_e", rho_e)
-        print("V_x", V_x)
+        # np.set_printoptions(threshold=sys.maxsize)
+        # print("SIGMA", sigma)
+        # print("n_n", n_n)
+        # print("rho_e", rho_e)
+        # print("V_x", V_x)
 
         damping_source = sigma * n_n * rho_e * V_x
 
         print("!*! MIN MAX OF damping_source IS", np.min(damping_source), np.max(damping_source))
 
-        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += damping_source * self.dt * 100
+        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += damping_source * self.dt * 10
 
     
     def _apply_lorentz_source_terms(self, consU_new):
@@ -184,9 +184,9 @@ class FluidSpecies:
             else:
                 z_mom_source = np.zeros_like(x_mom_source)
         
-        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt * 100
-        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt * 100
-        consU_new[self.c.MWCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += z_mom_source * self.dt * 100
+        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt * 10
+        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt * 10
+        consU_new[self.c.MWCOMP, self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] += z_mom_source * self.dt * 10
 
         print(f"!@! Electromagnetic coupling strengths:")
         print(f"!@! Max |Ex|: {np.max(np.abs(E[:, :, 0])):.3e}")
@@ -307,14 +307,14 @@ class FluidSpecies:
                         ic_particles[WEIGHT, p_idx] = weight
                         
                         # Debug: Print vz values for particles in magnetic field region
-                        if abs(vz_drift) > 1e-10:  # Only print where there's significant z-drift
-                            print(f"!DEBUG! Particle at ({i-self.inp.ng}, {j-self.inp.ng}): vz_drift={vz_drift:.3e}, total_vz={vz + vz_drift:.3e}")
+                        # if abs(vz_drift) > 1e-10:  # Only print where there's significant z-drift
+                        #     print(f"!DEBUG! Particle at ({i-self.inp.ng}, {j-self.inp.ng}): vz_drift={vz_drift:.3e}, total_vz={vz + vz_drift:.3e}")
                         
                         p_idx += 1
 
         # Debug: Check vz statistics in final particle array
         vz_particles = ic_particles[self.pc.WCOMP, :]
-        print(f"!DEBUG! convert_to_particles() vz stats: min={np.min(vz_particles):.3e}, max={np.max(vz_particles):.3e}, nonzero_count={np.sum(np.abs(vz_particles) > 1e-10)}")
+        # print(f"!DEBUG! convert_to_particles() vz stats: min={np.min(vz_particles):.3e}, max={np.max(vz_particles):.3e}, nonzero_count={np.sum(np.abs(vz_particles) > 1e-10)}")
         
         return ic_particles
     

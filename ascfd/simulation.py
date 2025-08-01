@@ -221,6 +221,8 @@ class Simulation:
             im = axs[q].imshow(plot_data.T, extent=extent, origin='lower', cmap='magma')
             plt.colorbar(im, ax=axs[q])
 
+            print("!&! PLOT SHAPE", self.c.variable_names[q], np.shape(plot_data))
+
             if self.inp.particle_ics is not None:
                 np.set_printoptions(threshold=sys.maxsize)
                 print("!!SIMULATION!! p electrons x:", self.pelectrons.particles[self.pc.XCOMP])
@@ -230,7 +232,7 @@ class Simulation:
                 print("!!SIMULATION!! p electrons w:", self.pelectrons.particles[self.pc.WCOMP])
 
                 # axs[q].scatter(self.neutrals.particles[self.pc.XCOMP]+self.inp.dx, self.neutrals.particles[self.pc.YCOMP]+self.inp.dy, s=5, color='gray', alpha=0.1)
-                axs[q].scatter(self.ions.particles[self.pc.XCOMP]+self.inp.dx, self.ions.particles[self.pc.YCOMP]+self.inp.dy, s=5, color='blue', alpha=0.2)
+                axs[q].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=5, color='blue', alpha=0.2)
 
             axs[q].set_xlim(self.inp.xlim)
             axs[q].set_ylim(self.inp.ylim)
@@ -257,6 +259,8 @@ class Simulation:
         im = axs[5].imshow(self.fields.E[:, :, 0].T, extent=extent, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[5])
         axs[5].set_title("electric field x")
+
+        print("!&! E SHAPE", np.shape(self.fields.E))
 
         im = axs[6].imshow(self.fields.potential.T, extent=extent, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[6])

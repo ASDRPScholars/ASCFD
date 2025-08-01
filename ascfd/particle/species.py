@@ -676,6 +676,7 @@ class ParticleSpecies:
                 # if not np.isnan(self.particles[self.pc.XCOMP, n]) and not np.isnan(self.particles[self.pc.YCOMP, n]) is not None:
                 if (self._get_grid_coordinates(self.particles[self.pc.XCOMP, n], self.particles[self.pc.YCOMP, n]) is None):
                     particles_to_remove.append(n)
+            
 
         if particles_to_remove:
             active_before = np.sum(self.is_active)
@@ -792,8 +793,8 @@ class ParticleSpecies:
         if self.params.type == "e":
             v_rel = np.sqrt(vx**2 + vy**2 + (vz*10000)**2)
             # Debug: Print collision attempts with significant vz
-            if abs(vz) > 1e-10:
-                print(f"!DEBUG! Electron collision attempt: i={grid_coords[0]} j={grid_coords[1]} vx={vx:.3e}, vy={vy:.3e}, vz={vz:.3e}, v_rel={v_rel:.3e}, energy_ev={0.5 * self.params.mass * v_rel**2:.3e}")
+            # if abs(vz) > 1e-10:
+            #     print(f"!DEBUG! Electron collision attempt: i={grid_coords[0]} j={grid_coords[1]} vx={vx:.3e}, vy={vy:.3e}, vz={vz:.3e}, v_rel={v_rel:.3e}, energy_ev={0.5 * self.params.mass * v_rel**2:.3e}")
             
         if v_rel < 1e-10:
             #print("[ATTEMPT_COLLISIONS] v_rel < 1e-10")
@@ -1042,7 +1043,7 @@ class ParticleSpecies:
         ix = int((x - self.inp.grid_x[0]) / self.inp.dx)
         iy = int((y - self.inp.grid_y[0]) / self.inp.dy)
         if self.inp.ng < ix < self.inp.nx - 2 and self.inp.ng - 1 < iy < self.inp.ny + self.inp.ng - 2:
-            return ix, iy
+            return ix, iy+1
         return None
 
     def update_cross_section_grid(self):
