@@ -68,9 +68,9 @@ class ParticleInitialConditions:
         # kB = 1.380649e-23
         kB = 1
         v_th = np.sqrt(2 * kB * self.params.temperature / self.params.mass)
-        print("!$! IC!", self.params.temperature)
-        print(self.params.mass)
-        print(v_th)
+        # print("!$! IC!", self.params.temperature)
+        # print(self.params.mass)
+        # print(v_th)
 
         if self.params.temperature <= 0:
             return 0.0, 0.0, 0.0
@@ -82,6 +82,6 @@ class ParticleInitialConditions:
         vy = v_th * np.sqrt(-1 * np.log(R1)) * np.sin(2 * np.pi * R2)
         vz = v_th * np.sqrt(-1 * np.log(R3)) * np.cos(2 * np.pi * R4)   
 
-        print(vx, vy, vz)
+        # print(vx, vy, vz)
 
         return vx, vy, vz

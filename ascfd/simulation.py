@@ -53,12 +53,12 @@ class Simulation:
         self.t = self.inp.t0
         self.timestep = 0
         self.dt = self.get_dt()
-        self.dt = 0.002
+        # self.dt = 0.002
         
         # Set timestep for all species
         for species in self.all_species:
             species.dt = self.dt
-            species.dt = 0.002
+            # species.dt = 0.002
         
         # -1 is no output. Always output ICs if we are outputting.
         if self.inp.output_freq >= 0:
@@ -241,8 +241,8 @@ class Simulation:
                 print("!!SIMULATION!! p electrons v:", self.pelectrons.particles[self.pc.VCOMP])
                 print("!!SIMULATION!! p electrons w:", self.pelectrons.particles[self.pc.WCOMP])
 
-                axs[q].scatter(self.neutrals.particles[self.pc.XCOMP]+self.inp.dx, self.neutrals.particles[self.pc.YCOMP]+self.inp.dy, s=5, color='gray', alpha=0.2)
-                axs[q].scatter(self.ions.particles[self.pc.XCOMP]+self.inp.dx, self.ions.particles[self.pc.YCOMP]+self.inp.dy, s=5, color='blue')
+                # axs[q].scatter(self.neutrals.particles[self.pc.XCOMP]+self.inp.dx, self.neutrals.particles[self.pc.YCOMP]+self.inp.dy, s=5, color='gray', alpha=0.1)
+                axs[q].scatter(self.ions.particles[self.pc.XCOMP]+self.inp.dx, self.ions.particles[self.pc.YCOMP]+self.inp.dy, s=5, color='blue', alpha=0.2)
 
             axs[q].set_xlim(self.inp.xlim)
             axs[q].set_ylim(self.inp.ylim)
@@ -280,7 +280,7 @@ class Simulation:
 
         # Save both figures
         fig.suptitle(f"Time: {self.t:.4f}, Timestep: {self.timestep}")
-        plt.tight_layout()
+        fig.tight_layout()
         fig.savefig(output_plotname)
         plt.close(fig)
 

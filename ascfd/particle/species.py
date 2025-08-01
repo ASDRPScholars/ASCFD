@@ -860,13 +860,13 @@ class ParticleSpecies:
                                weight: float, energy_ev: float):
         
         if collision_type == "ionization" and self.params.type == "e":
-            print("!#!#! IONIZED! AT", x/self.inp.dx, y/self.inp.dx)
+            # print("!#!#! IONIZED! AT", x/self.inp.dx, y/self.inp.dx)
             return self._create_ionization_event(particle_idx, x, y, vx, vy, vz, weight, energy_ev)
-        elif collision_type in ["first_excitation", "second_excitation", "third_excitation", "fourth_excitation"] and self.params.type == "e":
-            print("!#!#! EXCITED! AT", x/self.inp.dx, y/self.inp.dx)
+        # elif collision_type in ["first_excitation", "second_excitation", "third_excitation", "fourth_excitation"] and self.params.type == "e":
+        #     print("!#!#! EXCITED! AT", x/self.inp.dx, y/self.inp.dx)
             return self._create_excitation_event(collision_type, particle_idx, energy_ev)
         elif collision_type.startswith("elastic"):
-            print("!#!#! ELASTIC! AT", x/self.inp.dx, y/self.inp.dx)
+            # print("!#!#! ELASTIC! AT", x/self.inp.dx, y/self.inp.dx)
             return self._create_elastic_event(collision_type, particle_idx)
         
         return None
