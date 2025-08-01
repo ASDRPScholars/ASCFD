@@ -660,8 +660,8 @@ class ParticleSpecies:
 
         
                 # v^(n+1/2) = v^(n-1/2) + Δt * a
-                self.particles[self.pc.UCOMP, n] += self.dt * ax * 5e10
-                self.particles[self.pc.VCOMP, n] += self.dt * ay * 5e10
+                self.particles[self.pc.UCOMP, n] += self.dt * ax * 5e7
+                self.particles[self.pc.VCOMP, n] += self.dt * ay * 5e7
         
                 if self.particles[self.pc.UCOMP, n] <= 1e-5 or self.particles[self.pc.VCOMP, n] <= 1e-5:
                     particles_to_remove.append(n)

@@ -64,7 +64,7 @@ class FluidSpecies:
                     consU[icomp, i, j] = consU[icomp, i, j] - delta
                     
         ## --LORENTZ UPDATE--
-        # self._apply_lorentz_source_terms(consU)
+        self._apply_lorentz_source_terms(consU)
 
         ## --P ELECTRONS UPDATE + COLLISIONAL DAMPING--
         new_particle_array = self.convert_to_particles()
