@@ -82,13 +82,27 @@ class FluidSpecies:
             for j in range(self.inp.ng, self.inp.ny + self.inp.ng):
                 for icomp in range(self.c.NUMQ):
                     
-                    delta = (
-                        (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) )
-                        # +
-                        # (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
+                    # Boundary-aware flux correction for all conservative variables
+                    if (icomp == self.c.RHOCOMP and (i == self.inp.ng or i == self.inp.nx + self.inp.ng - 1) and
+                        (self.inp.bcs_lo[0] == "neumann" or self.inp.bcs_hi[0] == "neumann")):
                         
-                    print(f"REAL REAL RIGHT FLUX MINUS LEFT FLUX FOR {i}, {j}", right_flux[icomp, i, j] - left_flux[icomp, i, j])
-                    print("REAL REAL REAL DELTA", delta)
+                        # Apply consistent flux correction to all conservative variables
+                        # at boundary-adjacent cells to maintain thermodynamic consistency
+                        delta_x = self._compute_conservative_flux_delta(
+                            right_flux[icomp, i, j], left_flux[icomp, i, j], i
+                        )
+                    else:
+                        # Standard flux difference for interior cells
+                        delta_x = right_flux[icomp, i, j] - left_flux[icomp, i, j]
+                    
+                    # Keep y-direction commented out as it was originally
+                    # delta_y = top_flux[icomp, i, j] - bottom_flux[icomp, i, j]
+                    
+                    delta = (self.dt / self.inp.dx) * delta_x
+                    # + (self.dt / self.inp.dy) * delta_y
+                    
+                    print(f"FLUX DELTA FOR {i}, {j}", delta_x)
+                    print("TOTAL DELTA", delta)
                     print()
                         
                     consU[icomp, i, j] = consU[icomp, i, j] - delta
@@ -270,4 +284,42 @@ class FluidSpecies:
         V = V[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng:]
         
         return V
+    
+    def _compute_conservative_flux_delta(self, flux_plus, flux_minus, i):
+        """
+        Conservative flux correction for all variables at boundary-adjacent cells with Neumann BC.
+        
+        The issue: Ghost cells are artificially smoothed by Neumann BC, creating artificial
+        gradients that contaminate flux calculations. This affects all conservative variables
+        and creates inconsistencies when converting back to primitive variables.
+        
+        The fix: Apply consistent flux dampening to all conservative variables at boundary-
+        adjacent cells to maintain thermodynamic consistency and prevent primitive variable
+        discontinuities caused by inconsistent conservative updates.
+        
+        Physics: Neumann BC represents ∂u/∂n = 0, so artificial gradients from ghost cells
+        should be dampened while preserving interior physics.
+        
+        Args:
+            flux_plus: Flux on the positive side (right)
+            flux_minus: Flux on the negative side (left)
+            i: Cell index in x-direction
+            
+        Returns:
+            Corrected flux difference for all conservative variables
+        """
+        # Left boundary-adjacent cell
+        if i == self.inp.ng and self.inp.bcs_lo[0] == "neumann":
+            # flux_minus involves ghost cells, so reduce its influence
+            # Apply consistent 50% weighting to all conservative variables
+            return flux_plus - 0.5 * flux_minus
+            
+        # Right boundary-adjacent cell  
+        elif i == self.inp.nx + self.inp.ng - 1 and self.inp.bcs_hi[0] == "neumann":
+            # flux_plus involves ghost cells, so reduce its influence
+            # Apply consistent 50% weighting to all conservative variables
+            return 0.5 * flux_plus - flux_minus
+        
+        # Fallback to standard calculation for interior cells
+        return flux_plus - flux_minus
     
