@@ -370,18 +370,39 @@ class ParticleSpecies:
             self.ics = ParticleInitialConditions(temp_particles, self.inp, self.params)        
             self.ics.apply_ics()
             
+            # Validate initialized data before copying back
+            if np.any(np.isnan(temp_particles)) or np.any(np.isinf(temp_particles)):
+                print(f"ERROR: NaN/inf values in {self.params.type} initial conditions!")
+                nan_mask = np.isnan(temp_particles) | np.isinf(temp_particles)
+                temp_particles[nan_mask] = 0.0
+            
             # Copy back the initialized data
             self.particles[:, :self.active_count] = temp_particles
-            self.particles[self.WEIGHT, :self.active_count] = self.estimate_initial_weight()
+            weight = self.estimate_initial_weight()
+            if not (np.isnan(weight) or np.isinf(weight)):
+                self.particles[self.WEIGHT, :self.active_count] = weight
+            else:
+                print(f"ERROR: Invalid initial weight for {self.params.type}: {weight}")
+                self.particles[self.WEIGHT, :self.active_count] = 1.0  # Default weight
             
         if self.params.type == "i":
             self.active_count = 1
             self.is_active[0] = True
-            self.particles[self.pc.XCOMP, 0] = 0.5 * self.inp.nx
-            self.particles[self.pc.YCOMP, 0] = 0.5 * self.inp.nx
+            
+            # Initialize ion with valid position and velocity
+            init_x = 0.5 * self.inp.nx
+            init_y = 0.5 * self.inp.ny  # Fix: was using nx for both x and y
+            
+            # Validate initial values
+            if np.isnan(init_x) or np.isnan(init_y) or np.isinf(init_x) or np.isinf(init_y):
+                print(f"ERROR: Invalid initial position for ion: x={init_x}, y={init_y}")
+                init_x, init_y = 1.0, 1.0  # Safe fallback
+            
+            self.particles[self.pc.XCOMP, 0] = init_x
+            self.particles[self.pc.YCOMP, 0] = init_y
             self.particles[self.pc.UCOMP, 0] = 100
             self.particles[self.pc.VCOMP, 0] = 0
-            self.particles[self.WEIGHT, 0] = 0
+            self.particles[self.WEIGHT, 0] = 1.0  # Non-zero weight
             
         if self.params.type in ["i", "n"]:
             self.bcs = ParticleBoundaryConditions(self, self.inp, self.params)
@@ -432,7 +453,21 @@ class ParticleSpecies:
         density_field = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
         
         # Only iterate over active particles
-        active_indices = [i for i in range(species.capacity) if species.is_active[i]]
+        # Only compute density for particles with valid positions
+        safe_capacity = min(species.capacity, species.particles.shape[1], len(species.is_active))
+        active_indices = []
+        for i in range(safe_capacity):
+            if (species.is_active[i] and 
+                not np.isnan(species.particles[self.pc.XCOMP, i]) and 
+                not np.isnan(species.particles[self.pc.YCOMP, i]) and
+                not np.isinf(species.particles[self.pc.XCOMP, i]) and 
+                not np.isinf(species.particles[self.pc.YCOMP, i])):
+                active_indices.append(i)
+            elif species.is_active[i]:  # Active but invalid data - cleanup
+                print(f"WARNING: Density computation deactivating {species.params.type} particle {i} with invalid position")
+                species.is_active[i] = False
+                species.free_slots.append(i)
+                species.particles[:, i] = 0.0  # Clear corrupted data
         for i in active_indices:
             x = species.particles[self.pc.XCOMP, i]
             y = species.particles[self.pc.YCOMP, i]
@@ -498,6 +533,14 @@ class ParticleSpecies:
         new_particles = np.zeros((old_components, self.capacity))
         copy_size = min(old_particles, old_particles)  # This is just old_particles, but keeping pattern
         new_particles[:, :copy_size] = self.particles[:, :copy_size]
+        
+        # Verify no NaN values were copied
+        if np.any(np.isnan(new_particles[:, :copy_size])) or np.any(np.isinf(new_particles[:, :copy_size])):
+            print(f"ERROR: NaN/inf values detected during {self.params.type} array expansion!")
+            # Clean up any NaN/inf values
+            nan_mask = np.isnan(new_particles) | np.isinf(new_particles)
+            new_particles[nan_mask] = 0.0
+        
         self.particles = new_particles
         
         # Expand is_active array - copy exactly what exists
@@ -565,8 +608,21 @@ class ParticleSpecies:
             
         if self.params.type in ["i", "n"]:
             # TODO: add leapfrog algorithm here!
-            # Only iterate over active particles
-            active_indices = [i for i in range(self.capacity) if self.is_active[i]]
+            # Only iterate over active particles with valid data
+            safe_capacity = min(self.capacity, self.particles.shape[1], len(self.is_active))
+            active_indices = []
+            for i in range(safe_capacity):
+                if (self.is_active[i] and 
+                    not np.isnan(self.particles[self.pc.XCOMP, i]) and 
+                    not np.isnan(self.particles[self.pc.YCOMP, i]) and
+                    not np.isinf(self.particles[self.pc.XCOMP, i]) and 
+                    not np.isinf(self.particles[self.pc.YCOMP, i])):
+                    active_indices.append(i)
+                elif self.is_active[i]:  # Active but invalid data
+                    print(f"WARNING: Deactivating {self.params.type} particle {i} with invalid position: x={self.particles[self.pc.XCOMP, i]}, y={self.particles[self.pc.YCOMP, i]}")
+                    self.is_active[i] = False
+                    self.free_slots.append(i)
+                    self.particles[:, i] = 0.0  # Clear corrupted data
             
             for n in active_indices:
                 x = self.particles[self.pc.XCOMP, n]
@@ -575,18 +631,43 @@ class ParticleSpecies:
                 Ex, Ey = self._interpolate_electric_field(x, y)
                 # Ex, Ey = self.get_coloumb_source(n)
         
-                # a = (q/m) * E
+                # Validate inputs to prevent NaN propagation
+                if np.isnan(Ex) or np.isnan(Ey) or np.isinf(Ex) or np.isinf(Ey):
+                    print(f"WARNING: Invalid electric field at particle {n}: Ex={Ex}, Ey={Ey}")
+                    particles_to_remove.append(n)
+                    continue
+                
+                # a = (q/m) * E - check for division by zero
+                if self.params.mass == 0:
+                    print(f"ERROR: Zero mass for {self.params.type} particle {n}")
+                    particles_to_remove.append(n)
+                    continue
+                    
                 ax = (self.params.charge / self.params.mass) * Ex
                 ay = (self.params.charge / self.params.mass) * Ey
+                
+                # Check for NaN in acceleration
+                if np.isnan(ax) or np.isnan(ay) or np.isinf(ax) or np.isinf(ay):
+                    print(f"WARNING: Invalid acceleration for particle {n}: ax={ax}, ay={ay}")
+                    particles_to_remove.append(n)
+                    continue
         
                 # v^(n+1/2) = v^(n-1/2) + Δt * a
-                self.particles[self.pc.UCOMP, n] += self.dt * ax * 1000000000
-                self.particles[self.pc.VCOMP, n] += self.dt * ay * 1000000000
+                self.particles[self.pc.UCOMP, n] += self.dt * ax
+                self.particles[self.pc.VCOMP, n] += self.dt * ay
         
                 # x^(n+1) = x^n + Δt * v^(n+1/2)
                 self.particles[self.pc.XCOMP, n] += self.dt * self.particles[self.pc.UCOMP, n]
                 self.particles[self.pc.YCOMP, n] += self.dt * self.particles[self.pc.VCOMP, n]
+                
+                # Validate final position
+                if (np.isnan(self.particles[self.pc.XCOMP, n]) or np.isnan(self.particles[self.pc.YCOMP, n]) or
+                    np.isinf(self.particles[self.pc.XCOMP, n]) or np.isinf(self.particles[self.pc.YCOMP, n])):
+                    print(f"WARNING: Particle {n} position became invalid after update: x={self.particles[self.pc.XCOMP, n]}, y={self.particles[self.pc.YCOMP, n]}")
+                    particles_to_remove.append(n)
+                    continue
 
+                # if not np.isnan(self.particles[self.pc.XCOMP, n]) and not np.isnan(self.particles[self.pc.YCOMP, n]) is not None:
                 if self._get_grid_coordinates(self.particles[self.pc.XCOMP, n], self.particles[self.pc.YCOMP, n]) is None:
                     particles_to_remove.append(n)
             
@@ -779,6 +860,12 @@ class ParticleSpecies:
     def _create_ionization_event(self, particle_idx: int, x: float, y: float, 
                                 vx: float, vy: float, vz: float, weight: float, energy_ev: float):
         """ e + Xe -> e + e + Xe+"""
+        # Validate input parameters
+        if (np.isnan(x) or np.isnan(y) or np.isnan(energy_ev) or np.isnan(weight) or
+            np.isinf(x) or np.isinf(y) or np.isinf(energy_ev) or np.isinf(weight)):
+            print(f"ERROR: Invalid ionization event parameters: x={x}, y={y}, energy={energy_ev}, weight={weight}")
+            return None
+            
         ionization_threshold = self.collision_data.ionization_threshold  # Use LXCAT value: 12.13 eV
         available_energy_ev = energy_ev - ionization_threshold
         
@@ -788,12 +875,16 @@ class ParticleSpecies:
         # !NORM! available_energy_j = available_energy_ev * self.collision_data.E_CHARGE
         available_energy_j = available_energy_ev
         
-        ion = np.zeros(self.pc.NUMQ + 1)
+        # Determine component count based on species type
+        ion_components = self.pc.NUMQ + 1  # Standard components for ions
+        electron_components = self.pc.NUMQ + 1  # May be different for electrons
+        
+        ion = np.zeros(ion_components)
         ion[self.pc.XCOMP] = x
         ion[self.pc.YCOMP] = y
         ion[self.WEIGHT] = weight
         
-        electron = np.zeros(self.pc.NUMQ + 1)
+        electron = np.zeros(electron_components)
         electron[self.pc.XCOMP] = x
         electron[self.pc.YCOMP] = y
         electron[self.WEIGHT] = weight
@@ -824,6 +915,12 @@ class ParticleSpecies:
                 ion[self.pc.WCOMP] = vz * 0.1
 
         products = [ion, electron]
+        
+        # Validate created particles before returning
+        for i, product in enumerate(products):
+            if np.any(np.isnan(product)) or np.any(np.isinf(product)):
+                print(f"ERROR: Invalid product particle {i} in ionization event: {product}")
+                return None
         
         return CollisionEvent(
             event_type="ionization",
@@ -872,10 +969,10 @@ class ParticleSpecies:
             return
             
         ke_current_j = 0.5 * self.params.mass * v_current**2
-        ke_current_ev = ke_current_j / self.collision_data.E_CHARGE
+        ke_current_ev = ke_current_j # / self.collision_data.E_CHARGE
         
         ke_new_ev = max(0.0, ke_current_ev - energy_loss_ev)
-        ke_new_j = ke_new_ev * self.collision_data.E_CHARGE
+        ke_new_j = ke_new_ev # * self.collision_data.E_CHARGE
         
         if ke_new_j > 0:
             v_new = np.sqrt(2 * ke_new_j / self.params.mass)
@@ -918,6 +1015,11 @@ class ParticleSpecies:
             self.particles[self.pc.WCOMP, particle_idx] = v_magnitude * np.cos(phi)
 
     def _get_grid_coordinates(self, x: float, y: float):
+        # Validate inputs first
+        if np.isnan(x) or np.isnan(y) or np.isinf(x) or np.isinf(y):
+            print(f"ERROR: Invalid particle position: x={x}, y={y}")
+            return None
+            
         ix = int((x - self.inp.grid_x[0]) / self.inp.dx)
         iy = int((y - self.inp.grid_y[0]) / self.inp.dy)
         if self.inp.ng <= ix < self.inp.nx + self.inp.ng and self.inp.ng <= iy < self.inp.ny + self.inp.ng:
@@ -1081,9 +1183,21 @@ class ParticleSpecies:
         """Enforce particles per cell using efficient slot-based system"""
         cell_map = {}
         
-        # Only iterate over active particles - ensure bounds safety
+        # Only iterate over active particles - ensure bounds safety and validate data
         safe_capacity = min(self.capacity, self.particles.shape[1], len(self.is_active))
-        active_indices = [i for i in range(safe_capacity) if self.is_active[i]]
+        active_indices = []
+        for i in range(safe_capacity):
+            if (self.is_active[i] and 
+                not np.isnan(self.particles[self.pc.XCOMP, i]) and 
+                not np.isnan(self.particles[self.pc.YCOMP, i]) and
+                not np.isinf(self.particles[self.pc.XCOMP, i]) and 
+                not np.isinf(self.particles[self.pc.YCOMP, i])):
+                active_indices.append(i)
+            elif self.is_active[i]:  # Active but invalid data
+                print(f"WARNING: Deactivating {self.params.type} particle {i} with invalid position: x={self.particles[self.pc.XCOMP, i]}, y={self.particles[self.pc.YCOMP, i]}")
+                self.is_active[i] = False
+                self.free_slots.append(i)
+                self.particles[:, i] = 0.0  # Clear corrupted data
         for i in active_indices:
             x = self.particles[self.pc.XCOMP, i]
             y = self.particles[self.pc.YCOMP, i]
@@ -1111,9 +1225,21 @@ class ParticleSpecies:
         """Compute charge density field from active particles only"""
         rho = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
         
-        # Only iterate over active particles - ensure bounds safety
+        # Only iterate over active particles - ensure bounds safety and validate data
         safe_capacity = min(self.capacity, self.particles.shape[1], len(self.is_active))
-        active_indices = [i for i in range(safe_capacity) if self.is_active[i]]
+        active_indices = []
+        for i in range(safe_capacity):
+            if (self.is_active[i] and 
+                not np.isnan(self.particles[self.pc.XCOMP, i]) and 
+                not np.isnan(self.particles[self.pc.YCOMP, i]) and
+                not np.isinf(self.particles[self.pc.XCOMP, i]) and 
+                not np.isinf(self.particles[self.pc.YCOMP, i])):
+                active_indices.append(i)
+            elif self.is_active[i]:  # Active but invalid data
+                print(f"WARNING: Deactivating {self.params.type} particle {i} with invalid position: x={self.particles[self.pc.XCOMP, i]}, y={self.particles[self.pc.YCOMP, i]}")
+                self.is_active[i] = False
+                self.free_slots.append(i)
+                self.particles[:, i] = 0.0  # Clear corrupted data
         for i in active_indices:
             x = self.particles[self.pc.XCOMP, i]
             y = self.particles[self.pc.YCOMP, i]
@@ -1125,7 +1251,22 @@ class ParticleSpecies:
     
     def _sort_particles_spatially(self):
         """Sort active particles by spatial position for better cache locality"""
-        active_indices = [i for i in range(self.capacity) if self.is_active[i]]
+        # Only sort particles with valid positions
+        safe_capacity = min(self.capacity, self.particles.shape[1], len(self.is_active))
+        active_indices = []
+        for i in range(safe_capacity):
+            if (self.is_active[i] and 
+                not np.isnan(self.particles[self.pc.XCOMP, i]) and 
+                not np.isnan(self.particles[self.pc.YCOMP, i]) and
+                not np.isinf(self.particles[self.pc.XCOMP, i]) and 
+                not np.isinf(self.particles[self.pc.YCOMP, i])):
+                active_indices.append(i)
+            elif self.is_active[i]:  # Active but invalid data
+                print(f"WARNING: Spatial sort deactivating {self.params.type} particle {i} with invalid position: x={self.particles[self.pc.XCOMP, i]}, y={self.particles[self.pc.YCOMP, i]}")
+                self.is_active[i] = False
+                self.free_slots.append(i)
+                self.particles[:, i] = 0.0  # Clear corrupted data
+                
         if len(active_indices) < 2:
             return
         
