@@ -337,6 +337,8 @@ class ParticleSpecies:
         self.num_collisions = np.zeros((self.inp.nx, self.inp.ny))
         self.cross_section_grid = np.zeros((self.inp.nx, self.inp.ny))
         self.sigma_temp_storage = [[[] for _ in range(self.inp.ny)] for _ in range(self.inp.nx)]
+
+        self.collision_count = np.zeros(3)
         
         # Pre-allocate particle arrays with 3x initial capacity for growth
         initial_capacity = max(self.inp.n_particles * 3, 1000) if self.params.type != "i" else 1000
@@ -718,6 +720,13 @@ class ParticleSpecies:
             self._sort_particles_spatially()
             self.sort_counter = 0
 
+        print("--##-- COLLISION EVENTS FOR", self.params.type)
+        print("ionization", self.collision_count[0])
+        print("excitations", self.collision_count[1])
+        print("elastic", self.collision_count[2])
+
+        self.collision_count.fill(0)
+
         return new_particles
 
 
@@ -795,7 +804,7 @@ class ParticleSpecies:
         v_rel = np.sqrt(vx**2 + vy**2 + vz**2)
         
         if self.params.type == "e":
-            v_rel = np.sqrt(vx**2 + vy**2 + (vz*10000)**2)
+            v_rel = np.sqrt(vx**2 + vy**2 + vz**2)
             # Debug: Print collision attempts with significant vz
             # if abs(vz) > 1e-10:
             #     print(f"!DEBUG! Electron collision attempt: i={grid_coords[0]} j={grid_coords[1]} vx={vx:.3e}, vy={vy:.3e}, vz={vz:.3e}, v_rel={v_rel:.3e}, energy_ev={0.5 * self.params.mass * v_rel**2:.3e}")
@@ -827,16 +836,16 @@ class ParticleSpecies:
                 #print("NOT ENOUGH ENERGY FOR", collision_type)
                 continue
                 
-            sigma = collision_data["cross_section_func"](energy_ev) * 1e17
-            
+            sigma = collision_data["cross_section_func"](energy_ev) * 1e18
+                        
+            if sigma <= 0:
+                #print("NEGATIVE SIGMA FOR", collision_type)
+                continue
+
             # Deposit sigma onto grid for cross section tracking
             i, j = self._get_grid_coordinates(x, y)
             if 0 <= i < self.inp.nx and 0 <= j < self.inp.ny:
                 self.sigma_temp_storage[i][j].append(sigma)
-            
-            if sigma <= 0:
-                #print("NEGATIVE SIGMA FOR", collision_type)
-                continue
 
             # nu = n * sigma * v
             nu_collision = neutral_density * sigma * v_rel
@@ -856,8 +865,16 @@ class ParticleSpecies:
                 if event:
                     events.append(event)
                     i, j = self._get_grid_coordinates(x, y)
-                    if i < self.inp.nx and j < self.inp.ny:
-                        self.num_collisions[i, j] += 1
+                    # if i < self.inp.nx and j < self.inp.ny:
+                    #     self.num_collisions[i, j] += 1
+
+                    if event.event_type == "ionization":
+                        self.collision_count[0] += 1
+                    elif event.event_type.endswith("excitation"):
+                        self.collision_count[1] += 1
+                    elif event.event_type.startswith("elastic"):
+                        self.collision_count[2] += 1
+
                 # only allow one collision per timestep per particle
                 break
             #else:
@@ -872,7 +889,7 @@ class ParticleSpecies:
         if collision_type == "ionization" and self.params.type == "e":
             # print("!#!#! IONIZED! AT", x/self.inp.dx, y/self.inp.dx)
             return self._create_ionization_event(particle_idx, x, y, vx, vy, vz, weight, energy_ev)
-        # elif collision_type in ["first_excitation", "second_excitation", "third_excitation", "fourth_excitation"] and self.params.type == "e":
+        elif collision_type in ["first_excitation", "second_excitation", "third_excitation", "fourth_excitation"] and self.params.type == "e":
         #     print("!#!#! EXCITED! AT", x/self.inp.dx, y/self.inp.dx)
             return self._create_excitation_event(collision_type, particle_idx, energy_ev)
         elif collision_type.startswith("elastic"):

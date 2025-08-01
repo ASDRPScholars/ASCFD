@@ -104,6 +104,9 @@ class FluidSpecies:
     
 
     def _apply_damping_source_terms(self, sigma, consU_new):
+            
+        # OK ALL IT IS: a * sigma(e) * n_n * rho_e * V_e
+        
         # --COLLISION DAMPING--
         n_n = self.simulation.neutrals._compute_particle_density_field(self.simulation.neutrals)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] + 0.01
         rho_e = self.grid[self.c.RHOCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
@@ -176,7 +179,7 @@ class FluidSpecies:
                 v_sat = 0.2  # Saturation velocity scale
                 saturation_factor = 1.0 / (1.0 + (np.abs(vz) / v_sat)**2)  # Smooth saturation
                 
-                z_mom_source = charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] * cross_product * saturation_factor * 100
+                z_mom_source = charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] * cross_product * saturation_factor
                 
                 # Debug saturation effect
                 if np.any(saturation_factor < 0.9):
@@ -191,9 +194,9 @@ class FluidSpecies:
             else:
                 z_mom_source = np.zeros_like(x_mom_source)
         
-        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt * 10
-        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt * 10
-        consU_new[self.c.MWCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += z_mom_source * self.dt * 10
+        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt
+        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt
+        consU_new[self.c.MWCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += z_mom_source * self.dt
 
         print("!LORENTZ DEBUG! new MUCOMP:", consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] )
         print(f"!@! Electromagnetic coupling strengths:")
@@ -204,8 +207,6 @@ class FluidSpecies:
         print(f"!@! Max |z_mom_source|: {np.max(np.abs(z_mom_source)):.3e}")
         print(f"!@! Max |charge_density|: {np.max(np.abs(charge_density)):.3e}")
         print(f"!@! Max |z_velocity|: {np.max(np.abs(self.grid[self.c.WCOMP])):.3e}")
-    
-        # OK ALL IT IS: a * sigma(e) * n_n * rho_e * V_e
 
         # --ENERGY UPDATE--
         # V = self._get_V()
@@ -231,7 +232,7 @@ class FluidSpecies:
         if B.shape[2] > 2:
             rho_interior = prim_new[self.c.RHOCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
             # z_mom_source already has *100, so remove it for work calculation
-            z_mom_source_unscaled = z_mom_source / 100  # Remove the arbitrary multiplier
+            z_mom_source_unscaled = z_mom_source  # Remove the arbitrary multiplier
             z_force_per_volume = z_mom_source_unscaled / self.dt  # Force per unit volume (proper units)
             z_force_per_mass = z_force_per_volume / (rho_interior + 1e-12)  # Force per unit mass
             z_work = z_force_per_mass * vz  # Work per unit mass per unit time
@@ -246,7 +247,7 @@ class FluidSpecies:
         print(f"!@! Max |energy_source|: {np.max(np.abs(energy_source)):.3e}")
         print(f"!@! Energy source range: [{np.min(energy_source):.3e}, {np.max(energy_source):.3e}]")
         
-        consU_new[self.c.ECOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += energy_source * self.dt * 100
+        consU_new[self.c.ECOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += energy_source * self.dt
         
     
     def get_charge_density(self):
