@@ -187,96 +187,106 @@ class Simulation:
         
 
     def output(self):
-
-        # Ensure the base output directory exists
+        # Ensure output directories exist
         os.makedirs(self.inp.output_dir, exist_ok=True)
 
-        # Ensure the frames subdirectory exists
         frames_dir = os.path.join(self.inp.output_dir, "frames")
         os.makedirs(frames_dir, exist_ok=True)
-        
+
         data_dir = os.path.join(self.inp.output_dir, "raw data")
         os.makedirs(data_dir, exist_ok=True)
 
-        # File naming convention: output_timestepNum.txt
-        output_filename = os.path.join(
-            data_dir, f"output_{str(self.timestep).zfill(6)}.txt")
-        output_plotname = os.path.join(
-            frames_dir, f"output_{str(self.timestep).zfill(6)}.png")
+        lineplot_dir = os.path.join(self.inp.output_dir, "1d frames")
+        os.makedirs(lineplot_dir, exist_ok=True)
 
+        # File names
+        output_filename = os.path.join(data_dir, f"output_{str(self.timestep).zfill(6)}.txt")
+        output_plotname = os.path.join(frames_dir, f"output_{str(self.timestep).zfill(6)}.png")
+        output_lineplotname = os.path.join(lineplot_dir, f"output_{str(self.timestep).zfill(6)}.png")
+
+        # Write raw text data
         with open(output_filename, 'w') as f:
             f.write(f"# Time: {self.t:.4f}\n")
             f.write("# x, y, density, x-velocity, y-velocity, pressure\n")
-
             for i in range(self.inp.ng, self.inp.nx - self.inp.ng):
                 for j in range(self.inp.ng, self.inp.ny - self.inp.ng):
                     x = self.inp.grid_x[i]
                     y = self.inp.grid_y[j]
                     components = [self.electrons.grid[q, i, j] for q in range(self.c.NUMQ)]
                     f.write(f"{x:.12f}, {y:.12f}, " + ", ".join(f"{comp:.8f}" for comp in components) + "\n")
-                    
+
+        # Set up 2D field plots
         if self.inp.system == "euler2d":
             fig, axs = plt.subplots(2, 4, figsize=(35, 15))
         elif self.inp.system == "mhd2d":
             fig, axs = plt.subplots(2, 4, figsize=(36, 18))
-        axs = axs.ravel()  # Flatten the array to index by i
-        
+        axs = axs.ravel()
+
+        # Set up 1D plots
+        fig1d, axs1d = plt.subplots(1, 2, figsize=(8, 4))
+
         for q in range(self.c.NUMQ):
-            # Exclude ghost cells from the plot
-    
             extent = [self.inp.xlim[0], self.inp.xlim[1], self.inp.ylim[0], self.inp.ylim[1]]
-            
-            plot_data = self.electrons.grid[q]
+
+            # 2D plot
+            plot_data = self.electrons.grid[q, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
             im = axs[q].imshow(plot_data.T, extent=extent, origin='lower', cmap='magma')
-            
-            # if q != 2:
             plt.colorbar(im, ax=axs[q])
-            
+
             if self.inp.particle_ics is not None:
                 np.set_printoptions(threshold=sys.maxsize)
-                
                 print("!!SIMULATION!! p electrons x:", self.pelectrons.particles[self.pc.XCOMP])
                 print("!!SIMULATION!! p electrons y:", self.pelectrons.particles[self.pc.YCOMP])
                 print("!!SIMULATION!! p electrons u:", self.pelectrons.particles[self.pc.UCOMP])
                 print("!!SIMULATION!! p electrons v:", self.pelectrons.particles[self.pc.VCOMP])
                 print("!!SIMULATION!! p electrons w:", self.pelectrons.particles[self.pc.WCOMP])
-                
+
                 axs[q].scatter(self.neutrals.particles[self.pc.XCOMP]+self.inp.dx, self.neutrals.particles[self.pc.YCOMP]+self.inp.dy, s=5, color='gray', alpha=0.2)
                 axs[q].scatter(self.ions.particles[self.pc.XCOMP]+self.inp.dx, self.ions.particles[self.pc.YCOMP]+self.inp.dy, s=5, color='blue')
-            
+
             axs[q].set_xlim(self.inp.xlim)
             axs[q].set_ylim(self.inp.ylim)
-
             axs[q].set_title(self.c.variable_names[q])
             axs[q].set_xlabel('x')
             axs[q].set_ylabel('y')
-            
-            
-        # im = axs[2].imshow(self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng].T, origin='lower', cmap='coolwarm')
-        # plt.colorbar(im, ax=axs[2])
-        # axs[2].set_title("energy")
+
+        # 1D line plot (center slice)
+        iy = round(self.inp.ny / 2)
         
+        plot_data_1d = self.electrons.grid[0, self.inp.ng:-self.inp.ng, iy]
+        axs1d[0].plot(plot_data_1d)
+        axs1d[0].set_title("electron density")
+        axs1d[0].set_xlabel('x')
+        axs1d[0].set_ylabel('Value')
+        
+        energy_1d = 0.5 * (self.electrons.grid[1, self.inp.ng:-self.inp.ng, iy] ** 2 + self.electrons.grid[2, self.inp.ng:-self.inp.ng, iy] ** 2 + self.electrons.grid[3, self.inp.ng:-self.inp.ng, iy] ** 2)
+        axs1d[1].plot(energy_1d)
+        axs1d[1].set_title("electron energy")
+        axs1d[1].set_xlabel('x')
+        axs1d[1].set_ylabel('Value')
+
+        # Field overlays
         im = axs[5].imshow(self.fields.E[:, :, 0].T, extent=extent, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[5])
         axs[5].set_title("electric field x")
-        
-        # im = axs[5].imshow(self.fields.B[:, :, 1].T, extent=extent, origin='lower', cmap='coolwarm')
-        # plt.colorbar(im, ax=axs[5])
-        # axs[5].set_title("mag field")
-        
+
         im = axs[6].imshow(self.fields.potential.T, extent=extent, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[6])
         axs[6].set_title("electric potential")
-        
+
         im = axs[7].imshow(self.fields.charge_density.T, extent=extent, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[7])
         axs[7].set_title("charge density")
-        
 
+        # Save both figures
         fig.suptitle(f"Time: {self.t:.4f}, Timestep: {self.timestep}")
         plt.tight_layout()
         fig.savefig(output_plotname)
-        plt.close()
+        plt.close(fig)
+
+        fig1d.tight_layout()
+        fig1d.savefig(output_lineplotname)
+        plt.close(fig1d)
        
 
 
