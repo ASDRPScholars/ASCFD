@@ -672,7 +672,7 @@ class ParticleSpecies:
                     continue
 
                 # if not np.isnan(self.particles[self.pc.XCOMP, n]) and not np.isnan(self.particles[self.pc.YCOMP, n]) is not None:
-                if self._get_grid_coordinates(self.particles[self.pc.XCOMP, n], self.particles[self.pc.YCOMP, n]) is None:
+                if (self._get_grid_coordinates(self.particles[self.pc.XCOMP, n], self.particles[self.pc.YCOMP, n]) is None):
                     particles_to_remove.append(n)
             
         else:
@@ -1036,7 +1036,7 @@ class ParticleSpecies:
             
         ix = int((x - self.inp.grid_x[0]) / self.inp.dx)
         iy = int((y - self.inp.grid_y[0]) / self.inp.dy)
-        if self.inp.ng <= ix < self.inp.nx + self.inp.ng and self.inp.ng <= iy < self.inp.ny + self.inp.ng:
+        if self.inp.ng < ix < self.inp.nx - 2 and self.inp.ng - 1 < iy < self.inp.ny + self.inp.ng - 2:
             return ix, iy
         return None
 
