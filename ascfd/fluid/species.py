@@ -64,7 +64,7 @@ class FluidSpecies:
                     consU[icomp, i, j] = consU[icomp, i, j] - delta
                     
         ## --LORENTZ UPDATE--
-        self._apply_lorentz_source_terms(consU)
+        # self._apply_lorentz_source_terms(consU)
 
         ## --P ELECTRONS UPDATE + COLLISIONAL DAMPING--
         new_particle_array = self.convert_to_particles()
@@ -122,7 +122,7 @@ class FluidSpecies:
 
         print("!*! MIN MAX OF damping_source IS", np.min(damping_source), np.max(damping_source))
 
-        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += damping_source * self.dt * 1000
+        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += damping_source * self.dt * 10
 
     
     def _apply_lorentz_source_terms(self, consU_new):

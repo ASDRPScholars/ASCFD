@@ -657,11 +657,15 @@ class ParticleSpecies:
                     print(f"WARNING: Invalid acceleration for particle {n}: ax={ax}, ay={ay}")
                     particles_to_remove.append(n)
                     continue
+
         
                 # v^(n+1/2) = v^(n-1/2) + Δt * a
                 self.particles[self.pc.UCOMP, n] += self.dt * ax * 5e10
                 self.particles[self.pc.VCOMP, n] += self.dt * ay * 5e10
         
+                if self.particles[self.pc.UCOMP, n] <= 1e-5 or self.particles[self.pc.VCOMP, n] <= 1e-5:
+                    particles_to_remove.append(n)
+
                 # x^(n+1) = x^n + Δt * v^(n+1/2)
                 self.particles[self.pc.XCOMP, n] += self.dt * self.particles[self.pc.UCOMP, n]
                 self.particles[self.pc.YCOMP, n] += self.dt * self.particles[self.pc.VCOMP, n]
