@@ -30,6 +30,8 @@ class FluidBoundaryConditions:
                 self.f_lo[idim] = self.dirichlet_lo
             elif self.types_lo[idim] == "neumann":
                 self.f_lo[idim] = self.neumann_lo
+            elif self.types_lo[idim] == "neumann_der_constant":
+                self.f_lo[idim] = self.neumann_der_constant_lo
             elif self.types_lo[idim] == "periodic":
                 self.f_lo[idim] = self.periodic_lo
             elif self.types_lo[idim] == "inflow":
@@ -43,6 +45,8 @@ class FluidBoundaryConditions:
                 self.f_hi[idim] = self.dirichlet_hi
             elif self.types_hi[idim] == "neumann":
                 self.f_hi[idim] = self.neumann_hi
+            elif self.types_hi[idim] == "neumann_der_constant":
+                self.f_hi[idim] = self.neumann_der_constant_hi
             elif self.types_hi[idim] == "periodic":
                 self.f_hi[idim] = self.periodic_hi
             elif self.types_hi[idim] == "tame_inflow":
@@ -161,6 +165,45 @@ class FluidBoundaryConditions:
                 for i in range(self.inp.ng, self.inp.nx + self.inp.ng): #valid x-range
                     for j in range(self.inp.ng): # ghost cells in low y-range
                         grid[var, i, j] = grid[var, i, self.inp.ny + j]
+
+
+    def neumann_der_constant_lo(self, grid, dim: int) -> None:
+        # neumann boundary condition that maintains constant derivative at low boundary
+        for var in range(self.c.NUMQ): # all variables in the grid
+            if dim == 0:  # low boundary in x-direction
+                for i in range(self.inp.ng): # ghost cells
+                    for j in range(self.inp.ng, self.inp.ny + self.inp.ng):  # valid y-range
+                        # extrapolate: ghost = 2*boundary - interior
+                        boundary_idx = self.inp.ng
+                        interior_idx = self.inp.ng + 1
+                        grid[var, i, j] = 2 * grid[var, boundary_idx, j] - grid[var, interior_idx, j]
+                        
+            else:  # low boundary in y-direction
+                for i in range(self.inp.ng, self.inp.nx + self.inp.ng): # valid x-range
+                    for j in range(self.inp.ng): # ghost cells
+                        # extrapolate: ghost = 2*boundary - interior
+                        boundary_idx = self.inp.ng
+                        interior_idx = self.inp.ng + 1
+                        grid[var, i, j] = 2 * grid[var, i, boundary_idx] - grid[var, i, interior_idx]
+
+    
+    def neumann_der_constant_hi(self, grid, dim: int) -> None:
+        # neumann boundary condition that maintains constant derivative at high boundary
+        for var in range(self.c.NUMQ): # all variables in the grid
+            if dim == 0:  # high boundary in x-direction
+                for i in range(self.inp.nx + self.inp.ng, self.inp.nx + 2*self.inp.ng): # ghost cells
+                    for j in range(self.inp.ng, self.inp.ny + self.inp.ng): # valid y-range
+                        # extrapolate: ghost = 2*boundary - interior
+                        boundary_idx = self.inp.nx + self.inp.ng - 1
+                        interior_idx = self.inp.nx + self.inp.ng - 2
+                        grid[var, i, j] = 2 * grid[var, boundary_idx, j] - grid[var, interior_idx, j]
+            else:  # high boundary in y-direction
+                for i in range(self.inp.ng, self.inp.nx + self.inp.ng): # valid x-range
+                    for j in range(self.inp.ny + self.inp.ng, self.inp.ny + 2*self.inp.ng): # ghost cells
+                        # extrapolate: ghost = 2*boundary - interior
+                        boundary_idx = self.inp.ny + self.inp.ng - 1
+                        interior_idx = self.inp.ny + self.inp.ng - 2
+                        grid[var, i, j] = 2 * grid[var, i, boundary_idx] - grid[var, i, interior_idx]
 
     
     def periodic_hi(self, grid, dim: int) -> None:
