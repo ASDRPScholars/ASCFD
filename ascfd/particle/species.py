@@ -659,8 +659,8 @@ class ParticleSpecies:
                     continue
         
                 # v^(n+1/2) = v^(n-1/2) + Δt * a
-                self.particles[self.pc.UCOMP, n] += self.dt * ax * 5e8
-                self.particles[self.pc.VCOMP, n] += self.dt * ay * 5e8
+                self.particles[self.pc.UCOMP, n] += self.dt * ax * 5e10
+                self.particles[self.pc.VCOMP, n] += self.dt * ay * 5e10
         
                 # x^(n+1) = x^n + Δt * v^(n+1/2)
                 self.particles[self.pc.XCOMP, n] += self.dt * self.particles[self.pc.UCOMP, n]
@@ -1042,8 +1042,9 @@ class ParticleSpecies:
             
         ix = int((x - self.inp.grid_x[0]) / self.inp.dx)
         iy = int((y - self.inp.grid_y[0]) / self.inp.dy)
-        if self.inp.ng < ix < self.inp.nx - 2 and self.inp.ng - 1 < iy < self.inp.ny + self.inp.ng - 2:
-            return ix, iy+1
+        # if self.inp.ng < ix < self.inp.nx - 2 and self.inp.ng - 1 < iy < self.inp.ny + self.inp.ng - 2:
+        if -1 <= ix <= self.inp.nx + self.inp.ng and -1 <= iy <= self.inp.ny + self.inp.ng:
+            return ix, iy
         return None
 
     def update_cross_section_grid(self):

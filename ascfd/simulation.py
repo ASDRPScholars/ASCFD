@@ -217,21 +217,22 @@ class Simulation:
             extent = [self.inp.xlim[0], self.inp.xlim[1], self.inp.ylim[0], self.inp.ylim[1]]
 
             # 2D plot
-            plot_data = self.electrons.grid[q, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+            # plot_data = self.electrons.grid[q, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+            plot_data = self.electrons.grid[q]
             im = axs[q].imshow(plot_data.T, extent=extent, origin='lower', cmap='magma')
             plt.colorbar(im, ax=axs[q])
 
             print("!&! PLOT SHAPE", self.c.variable_names[q], np.shape(plot_data))
 
             if self.inp.particle_ics is not None:
-                np.set_printoptions(threshold=sys.maxsize)
-                print("!!SIMULATION!! p electrons x:", self.pelectrons.particles[self.pc.XCOMP])
-                print("!!SIMULATION!! p electrons y:", self.pelectrons.particles[self.pc.YCOMP])
-                print("!!SIMULATION!! p electrons u:", self.pelectrons.particles[self.pc.UCOMP])
-                print("!!SIMULATION!! p electrons v:", self.pelectrons.particles[self.pc.VCOMP])
-                print("!!SIMULATION!! p electrons w:", self.pelectrons.particles[self.pc.WCOMP])
+                # np.set_printoptions(threshold=sys.maxsize)
+                # print("!!SIMULATION!! p electrons x:", self.pelectrons.particles[self.pc.XCOMP])
+                # print("!!SIMULATION!! p electrons y:", self.pelectrons.particles[self.pc.YCOMP])
+                # print("!!SIMULATION!! p electrons u:", self.pelectrons.particles[self.pc.UCOMP])
+                # print("!!SIMULATION!! p electrons v:", self.pelectrons.particles[self.pc.VCOMP])
+                # print("!!SIMULATION!! p electrons w:", self.pelectrons.particles[self.pc.WCOMP])
 
-                # axs[q].scatter(self.neutrals.particles[self.pc.XCOMP]+self.inp.dx, self.neutrals.particles[self.pc.YCOMP]+self.inp.dy, s=5, color='gray', alpha=0.1)
+                axs[q].scatter(self.neutrals.particles[self.pc.XCOMP], self.neutrals.particles[self.pc.YCOMP], s=5, color='gray', alpha=0.2)
                 axs[q].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=5, color='blue', alpha=0.2)
 
             axs[q].set_xlim(self.inp.xlim)
