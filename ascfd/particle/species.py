@@ -653,8 +653,8 @@ class ParticleSpecies:
                     continue
         
                 # v^(n+1/2) = v^(n-1/2) + Δt * a
-                self.particles[self.pc.UCOMP, n] += self.dt * ax
-                self.particles[self.pc.VCOMP, n] += self.dt * ay
+                self.particles[self.pc.UCOMP, n] += self.dt * ax * 5e8
+                self.particles[self.pc.VCOMP, n] += self.dt * ay * 5e8
         
                 # x^(n+1) = x^n + Δt * v^(n+1/2)
                 self.particles[self.pc.XCOMP, n] += self.dt * self.particles[self.pc.UCOMP, n]
@@ -785,6 +785,13 @@ class ParticleSpecies:
             return []
 
         v_rel = np.sqrt(vx**2 + vy**2 + vz**2)
+        
+        if self.params.type == "e":
+            v_rel = np.sqrt(vx**2 + vy**2 + (vz*10000)**2)
+            # Debug: Print collision attempts with significant vz
+            if abs(vz) > 1e-10:
+                print(f"!DEBUG! Electron collision attempt: i={grid_coords[0]} j={grid_coords[1]} vx={vx:.3e}, vy={vy:.3e}, vz={vz:.3e}, v_rel={v_rel:.3e}, energy_ev={0.5 * self.params.mass * v_rel**2:.3e}")
+            
         if v_rel < 1e-10:
             #print("[ATTEMPT_COLLISIONS] v_rel < 1e-10")
             print("v_rel is", v_rel)

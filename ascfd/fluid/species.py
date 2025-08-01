@@ -132,11 +132,39 @@ class FluidSpecies:
             # v×B = (vy*Bz - vz*By, vz*Bx - vx*Bz, vx*By - vy*Bx)
             # For 2D simulation, typically Bz is the only non-zero B component
             prim_current = self.euler.cons_to_prim(consU_new)
+            
+            # Check for NaN propagation from cons_to_prim conversion
+            if np.any(np.isnan(prim_current)):
+                print(f"!ERROR! NaN in prim_current after cons_to_prim!")
+                print(f"Density: min={np.min(prim_current[self.c.RHOCOMP]):.3e}, nan_count={np.sum(np.isnan(prim_current[self.c.RHOCOMP]))}")
+                print(f"Pressure: min={np.min(prim_current[self.c.PCOMP]):.3e}, nan_count={np.sum(np.isnan(prim_current[self.c.PCOMP]))}")
+                print(f"Energy check - before cons_to_prim, consU energy: min={np.min(consU_new[self.c.ECOMP]):.3e}")
+            
             vx = prim_current[self.c.UCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
             vy = prim_current[self.c.VCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+            vz = prim_current[self.c.WCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
             if B.shape[2] > 2:
                 Bz = B[:, :, 2]
-                z_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * (vx * B[:, :, 1] - vy * B[:, :, 0]) * 10
+                cross_product = vx * B[:, :, 1] - vy * B[:, :, 0]
+                
+                # Physical saturation: momentum source decreases as vz increases
+                # This represents realistic Hall thruster physics where azimuthal velocity 
+                # eventually saturates due to collisions, geometry, etc.
+                v_sat = 0.5  # Saturation velocity scale
+                saturation_factor = 1.0 / (1.0 + (np.abs(vz) / v_sat)**2)  # Smooth saturation
+                
+                z_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * cross_product * saturation_factor * 100
+                
+                # Debug saturation effect
+                if np.any(saturation_factor < 0.9):
+                    print(f"!SATURATION! Min factor: {np.min(saturation_factor):.3f}, Max vz: {np.max(np.abs(vz)):.3e}")
+                
+                # Check z_mom_source immediately after calculation
+                if np.any(np.isnan(z_mom_source)):
+                    print(f"!ERROR! NaN in z_mom_source calculation!")
+                    print(f"charge_density: min={np.min(charge_density):.3e}, max={np.max(charge_density):.3e}, nan_count={np.sum(np.isnan(charge_density))}")
+                    print(f"vx: min={np.min(vx):.3e}, max={np.max(vx):.3e}, nan_count={np.sum(np.isnan(vx))}")
+                    print(f"vy: min={np.min(vy):.3e}, max={np.max(vy):.3e}, nan_count={np.sum(np.isnan(vy))}")
             else:
                 z_mom_source = np.zeros_like(x_mom_source)
         
@@ -158,19 +186,36 @@ class FluidSpecies:
         # energy_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * \
         #     (E[:, :, 0] * V[:, :, 0] + E[:, :, 1] * V[:, :, 1] + E[:, :, 2] * V[:, :, 2]) # cursed vector dot product on two (100, 100, 3 matricies)
         
-        # Energy source: ρq(E·v) = ρq(Ex*vx + Ey*vy + Ez*vz)  
+        # Energy source: ρq(E·v) + work done by magnetic acceleration
         prim_new = self.euler.cons_to_prim(consU_new)
         vx = prim_new[self.c.UCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
         vy = prim_new[self.c.VCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
         vz = prim_new[self.c.WCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
         
-        # Include z-component in energy calculation
+        # Electric field work
         if E.shape[2] > 2:
-            energy_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * \
+            electric_work = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * \
                 (E[:, :, 0] * vx + E[:, :, 1] * vy + E[:, :, 2] * vz)
         else:
-            energy_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * \
-                (E[:, :, 0] * vx + E[:, :, 1] * vy) 
+            electric_work = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * \
+                (E[:, :, 0] * vx + E[:, :, 1] * vy)
+        
+        # CRITICAL: Add work done by z-momentum acceleration  
+        # Work = F_z · v_z, but be careful with multiplier scaling!
+        if B.shape[2] > 2:
+            rho_interior = prim_new[self.c.RHOCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+            # z_mom_source already has *100, so remove it for work calculation
+            z_mom_source_unscaled = z_mom_source / 100  # Remove the arbitrary multiplier
+            z_force_per_volume = z_mom_source_unscaled / self.dt  # Force per unit volume (proper units)
+            z_force_per_mass = z_force_per_volume / (rho_interior + 1e-12)  # Force per unit mass
+            z_work = z_force_per_mass * vz  # Work per unit mass per unit time
+            z_work *= rho_interior  # Convert back to work per unit volume
+            print(f"!DEBUG! Z-work stats: max={np.max(np.abs(z_work)):.3e}, z_mom_max={np.max(np.abs(z_mom_source)):.3e}")
+        else:
+            z_work = np.zeros_like(vx)
+        
+        # Total energy source
+        energy_source = electric_work + z_work 
             
         print(f"!@! Max |energy_source|: {np.max(np.abs(energy_source)):.3e}")
         print(f"!@! Energy source range: [{np.min(energy_source):.3e}, {np.max(energy_source):.3e}]")
@@ -196,8 +241,8 @@ class FluidSpecies:
         # TODO: DO WE ACTUALLY NEED n_ppc particle electrons??
         n_particles = self.inp.n_ppc * self.inp.nx * self.inp.ny
         
-        # TODO: !TEMP! Z VELOCITY FOR ENERGY
-        ic_particles = np.zeros((self.pc.NUMQ + 2, n_particles))
+        # Particle array: [x, y, vx, vy, vz, weight] = 6 components
+        ic_particles = np.zeros((self.pc.NUMQ + 1, n_particles))
         
         # kB = 1.380649e-23
         kB = 1
@@ -227,7 +272,11 @@ class FluidSpecies:
 
                         vx = v_th * np.sqrt(-1 * np.log(R1)) * np.cos(2 * np.pi * R2)
                         vy = v_th * np.sqrt(-1 * np.log(R1)) * np.sin(2 * np.pi * R2)
-                        vz = v_th * np.sqrt(-1 * np.log(R3)) * np.cos(2 * np.pi * R4)
+                        vz = 0.0  # TEMP: Remove thermal z-velocity to see spatial drift
+                        
+                        # Debug: Check thermal vs drift magnitudes
+                        if abs(vz_drift) > 1e-10 or (i % 10 == 0 and j % 10 == 0):  # Sample some cells
+                            print(f"!DEBUG! Cell ({i-self.inp.ng}, {j-self.inp.ng}): v_th={v_th:.3e}, vz_thermal={vz:.3e}, vz_drift={vz_drift:.3e}, ratio={abs(vz_drift/vz) if abs(vz) > 1e-12 else 0:.3e}")
                         
                         x_offset = np.random.uniform(-0.4999, 0.5)
                         y_offset = np.random.uniform(-0.4999, 0.5)
@@ -239,8 +288,16 @@ class FluidSpecies:
                         ic_particles[self.pc.WCOMP, p_idx] = vz + vz_drift  # Include z-drift from fluid grid
                         ic_particles[WEIGHT, p_idx] = weight
                         
+                        # Debug: Print vz values for particles in magnetic field region
+                        if abs(vz_drift) > 1e-10:  # Only print where there's significant z-drift
+                            print(f"!DEBUG! Particle at ({i-self.inp.ng}, {j-self.inp.ng}): vz_drift={vz_drift:.3e}, total_vz={vz + vz_drift:.3e}")
+                        
                         p_idx += 1
 
+        # Debug: Check vz statistics in final particle array
+        vz_particles = ic_particles[self.pc.WCOMP, :]
+        print(f"!DEBUG! convert_to_particles() vz stats: min={np.min(vz_particles):.3e}, max={np.max(vz_particles):.3e}, nonzero_count={np.sum(np.abs(vz_particles) > 1e-10)}")
+        
         return ic_particles
     
     

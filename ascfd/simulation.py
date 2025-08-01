@@ -53,12 +53,12 @@ class Simulation:
         self.t = self.inp.t0
         self.timestep = 0
         self.dt = self.get_dt()
-        # self.dt = 0.002
+        self.dt = 0.002
         
         # Set timestep for all species
         for species in self.all_species:
             species.dt = self.dt
-            # species.dt = 0.002
+            species.dt = 0.002
         
         # -1 is no output. Always output ICs if we are outputting.
         if self.inp.output_freq >= 0:
@@ -229,8 +229,8 @@ class Simulation:
             plot_data = self.electrons.grid[q, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
             im = axs[q].imshow(plot_data.T, extent=extent, origin='lower', cmap='magma')
             
-            if q != 2:
-                plt.colorbar(im, ax=axs[q])
+            # if q != 2:
+            plt.colorbar(im, ax=axs[q])
             
             if self.inp.particle_ics is not None:
                 np.set_printoptions(threshold=sys.maxsize)
@@ -239,6 +239,7 @@ class Simulation:
                 print("!!SIMULATION!! p electrons y:", self.pelectrons.particles[self.pc.YCOMP])
                 print("!!SIMULATION!! p electrons u:", self.pelectrons.particles[self.pc.UCOMP])
                 print("!!SIMULATION!! p electrons v:", self.pelectrons.particles[self.pc.VCOMP])
+                print("!!SIMULATION!! p electrons w:", self.pelectrons.particles[self.pc.WCOMP])
                 
                 axs[q].scatter(self.neutrals.particles[self.pc.XCOMP], self.neutrals.particles[self.pc.YCOMP], s=5, color='gray', alpha=0.2)
                 axs[q].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=5, color='blue')
@@ -251,17 +252,17 @@ class Simulation:
             axs[q].set_ylabel('y')
             
             
-        im = axs[2].imshow(self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng].T, origin='lower', cmap='coolwarm')
-        plt.colorbar(im, ax=axs[2])
-        axs[2].set_title("energy")
+        # im = axs[2].imshow(self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng].T, origin='lower', cmap='coolwarm')
+        # plt.colorbar(im, ax=axs[2])
+        # axs[2].set_title("energy")
         
-        im = axs[4].imshow(self.fields.E[:, :, 0].T, extent=extent, origin='lower', cmap='coolwarm')
-        plt.colorbar(im, ax=axs[4])
-        axs[4].set_title("electric field x")
-        
-        im = axs[5].imshow(self.fields.B[:, :, 1].T, extent=extent, origin='lower', cmap='coolwarm')
+        im = axs[5].imshow(self.fields.E[:, :, 0].T, extent=extent, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[5])
-        axs[5].set_title("mag field")
+        axs[5].set_title("electric field x")
+        
+        # im = axs[5].imshow(self.fields.B[:, :, 1].T, extent=extent, origin='lower', cmap='coolwarm')
+        # plt.colorbar(im, ax=axs[5])
+        # axs[5].set_title("mag field")
         
         im = axs[6].imshow(self.fields.potential.T, extent=extent, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[6])
