@@ -315,16 +315,19 @@ class FluidBoundaryConditions:
     def tame_inflow_hi(self, grid, dim: int) -> None:
 
         if dim == 0:  # hi boundary in x-direction
-            print("CALLING HIGH INFLOW X")
             # Fill main boundary region
-            print("GRID SHAPE IS", np.shape(grid))
-            for i in range(self.inp.nx + self.inp.ng, self.inp.nx + 2*self.inp.ng): # ghost cells in high x-range
-                for j in range(self.inp.ny_with_ghosts):  # main boundary
-                    print("CURRENTLY AT J =", j) 
+            for i in range(self.inp.nx + self.inp.ng, self.inp.nx + 2*self.inp.ng):  # ghost cells in high x-range
+                for j in range(self.inp.ny_with_ghosts):
+                    # Compute vertical position normalized from 0 (bottom) to 1 (top)
+                    y_normalized = j / (self.inp.ny_with_ghosts - 1)
+
+                    # Apply a cosine profile: peaks at center (y=0.5), tapers to 0 at top and bottom
+                    taper = 0.5 * (1 - np.cos(2 * np.pi * y_normalized))  # smooth bump from 0 to 1 to 0
+                    u_value = -taper  # keep negative for inflow
+
                     grid[self.c.RHOCOMP, i, j] = 1
                     grid[self.c.PCOMP, i, j] = 1
-                    grid[self.c.UCOMP, i, j] = -1
-                    print(f"SET U AT {i}, {j} TO", grid[self.c.UCOMP, i, j])
+                    grid[self.c.UCOMP, i, j] = u_value
                     grid[self.c.VCOMP, i, j] = 0
                     
         else:  # hi boundary in y-direction
