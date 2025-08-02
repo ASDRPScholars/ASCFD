@@ -9,6 +9,7 @@ from ascfd.fields.fields import Fields
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import os
 import sys
 import subprocess
@@ -213,7 +214,7 @@ class Simulation:
 
         # Set up 2D field plots
         if self.inp.system == "euler2d":
-            fig, axs = plt.subplots(2, 4, figsize=(20, 5))
+            fig, axs = plt.subplots(3, 4, figsize=(20, 7))
         elif self.inp.system == "mhd2d":
             fig, axs = plt.subplots(2, 4, figsize=(36, 18))
         axs = axs.ravel()
@@ -221,7 +222,7 @@ class Simulation:
         # Set up 1D plots
         fig1d, axs1d = plt.subplots(1, 3, figsize=(12, 4))
 
-        for q in range(self.c.NUMQ - 1):
+        for q in range(self.c.NUMQ):
             extent = [self.inp.xlim[0], self.inp.xlim[1], self.inp.ylim[0], self.inp.ylim[1]]
 
             # 2D plot
@@ -232,7 +233,7 @@ class Simulation:
 
             print("!&! PLOT SHAPE", self.c.variable_names[q], np.shape(plot_data))
 
-            if self.inp.particle_ics is not None:
+            # if self.inp.particle_ics is not None:
                 # np.set_printoptions(threshold=sys.maxsize)
                 # print("!!SIMULATION!! p electrons x:", self.pelectrons.particles[self.pc.XCOMP])
                 # print("!!SIMULATION!! p electrons y:", self.pelectrons.particles[self.pc.YCOMP])
@@ -241,28 +242,22 @@ class Simulation:
                 # print("!!SIMULATION!! p electrons w:", self.pelectrons.particles[self.pc.WCOMP])
 
                 # axs[q].scatter(self.neutrals.particles[self.pc.XCOMP], self.neutrals.particles[self.pc.YCOMP], s=5, color='gray', alpha=0.2)
-                axs[q].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=5, color='blue', alpha=0.2)
+                # axs[q].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=5, color='blue', alpha=0.2)
 
             axs[q].set_xlim(self.inp.xlim)
             axs[q].set_ylim(self.inp.ylim)
-            axs[q].set_title(self.c.variable_names[q])
-            axs[q].set_xlabel('x')
-            axs[q].set_ylabel('y')
+            axs[q].set_title(self.c.variable_names[q], weight='bold')
 
         # 1D line plot (center slice)
         iy = round(self.inp.ny / 2)
         
         plot_data_1d = self.electrons.grid[0, self.inp.ng:-self.inp.ng, iy]
         axs1d[0].plot(plot_data_1d)
-        axs1d[0].set_title("electron density")
-        axs1d[0].set_xlabel('x')
-        axs1d[0].set_ylabel('Value')
+        axs1d[0].set_title("Electron Density", weight='bold')
         
         energy_1d = 0.5 * self.electrons.grid[0, self.inp.ng:-self.inp.ng, iy] * (self.electrons.grid[1, self.inp.ng:-self.inp.ng, iy] ** 2 + self.electrons.grid[2, self.inp.ng:-self.inp.ng, iy] ** 2 + self.electrons.grid[3, self.inp.ng:-self.inp.ng, iy] ** 2)
         axs1d[1].plot(energy_1d)
-        axs1d[1].set_title("electron energy")
-        axs1d[1].set_xlabel('x')
-        axs1d[1].set_ylabel('Value')
+        axs1d[1].set_title("Electron Energy (eV)", weight='bold')
         
         # Ionization frequency vs X position
         if hasattr(self, 'pelectrons') and hasattr(self.pelectrons, 'ionization_positions_x'):
@@ -274,40 +269,76 @@ class Simulation:
                 # Create histogram bins for x grid points
                 x_bins = np.arange(self.inp.ng, self.inp.nx - self.inp.ng + 1)
                 ionization_freq, _ = np.histogram(x_indices, bins=x_bins)
-                axs1d[2].plot(x_bins[:-1], ionization_freq)
-                axs1d[2].set_title("ionization frequency vs X")
-                axs1d[2].set_xlabel('x grid index')
-                axs1d[2].set_ylabel('ionizations per timestep')
-            else:
-                axs1d[2].plot([])
-                axs1d[2].set_title("ionization frequency vs X (no data)")
-                axs1d[2].set_xlabel('x grid index')
-                axs1d[2].set_ylabel('ionizations per timestep')
-        else:
-            axs1d[2].plot([])
-            axs1d[2].set_title("ionization frequency vs X (no particles)")
-            axs1d[2].set_xlabel('x grid index')
-            axs1d[2].set_ylabel('ionizations per timestep')
+                
+                # Smooth the data with a moving average
+                window_size = min(5, len(ionization_freq) // 3)  # Adaptive window size
+                if window_size >= 3:
+                    from scipy.ndimage import gaussian_filter1d
+                    ionization_freq_smooth = gaussian_filter1d(ionization_freq.astype(float), sigma=1.5)
+                else:
+                    ionization_freq_smooth = ionization_freq
+                
+                axs1d[2].plot(x_bins[:-1], ionization_freq_smooth)
+                axs1d[2].set_title("Electron-Neutral Collision Frequency", weight='bold')
 
-        im = axs[4].imshow(self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng].T, extent=extent, origin='lower', cmap='coolwarm')
-        plt.colorbar(im, ax=axs[4])
-        axs[4].set_title("iuon density")
-        print("ION DENSITY", self.ions._compute_particle_density_field(self.ions))
+        #     else:
+        #         axs1d[2].plot([])
+        #         axs1d[2].set_title("ionization frequency vs X (no data)", weight='bold')
+        #         axs1d[2].set_xlabel('x grid index')
+        #         axs1d[2].set_ylabel('ionizations per timestep')
+        # else:
+        #     axs1d[2].plot([])
+        #     axs1d[2].set_title("ionization frequency vs X (no particles)", weight='bold')
+        #     axs1d[2].set_xlabel('x grid index')
+        #     axs1d[2].set_ylabel('ionizations per timestep')
+
+        im = axs[5].imshow(self.electrons.grid[0, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng].T, extent=extent, origin='lower', cmap='magma')
+        plt.colorbar(im, ax=axs[5])
+        axs[5].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=5, color='blue', alpha=0.2, clip_on=True)
+        axs[5].set_xlim(self.inp.xlim)
+        axs[5].set_ylim(self.inp.ylim)
+        axs[5].set_title("Ion Distribution", weight='bold')
+        # print("ION DENSITY", self.ions._compute_particle_density_field(self.ions))
 
         # Field overlays
-        im = axs[5].imshow(self.fields.E[:, :, 0].T, extent=extent, origin='lower', cmap='coolwarm')
-        plt.colorbar(im, ax=axs[5])
-        axs[5].set_title("electric field x")
+        im = axs[6].imshow(self.fields.E[:, :, 0].T, extent=extent, origin='lower', cmap='coolwarm')
+        plt.colorbar(im, ax=axs[6])
+        axs[6].set_title("Electric Field X", weight='bold')
 
         print("!&! E SHAPE", np.shape(self.fields.E))
 
-        im = axs[6].imshow(self.fields.potential.T, extent=extent, origin='lower', cmap='coolwarm')
-        plt.colorbar(im, ax=axs[6])
-        axs[6].set_title("electric potential")
-
-        im = axs[7].imshow(self.fields.charge_density.T[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng], extent=extent, origin='lower', cmap='coolwarm')
+        im = axs[7].imshow(self.fields.potential.T, extent=extent, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[7])
-        axs[7].set_title("charge density")
+        axs[7].set_title("Electric Potential", weight='bold')
+
+        from scipy.ndimage import gaussian_filter
+        charge_density_data = self.fields.charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+        charge_density_smooth = gaussian_filter(charge_density_data, sigma=3.0)
+        im = axs[8].imshow(charge_density_smooth.T, extent=extent, origin='lower', cmap='coolwarm')
+        plt.colorbar(im, ax=axs[8])
+        axs[8].set_title("Charge Density", weight='bold')
+
+        ion_density_data = self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+        ion_density_smooth = gaussian_filter(ion_density_data, sigma=3.0)
+        im = axs[9].imshow(ion_density_smooth.T, extent=extent, origin='lower', cmap=mpl.cm.Blues)
+        plt.colorbar(im, ax=axs[9])
+        axs[9].set_title("Ion Density", weight='bold')
+
+        # im = axs[10].imshow(ion_density_smooth.T, extent=extent, origin='lower', cmap=mpl.cm.Blues)
+        # plt.colorbar(im, ax=axs[10])
+        # axs[10].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=5, color='blue', alpha=0.2, clip_on=True)
+        # axs[10].set_title("Ion Density", weight='bold')
+
+        energy_data = self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+        im = axs[10].imshow(energy_data.T, extent=extent, origin='lower', cmap='magma')
+        plt.colorbar(im, ax=axs[10])
+        axs[10].set_title("Energy (eV)", weight='bold')
+
+        x_mom_data = self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+        im = axs[11].imshow(energy_data.T, extent=extent, origin='lower', cmap='magma')
+        plt.colorbar(im, ax=axs[11])
+        axs[11].set_title("X-Momentum", weight='bold')
+
 
 
         # Save both figures
