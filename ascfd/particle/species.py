@@ -1094,7 +1094,7 @@ class ParticleSpecies:
         if len(active_indices) > 0:
             # Vectorized charge density computation
             x_positions = self.particles[self.pc.XCOMP, active_indices]
-            y_positions = self.particles[self.pc.YCOMP, active_indices] - 1
+            y_positions = self.particles[self.pc.YCOMP, active_indices] 
             
             # Vectorized grid index calculation
             ix_values = ((x_positions - self.inp.grid_x[0]) / self.inp.dx).astype(int)

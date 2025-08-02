@@ -284,13 +284,16 @@ class Simulation:
         # Ion density 1D cross-section
         ion_density_data = self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
         ion_density_1d = ion_density_data[:, iy]
-        axs1d[3].plot(ion_density_1d)
+        from scipy.ndimage import gaussian_filter1d
+        ion_density_1d_smooth = gaussian_filter1d(ion_density_1d.astype(float), sigma=1.5)
+        axs1d[3].plot(ion_density_1d_smooth)
         axs1d[3].set_title("Ion Density", weight='bold')
         
         # Neutral density 1D cross-section  
         neutral_density_data = self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
         neutral_density_1d = neutral_density_data[:, iy]
-        axs1d[4].plot(neutral_density_1d)
+        neutral_density_1d_smooth = gaussian_filter1d(neutral_density_1d.astype(float), sigma=1.5)
+        axs1d[4].plot(neutral_density_1d_smooth)
         axs1d[4].set_title("Neutral Density", weight='bold')
 
         #     else:
