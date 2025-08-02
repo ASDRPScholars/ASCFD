@@ -25,10 +25,10 @@ class FieldInitialConditions:
     def guillaume(self):
         ic_grid = np.zeros_like(self.B_field)
         
-        # !GOODENOUGH!
-        B_max = 0.02 # 0.237 -> 0.02 per claude
-        x_c = 0.8
-        sigma = 0.05
+        # Stronger magnetic field for proper electron confinement and cloud formation
+        B_max = 0.05  # Increased from 0.02 to create stronger electron trapping
+        x_c = 0.6     # Physical: magnetic field should be upstream of exit
+        sigma = 0.05  # Keep narrow for localized confinement
         
         x = np.linspace(self.inp.xlim[0], self.inp.xlim[1], self.inp.nx)
         
