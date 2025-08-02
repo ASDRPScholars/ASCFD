@@ -211,7 +211,7 @@ class Simulation:
         axs = axs.ravel()
 
         # Set up 1D plots
-        fig1d, axs1d = plt.subplots(1, 2, figsize=(8, 4))
+        fig1d, axs1d = plt.subplots(1, 3, figsize=(12, 4))
 
         for q in range(self.c.NUMQ):
             extent = [self.inp.xlim[0], self.inp.xlim[1], self.inp.ylim[0], self.inp.ylim[1]]
@@ -255,6 +255,31 @@ class Simulation:
         axs1d[1].set_title("electron energy")
         axs1d[1].set_xlabel('x')
         axs1d[1].set_ylabel('Value')
+        
+        # Ionization frequency vs X position
+        if hasattr(self, 'pelectrons') and hasattr(self.pelectrons, 'ionization_positions_x'):
+            if self.pelectrons.ionization_positions_x:
+                # Convert positions to grid indices and create histogram
+                x_positions = np.array(self.pelectrons.ionization_positions_x)
+                # Convert physical positions to grid coordinates
+                x_indices = ((x_positions - self.inp.grid_x[0]) / self.inp.dx).astype(int)
+                # Create histogram bins for x grid points
+                x_bins = np.arange(self.inp.ng, self.inp.nx - self.inp.ng + 1)
+                ionization_freq, _ = np.histogram(x_indices, bins=x_bins)
+                axs1d[2].plot(x_bins[:-1], ionization_freq)
+                axs1d[2].set_title("ionization frequency vs X")
+                axs1d[2].set_xlabel('x grid index')
+                axs1d[2].set_ylabel('ionizations per timestep')
+            else:
+                axs1d[2].plot([])
+                axs1d[2].set_title("ionization frequency vs X (no data)")
+                axs1d[2].set_xlabel('x grid index')
+                axs1d[2].set_ylabel('ionizations per timestep')
+        else:
+            axs1d[2].plot([])
+            axs1d[2].set_title("ionization frequency vs X (no particles)")
+            axs1d[2].set_xlabel('x grid index')
+            axs1d[2].set_ylabel('ionizations per timestep')
 
         # Field overlays
         im = axs[5].imshow(self.fields.E[:, :, 0].T, extent=extent, origin='lower', cmap='coolwarm')
