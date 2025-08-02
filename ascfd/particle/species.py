@@ -43,9 +43,7 @@ class ParticleSpecies:
         
         # Pre-compute frequently used constants for optimization
         self.charge_to_mass_ratio = self.params.charge / self.params.mass if self.params.mass != 0 else 0.0
-        # Reduced acceleration scaling from 5e7 to 2e7 for more stable particle dynamics
-        # Large factor was causing excessive acceleration and potential instabilities
-        self.acceleration_factor = self.charge_to_mass_ratio * 2e7
+        self.acceleration_factor = self.charge_to_mass_ratio * 5e7  # Include the scaling factor
         
         # Cache for active particles to reduce recomputation
         self._active_indices_cache = None
@@ -521,9 +519,8 @@ class ParticleSpecies:
             return []
         
         if self.params.type == "e":
-            # Physical: electron relative velocity without artificial inflation
-            # Previous 10000× multiplier was unphysical - removed for accuracy
-            v_rel = np.sqrt(vx**2 + vy**2 + vz**2)
+            # !GOODENOUGH!
+            v_rel = np.sqrt(vx**2 + vy**2 + (vz*10000)**2)
         else:
             v_rel = np.sqrt(vx**2 + vy**2 + vz**2)
 
@@ -554,8 +551,7 @@ class ParticleSpecies:
                 #print("NOT ENOUGH ENERGY FOR", collision_type)
                 continue
                 
-            # Cross-section scaling for normalized units - may need adjustment
-            # 1e18 factor accounts for normalized mass/charge/energy scaling
+            # !GOODENOUGH!
             sigma = collision_data["cross_section_func"](energy_ev) * 1e18
                         
             if sigma <= 0:
@@ -670,12 +666,10 @@ class ParticleSpecies:
             xenon_mass = 99
             ion_speed = np.sqrt(2 * ion_energy_j / xenon_mass)
             ion_theta = np.random.uniform(0, 2 * np.pi)
-            # Increased ion velocity scaling from 0.1 to 0.3 for more realistic ion dynamics
-            # Previous 0.1 factor was overly restrictive for ion motion
-            ion[self.pc.UCOMP] = ion_speed * np.cos(ion_theta) * 0.3
-            ion[self.pc.VCOMP] = ion_speed * np.sin(ion_theta) * 0.3
+            ion[self.pc.UCOMP] = ion_speed * np.cos(ion_theta) * 0.1
+            ion[self.pc.VCOMP] = ion_speed * np.sin(ion_theta) * 0.1
             if self.pc.WCOMP < self.pc.NUMQ:
-                ion[self.pc.WCOMP] = vz * 0.3
+                ion[self.pc.WCOMP] = vz * 0.1
 
         products = [ion, electron]
         
@@ -871,10 +865,8 @@ class ParticleSpecies:
             
         ix = int((x - self.inp.grid_x[0]) / self.inp.dx)
         iy = int((y - self.inp.grid_y[0]) / self.inp.dy)
-        # Proper boundary checking: particles must stay within physical domain
-        # Allow small margin (0.1 grid cells) for numerical stability
-        if (self.inp.ng - 0.1) <= ix <= (self.inp.nx + self.inp.ng - 0.1) and \
-           (self.inp.ng - 0.1) <= iy <= (self.inp.ny + self.inp.ng - 0.1):
+        # if self.inp.ng < ix < self.inp.nx - 2 and self.inp.ng - 1 < iy < self.inp.ny + self.inp.ng - 2:
+        if -1 <= ix <= self.inp.nx + self.inp.ng and -1 <= iy <= self.inp.ny + self.inp.ng:
             return ix, iy
         return None
 

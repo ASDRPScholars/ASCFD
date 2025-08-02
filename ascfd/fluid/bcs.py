@@ -331,22 +331,11 @@ class FluidBoundaryConditions:
             #         grid[self.c.UCOMP, i, j]   = -1.0 * taper
             #         grid[self.c.VCOMP, i, j]   = 0
 
-            # Physical inflow: reduced density and tapered profile to prevent buildup
-            center_y = 0.5  # vertical midpoint
-            sigma = 0.35   # controls sharpness (smaller = narrower)
-
             for i in range(self.inp.nx + self.inp.ng, self.inp.nx + 2*self.inp.ng):  # ghost cells in high x-range
                 for j in range(self.inp.ny_with_ghosts):
-                    y_normalized = j / (self.inp.ny_with_ghosts - 1)
-
-                    # Gaussian profile centered at 0.5 with reduced overall strength
-                    taper = np.exp(-((y_normalized - center_y) ** 2) / (2 * sigma ** 2))
-
-                    # Reduced inflow strength (0.7× instead of 1×) to prevent density accumulation
-                    # Real thrusters have ~70-90% propellant utilization efficiency
-                    grid[self.c.RHOCOMP, i, j] = 0.7 * taper
-                    grid[self.c.PCOMP, i, j]   = 0.7 * taper  
-                    grid[self.c.UCOMP, i, j]   = -0.8 * taper  # Slightly reduced velocity
+                    grid[self.c.RHOCOMP, i, j] = 1
+                    grid[self.c.PCOMP, i, j]   = 1
+                    grid[self.c.UCOMP, i, j]   = -1
                     grid[self.c.VCOMP, i, j]   = 0
                     
         else:  # hi boundary in y-direction

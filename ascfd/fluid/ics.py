@@ -237,13 +237,12 @@ class FluidInitialConditions:
     def tame_static(self):
         ic = np.zeros_like(self.grid)
 
-        # Reduced initial density to prevent left-side accumulation artifact  
-        # Real thrusters start with low background density before propellant injection
-        rho_norm = 0.3                # ρ/ρ_ref = 0.3 (was 1.0)
-        u_norm = 0.0                  # u/v_ref = 0  
-        v_norm = 0.0                  # v/v_ref = 0
-        T_norm = 1.0                  # T/T_ref = 1
-        p_norm = rho_norm * T_norm    # p/p_ref = (ρ/ρ_ref)(T/T_ref)
+        # Normalized values (order unity)
+        rho_norm = 1                  # ρ/ρ_ref = 1
+        u_norm = 0.0                    # u/v_ref = 0  
+        v_norm = 0.0                    # v/v_ref = 0
+        T_norm = 1.0                    # T/T_ref = 1
+        p_norm = rho_norm * T_norm      # p/p_ref = (ρ/ρ_ref)(T/T_ref)
 
         ic[self.c.RHOCOMP] = rho_norm
         ic[self.c.UCOMP] = u_norm

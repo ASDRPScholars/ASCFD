@@ -125,9 +125,8 @@ class FluidSpecies:
 
         # print("!*! MIN MAX OF damping_source IS", np.min(damping_source), np.max(damping_source))
 
-        # Collision damping: reduced from 100× to 50× for more natural electron dynamics
-        # Excessive damping was causing unphysical electron behavior
-        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += damping_source * self.dt * 50
+        # !GOODENOUGH!
+        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += damping_source * self.dt * 100
 
     
     def _apply_lorentz_source_terms(self, consU_new):
@@ -197,12 +196,10 @@ class FluidSpecies:
             else:
                 z_mom_source = np.zeros_like(x_mom_source)
         
-        # Lorentz forces: rebalanced for more physical force ratios
-        # Reduced z-force from 100× to 50× to prevent energy profile drift
-        # Increased x,y forces from 10× to 20× for better axial/radial dynamics
-        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt * 20
-        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt * 20
-        consU_new[self.c.MWCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += z_mom_source * self.dt * 50
+        # !GOODENOUGH!
+        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt * 10
+        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt * 10
+        consU_new[self.c.MWCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += z_mom_source * self.dt * 100
 
         # print("!LORENTZ DEBUG! new MUCOMP:", consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] )
         print(f"!@! Electromagnetic coupling strengths:")
@@ -225,14 +222,13 @@ class FluidSpecies:
         vy = prim_new[self.c.VCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
         vz = prim_new[self.c.WCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
         
-        # Physical electric field work: J⋅E heating
-        # Remove arbitrary /10 scaling for more realistic energy transfer
+        # Electric field work
         if E.shape[2] > 2:
             electric_work = charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] * \
-                (E[:, :, 0] * vx + E[:, :, 1] * vy + E[:, :, 2] * vz) * 2.0
+                (E[:, :, 0] * vx + E[:, :, 1] * vy + E[:, :, 2] * vz) / 10
         else:
             electric_work = charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] * \
-                (E[:, :, 0] * vx + E[:, :, 1] * vy) * 2.0
+                (E[:, :, 0] * vx + E[:, :, 1] * vy) / 10
         
         # CRITICAL: Add work done by z-momentum acceleration  
         # Work = F_z · v_z, but be careful with multiplier scaling!
@@ -254,9 +250,8 @@ class FluidSpecies:
         print(f"!@! Max |energy_source|: {np.max(np.abs(energy_source)):.3e}")
         print(f"!@! Energy source range: [{np.min(energy_source):.3e}, {np.max(energy_source):.3e}]")
 
-        # Energy source: reduced from 100× to 50× for consistency with momentum rebalancing
-        # Maintains energy-momentum coupling while reducing excessive heating
-        consU_new[self.c.ECOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += energy_source * self.dt * 50
+        # !GOODENOUGH!
+        consU_new[self.c.ECOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += energy_source * self.dt * 100
         
     
     def get_charge_density(self):
