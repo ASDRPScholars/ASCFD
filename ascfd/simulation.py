@@ -217,8 +217,8 @@ class Simulation:
             extent = [self.inp.xlim[0], self.inp.xlim[1], self.inp.ylim[0], self.inp.ylim[1]]
 
             # 2D plot
-            # plot_data = self.electrons.grid[q, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-            plot_data = self.electrons.grid[q]
+            plot_data = self.electrons.grid[q, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+            # plot_data = self.electrons.grid[q]
             im = axs[q].imshow(plot_data.T, extent=extent, origin='lower', cmap='magma')
             plt.colorbar(im, ax=axs[q])
 
@@ -281,7 +281,7 @@ class Simulation:
             axs1d[2].set_xlabel('x grid index')
             axs1d[2].set_ylabel('ionizations per timestep')
 
-        im = axs[4].imshow(self.ions._compute_particle_density_field(self.ions).T, extent=extent, origin='lower', cmap='coolwarm')
+        im = axs[4].imshow(self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng].T, extent=extent, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[4])
         axs[4].set_title("iuon density")
         print("ION DENSITY", self.ions._compute_particle_density_field(self.ions))
@@ -297,7 +297,7 @@ class Simulation:
         plt.colorbar(im, ax=axs[6])
         axs[6].set_title("electric potential")
 
-        im = axs[7].imshow(self.fields.charge_density.T, extent=extent, origin='lower', cmap='coolwarm')
+        im = axs[7].imshow(self.fields.charge_density.T[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng], extent=extent, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[7])
         axs[7].set_title("charge density")
 
