@@ -40,7 +40,7 @@ class ParticleBoundaryConditions:
                 vz = v_th * np.sqrt(-1 * np.log(R3)) * np.cos(2 * np.pi * R4)
                 
                 particle_data[self.pc.XCOMP] = x_offset * self.inp.dx
-                particle_data[self.pc.YCOMP] = (j + y_offset) * self.inp.dy
+                particle_data[self.pc.YCOMP] = (j + y_offset - 1) * self.inp.dy
                 particle_data[self.pc.UCOMP] = vx + 20
                 particle_data[self.pc.VCOMP] = vy
                 particle_data[WEIGHT] = weight

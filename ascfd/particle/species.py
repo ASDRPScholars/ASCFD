@@ -397,8 +397,8 @@ class ParticleSpecies:
                     self.particles[self.pc.VCOMP, valid_indices] += ay_values[valid_mask]
                     
                     # Check for near-zero velocities
-                    low_vel_mask = ((self.particles[self.pc.UCOMP, valid_indices] <= 1e-5) |
-                                   (self.particles[self.pc.VCOMP, valid_indices] <= 1e-5))
+                    low_vel_mask = ((self.particles[self.pc.UCOMP, valid_indices] <= 1e-1) |
+                                   (self.particles[self.pc.VCOMP, valid_indices] <= 1e-1))
                     if np.any(low_vel_mask):
                         low_vel_indices = valid_indices[low_vel_mask]
                         particles_to_remove.extend(low_vel_indices.tolist())
@@ -877,7 +877,7 @@ class ParticleSpecies:
         ix = int((x - self.inp.grid_x[0]) / self.inp.dx)
         iy = int((y - self.inp.grid_y[0]) / self.inp.dy)
         # Proper boundary checking to prevent edge accumulation
-        if self.inp.ng <= ix < self.inp.nx + self.inp.ng and self.inp.ng <= iy < self.inp.ny + self.inp.ng:
+        if self.inp.ng <= ix < self.inp.nx + self.inp.ng and self.inp.ng < iy < self.inp.ny + self.inp.ng - 2:
             return ix, iy
         return None
 
