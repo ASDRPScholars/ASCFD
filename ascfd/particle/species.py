@@ -41,6 +41,9 @@ class ParticleSpecies:
 
         self.collision_count = np.zeros(3)
         
+        # Track ionization positions for spatial analysis
+        self.ionization_positions_x = []
+        
         # Pre-compute frequently used constants for optimization
         self.charge_to_mass_ratio = self.params.charge / self.params.mass if self.params.mass != 0 else 0.0
         self.acceleration_factor = self.charge_to_mass_ratio * 5e7  # Include the scaling factor
@@ -345,6 +348,7 @@ class ParticleSpecies:
     def update(self):
         
         self.num_collisions.fill(0)
+        self.ionization_positions_x.clear()
         # Invalidate active particle cache at start of update
         self._cache_valid = False
         
@@ -520,7 +524,7 @@ class ParticleSpecies:
         
         if self.params.type == "e":
             # !GOODENOUGH!
-            v_rel = np.sqrt(vx**2 + vy**2 + (vz*10000)**2)
+            v_rel = np.sqrt(vx**2 + vy**2 + (vz*100000)**2)
         else:
             v_rel = np.sqrt(vx**2 + vy**2 + vz**2)
 
@@ -552,7 +556,7 @@ class ParticleSpecies:
                 continue
                 
             # !GOODENOUGH!
-            sigma = collision_data["cross_section_func"](energy_ev) * 1e18
+            sigma = collision_data["cross_section_func"](energy_ev) * 1e19
                         
             if sigma <= 0:
                 #print("NEGATIVE SIGMA FOR", collision_type)
@@ -586,8 +590,12 @@ class ParticleSpecies:
 
                     if event.event_type == "ionization":
                         self.collision_count[0] += 1
+                        # Store X position of ionization event
+                        x_pos = x
+                        self.ionization_positions_x.append(x_pos)
                     elif event.event_type.endswith("excitation"):
                         self.collision_count[1] += 1
+                        self.ionization_positions_x.append(x_pos)
                     elif event.event_type.startswith("elastic"):
                         self.collision_count[2] += 1
 
@@ -865,8 +873,8 @@ class ParticleSpecies:
             
         ix = int((x - self.inp.grid_x[0]) / self.inp.dx)
         iy = int((y - self.inp.grid_y[0]) / self.inp.dy)
-        # if self.inp.ng < ix < self.inp.nx - 2 and self.inp.ng - 1 < iy < self.inp.ny + self.inp.ng - 2:
-        if -1 <= ix <= self.inp.nx + self.inp.ng and -1 <= iy <= self.inp.ny + self.inp.ng:
+        # Proper boundary checking to prevent edge accumulation
+        if self.inp.ng <= ix < self.inp.nx + self.inp.ng and self.inp.ng <= iy < self.inp.ny + self.inp.ng:
             return ix, iy
         return None
 
