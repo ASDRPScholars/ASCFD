@@ -197,8 +197,8 @@ class FluidSpecies:
                 z_mom_source = np.zeros_like(x_mom_source)
         
         # !GOODENOUGH!
-        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt * 100
-        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt * 100
+        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt * 10
+        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt * 10
         consU_new[self.c.MWCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += z_mom_source * self.dt * 100
 
         print("!LORENTZ DEBUG! new MUCOMP:", consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] )
@@ -225,10 +225,10 @@ class FluidSpecies:
         # Electric field work
         if E.shape[2] > 2:
             electric_work = charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] * \
-                (E[:, :, 0] * vx + E[:, :, 1] * vy + E[:, :, 2] * vz)
+                (E[:, :, 0] * vx + E[:, :, 1] * vy + E[:, :, 2] * vz) / 10
         else:
             electric_work = charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] * \
-                (E[:, :, 0] * vx + E[:, :, 1] * vy)
+                (E[:, :, 0] * vx + E[:, :, 1] * vy) / 10
         
         # CRITICAL: Add work done by z-momentum acceleration  
         # Work = F_z · v_z, but be careful with multiplier scaling!
