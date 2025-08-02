@@ -185,6 +185,21 @@ class FluidBoundaryConditions:
                         boundary_idx = self.inp.ng
                         interior_idx = self.inp.ng + 1
                         grid[var, i, j] = 2 * grid[var, i, boundary_idx] - grid[var, i, interior_idx]
+                        
+        # Handle corners for low boundaries
+        for var in range(self.c.NUMQ):
+            # Bottom-left corner (lo-x, lo-y)
+            for i in range(self.inp.ng):
+                for j in range(self.inp.ng):
+                    # Extrapolate from the domain corner
+                    boundary_x = self.inp.ng
+                    boundary_y = self.inp.ng
+                    interior_x = self.inp.ng + 1
+                    interior_y = self.inp.ng + 1
+                    # Average of x and y extrapolations
+                    extrap_x = 2 * grid[var, boundary_x, boundary_y] - grid[var, interior_x, boundary_y]
+                    extrap_y = 2 * grid[var, boundary_x, boundary_y] - grid[var, boundary_x, interior_y]
+                    grid[var, i, j] = 0.5 * (extrap_x + extrap_y)
 
     
     def neumann_der_constant_hi(self, grid, dim: int) -> None:
@@ -204,6 +219,44 @@ class FluidBoundaryConditions:
                         boundary_idx = self.inp.ny + self.inp.ng - 1
                         interior_idx = self.inp.ny + self.inp.ng - 2
                         grid[var, i, j] = 2 * grid[var, i, boundary_idx] - grid[var, i, interior_idx]
+                        
+        # Handle corners for high boundaries
+        for var in range(self.c.NUMQ):
+            # Top-right corner (hi-x, hi-y)
+            for i in range(self.inp.nx + self.inp.ng, self.inp.nx + 2*self.inp.ng):
+                for j in range(self.inp.ny + self.inp.ng, self.inp.ny + 2*self.inp.ng):
+                    boundary_x = self.inp.nx + self.inp.ng - 1
+                    boundary_y = self.inp.ny + self.inp.ng - 1
+                    interior_x = self.inp.nx + self.inp.ng - 2
+                    interior_y = self.inp.ny + self.inp.ng - 2
+                    # Average of x and y extrapolations
+                    extrap_x = 2 * grid[var, boundary_x, boundary_y] - grid[var, interior_x, boundary_y]
+                    extrap_y = 2 * grid[var, boundary_x, boundary_y] - grid[var, boundary_x, interior_y]
+                    grid[var, i, j] = 0.5 * (extrap_x + extrap_y)
+            
+            # Top-left corner (lo-x, hi-y)
+            for i in range(self.inp.ng):
+                for j in range(self.inp.ny + self.inp.ng, self.inp.ny + 2*self.inp.ng):
+                    boundary_x = self.inp.ng
+                    boundary_y = self.inp.ny + self.inp.ng - 1
+                    interior_x = self.inp.ng + 1
+                    interior_y = self.inp.ny + self.inp.ng - 2
+                    # Average of x and y extrapolations
+                    extrap_x = 2 * grid[var, boundary_x, boundary_y] - grid[var, interior_x, boundary_y]
+                    extrap_y = 2 * grid[var, boundary_x, boundary_y] - grid[var, boundary_x, interior_y]
+                    grid[var, i, j] = 0.5 * (extrap_x + extrap_y)
+            
+            # Bottom-right corner (hi-x, lo-y)
+            for i in range(self.inp.nx + self.inp.ng, self.inp.nx + 2*self.inp.ng):
+                for j in range(self.inp.ng):
+                    boundary_x = self.inp.nx + self.inp.ng - 1
+                    boundary_y = self.inp.ng
+                    interior_x = self.inp.nx + self.inp.ng - 2
+                    interior_y = self.inp.ng + 1
+                    # Average of x and y extrapolations
+                    extrap_x = 2 * grid[var, boundary_x, boundary_y] - grid[var, interior_x, boundary_y]
+                    extrap_y = 2 * grid[var, boundary_x, boundary_y] - grid[var, boundary_x, interior_y]
+                    grid[var, i, j] = 0.5 * (extrap_x + extrap_y)
 
     
     def periodic_hi(self, grid, dim: int) -> None:
@@ -223,19 +276,19 @@ class FluidBoundaryConditions:
 
         if dim == 0:  # low boundary in x-direction
             for i in range(self.inp.ng): # ghost cells
-                for j in range(self.inp.ng, self.inp.ny + self.inp.ng):  # valid y-range
-                    grid[self.c.RHOCOMP, i, j] = 1e-9
-                    grid[self.c.PCOMP, i, j] = 150
-                    grid[self.c.UCOMP, i, j] = 10
+                for j in range(self.inp.ny_with_ghosts):  # valid y-range
+                    grid[self.c.RHOCOMP, i, j] = 1
+                    grid[self.c.PCOMP, i, j] = 1
+                    grid[self.c.UCOMP, i, j] = 1
                     grid[self.c.VCOMP, i, j] = 0
                     
         else:  # low boundary in y-direction
-            for i in range(self.inp.ng, self.inp.nx + self.inp.ng): # valid x-range
+            for i in range(self.inp.nx_with_ghosts): # valid x-range
                 for j in range(self.inp.ng): # ghost cells
-                    grid[self.c.RHOCOMP, i, j] = 1e-9
-                    grid[self.c.PCOMP, i, j] = 6.5217391304e40
+                    grid[self.c.RHOCOMP, i, j] = 1
+                    grid[self.c.PCOMP, i, j] = 1
                     grid[self.c.UCOMP, i, j] = 0
-                    grid[self.c.VCOMP, i, j] = 10
+                    grid[self.c.VCOMP, i, j] = 1
                     
                     
     def tame_inflow_hi(self, grid, dim: int) -> None:
@@ -246,7 +299,7 @@ class FluidBoundaryConditions:
             # pass
             print("CALLING HIGH INFLOW X")
             for i in range(self.inp.nx + self.inp.ng, self.inp.nx + 2*self.inp.ng): # ghost cells in high x-range
-                for j in range(self.inp.ng, self.inp.ny + self.inp.ng):  # valid y-range
+                for j in range(self.inp.ny_with_ghosts):  # valid y-range
                     grid[self.c.RHOCOMP, i, j] = 1
                     grid[self.c.PCOMP, i, j] = 1
                     grid[self.c.UCOMP, i, j] = -1
@@ -254,18 +307,10 @@ class FluidBoundaryConditions:
                     
         else:  # hi boundary in y-direction
             # print("!!! WELRE ACLLING THIS RIGHT")
-            for i in range(self.inp.ng, self.inp.nx + self.inp.ng): #valid x-range
+            for i in range(self.inp.nx_with_ghosts): #valid x-range
                 for j in range(self.inp.ny + self.inp.ng, self.inp.ny + 2*self.inp.ng): # ghost cells in high y-range
-                    
-                    ## steep
-                    # grid[self.c.RHOCOMP, i, j] = 1e-10
-                    # grid[self.c.PCOMP, i, j] = 6.5217391304e39
-                    # grid[self.c.UCOMP, i, j] = 0
-                    # grid[self.c.VCOMP, i, j] = -10
-                    
-                    ## tame
-                    grid[self.c.RHOCOMP, i, j] = 9.11e-13
-                    grid[self.c.PCOMP, i, j] = 9.11e-13/9.1e-31 * self.c.k_B * 10
+                    grid[self.c.RHOCOMP, i, j] = 1
+                    grid[self.c.PCOMP, i, j] = 1
                     grid[self.c.UCOMP, i, j] = 0
-                    grid[self.c.VCOMP, i, j] = -2e5
+                    grid[self.c.VCOMP, i, j] = -1
                     
