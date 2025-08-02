@@ -250,7 +250,7 @@ class Simulation:
         axs1d[0].set_xlabel('x')
         axs1d[0].set_ylabel('Value')
         
-        energy_1d = 0.5 * (self.electrons.grid[1, self.inp.ng:-self.inp.ng, iy] ** 2 + self.electrons.grid[2, self.inp.ng:-self.inp.ng, iy] ** 2 + self.electrons.grid[3, self.inp.ng:-self.inp.ng, iy] ** 2)
+        energy_1d = 0.5 * self.electrons.grid[0, self.inp.ng:-self.inp.ng, iy] * (self.electrons.grid[1, self.inp.ng:-self.inp.ng, iy] ** 2 + self.electrons.grid[2, self.inp.ng:-self.inp.ng, iy] ** 2 + self.electrons.grid[3, self.inp.ng:-self.inp.ng, iy] ** 2)
         axs1d[1].plot(energy_1d)
         axs1d[1].set_title("electron energy")
         axs1d[1].set_xlabel('x')

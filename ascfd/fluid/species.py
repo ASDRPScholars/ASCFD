@@ -176,7 +176,7 @@ class FluidSpecies:
                 # Physical saturation: momentum source decreases as vz increases
                 # This represents realistic Hall thruster physics where azimuthal velocity 
                 # eventually saturates due to collisions, geometry, etc.
-                v_sat = 0.2  # Saturation velocity scale
+                v_sat = 50  # Saturation velocity scale
                 saturation_factor = 1.0 / (1.0 + (np.abs(vz) / v_sat)**2)  # Smooth saturation
                 
                 z_mom_source = charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] * cross_product * saturation_factor

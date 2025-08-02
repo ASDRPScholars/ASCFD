@@ -328,8 +328,8 @@ class FluidBoundaryConditions:
                         taper = np.exp(-((y_normalized - center_y) ** 2) / (2 * sigma ** 2))
 
                         # Scale rho and p to max 0.3, and u to max -1
-                        grid[self.c.RHOCOMP, i, j] = 0.3 * taper
-                        grid[self.c.PCOMP, i, j]   = 0.3 * taper
+                        grid[self.c.RHOCOMP, i, j] = 2.5 * taper
+                        grid[self.c.PCOMP, i, j]   = 2.5 * taper
                         grid[self.c.UCOMP, i, j]   = -1.0 * taper
                         grid[self.c.VCOMP, i, j]   = 0
                     
