@@ -546,7 +546,7 @@ class ParticleSpecies:
                 #print("NOT ENOUGH ENERGY FOR", collision_type)
                 continue
                 
-            sigma = collision_data["cross_section_func"](energy_ev) * 1e18
+            sigma = collision_data["cross_section_func"](energy_ev) * 1e19
                         
             if sigma <= 0:
                 #print("NEGATIVE SIGMA FOR", collision_type)
