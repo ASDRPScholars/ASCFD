@@ -315,23 +315,28 @@ class FluidBoundaryConditions:
     def tame_inflow_hi(self, grid, dim: int) -> None:
 
         if dim == 0:  # hi boundary in x-direction
-            # Fill main boundary region
-            if dim == 0:  # hi boundary in x-direction
-                center_y = 0.5  # vertical midpoint
-                sigma = 0.35   # controls sharpness (smaller = narrower)
+            # center_y = 0.5  # vertical midpoint
+            # sigma = 0.35   # controls sharpness (smaller = narrower)
 
-                for i in range(self.inp.nx + self.inp.ng, self.inp.nx + 2*self.inp.ng):  # ghost cells in high x-range
-                    for j in range(self.inp.ny_with_ghosts):
-                        y_normalized = j / (self.inp.ny_with_ghosts - 1)
+            # for i in range(self.inp.nx + self.inp.ng, self.inp.nx + 2*self.inp.ng):  # ghost cells in high x-range
+            #     for j in range(self.inp.ny_with_ghosts):
+            #         y_normalized = j / (self.inp.ny_with_ghosts - 1)
 
-                        # Gaussian profile centered at 0.5
-                        taper = np.exp(-((y_normalized - center_y) ** 2) / (2 * sigma ** 2))
+            #         # Gaussian profile centered at 0.5
+            #         taper = np.exp(-((y_normalized - center_y) ** 2) / (2 * sigma ** 2))
 
-                        # Scale rho and p to max 0.3, and u to max -1
-                        grid[self.c.RHOCOMP, i, j] = 1 * taper
-                        grid[self.c.PCOMP, i, j]   = 1 * taper
-                        grid[self.c.UCOMP, i, j]   = -1.0 * taper
-                        grid[self.c.VCOMP, i, j]   = 0
+            #         # Scale rho and p to max 0.3, and u to max -1
+            #         grid[self.c.RHOCOMP, i, j] = 1.5 * taper
+            #         grid[self.c.PCOMP, i, j]   = 1.5 * taper
+            #         grid[self.c.UCOMP, i, j]   = -1.0 * taper
+            #         grid[self.c.VCOMP, i, j]   = 0
+
+            for i in range(self.inp.nx + self.inp.ng, self.inp.nx + 2*self.inp.ng):  # ghost cells in high x-range
+                for j in range(self.inp.ny_with_ghosts):
+                    grid[self.c.RHOCOMP, i, j] = 1
+                    grid[self.c.PCOMP, i, j]   = 1
+                    grid[self.c.UCOMP, i, j]   = -1
+                    grid[self.c.VCOMP, i, j]   = 0
                     
         else:  # hi boundary in y-direction
             # Fill main boundary region only (corners handled by x-direction)

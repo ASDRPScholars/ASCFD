@@ -510,15 +510,13 @@ class ParticleSpecies:
         if grid_coords is None:
             #print("[ATTEMPT_COLLISIONS] grid_coords is None")
             return []
-
-        v_rel = np.sqrt(vx**2 + vy**2 + vz**2)
         
         if self.params.type == "e":
+            # !GOODENOUGH!
+            v_rel = np.sqrt(vx**2 + vy**2 + (vz*10000)**2)
+        else:
             v_rel = np.sqrt(vx**2 + vy**2 + vz**2)
-            # Debug: Print collision attempts with significant vz
-            # if abs(vz) > 1e-10:
-            #     print(f"!DEBUG! Electron collision attempt: i={grid_coords[0]} j={grid_coords[1]} vx={vx:.3e}, vy={vy:.3e}, vz={vz:.3e}, v_rel={v_rel:.3e}, energy_ev={0.5 * self.params.mass * v_rel**2:.3e}")
-            
+
         if v_rel < 1e-10:
             #print("[ATTEMPT_COLLISIONS] v_rel < 1e-10")
             print("v_rel is", v_rel)
@@ -546,7 +544,8 @@ class ParticleSpecies:
                 #print("NOT ENOUGH ENERGY FOR", collision_type)
                 continue
                 
-            sigma = collision_data["cross_section_func"](energy_ev) * 1e18
+            # !GOODENOUGH!
+            sigma = collision_data["cross_section_func"](energy_ev) * 1e17
                         
             if sigma <= 0:
                 #print("NEGATIVE SIGMA FOR", collision_type)
