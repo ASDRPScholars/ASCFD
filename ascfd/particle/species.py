@@ -569,7 +569,7 @@ class ParticleSpecies:
             # Deposit sigma onto grid for cross section tracking
             i, j = self._get_grid_coordinates(x, y)
             if 0 <= i < self.inp.nx and 0 <= j < self.inp.ny:
-                self.sigma_temp_storage[i][j].append(sigma)
+                self.sigma_temp_storage[i][j-1].append(sigma)
 
             # nu = n * sigma * v
             nu_collision = neutral_density * sigma * v_rel
@@ -887,7 +887,8 @@ class ParticleSpecies:
         for i in range(self.inp.nx):
             for j in range(self.inp.ny):
                 if len(self.sigma_temp_storage[i][j]) > 0:
-                    self.cross_section_grid[i, j] = np.mean(self.sigma_temp_storage[i][j])
+                    # self.cross_section_grid[i, j] = np.mean(self.sigma_temp_storage[i][j])
+                    self.cross_section_grid[i, j] = np.sum(self.sigma_temp_storage[i][j])
                     # Clear the temporary storage after averaging
                     self.sigma_temp_storage[i][j].clear()
 
@@ -1093,7 +1094,7 @@ class ParticleSpecies:
         if len(active_indices) > 0:
             # Vectorized charge density computation
             x_positions = self.particles[self.pc.XCOMP, active_indices]
-            y_positions = self.particles[self.pc.YCOMP, active_indices]
+            y_positions = self.particles[self.pc.YCOMP, active_indices] - 1
             
             # Vectorized grid index calculation
             ix_values = ((x_positions - self.inp.grid_x[0]) / self.inp.dx).astype(int)

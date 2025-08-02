@@ -37,10 +37,10 @@ class Simulation:
         
         # !APPROX! assuming m_i / m_e is only 100
         e_params = SpeciesParams(-1.0, 1.0, 5/3, "e", density=1.0, temperature=100.0)  # electrons (normalized)
-        xe_i_params = SpeciesParams(1.0, 100, 5/3, "i", density=1.0, temperature=10.0)  # Xe+ ions  
+        xe_i_params = SpeciesParams(1.0, 100, 5/3, "i", density=0.5, temperature=10.0)  # Xe+ ions  
         
         # TODO: 99? 100? does it make a difference?
-        xe_n_params = SpeciesParams(0.0, 99, 5/3, "n", density=10.0, temperature=10.0)  # Xe neutrals
+        xe_n_params = SpeciesParams(0.0, 99, 5/3, "n", density=5.0, temperature=10.0)  # Xe neutrals
         
         self.electrons = FluidSpecies(e_params, self.inp, self.fields, self)
         
@@ -220,7 +220,7 @@ class Simulation:
         axs = axs.ravel()
 
         # Set up 1D plots
-        fig1d, axs1d = plt.subplots(1, 3, figsize=(12, 4))
+        fig1d, axs1d = plt.subplots(1, 5, figsize=(20, 4))
 
         for q in range(self.c.NUMQ):
             extent = [self.inp.xlim[0], self.inp.xlim[1], self.inp.ylim[0], self.inp.ylim[1]]
@@ -280,6 +280,18 @@ class Simulation:
                 
                 axs1d[2].plot(x_bins[:-1], ionization_freq_smooth)
                 axs1d[2].set_title("Electron-Neutral Collision Frequency", weight='bold')
+        
+        # Ion density 1D cross-section
+        ion_density_data = self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+        ion_density_1d = ion_density_data[:, iy]
+        axs1d[3].plot(ion_density_1d)
+        axs1d[3].set_title("Ion Density", weight='bold')
+        
+        # Neutral density 1D cross-section  
+        neutral_density_data = self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+        neutral_density_1d = neutral_density_data[:, iy]
+        axs1d[4].plot(neutral_density_1d)
+        axs1d[4].set_title("Neutral Density", weight='bold')
 
         #     else:
         #         axs1d[2].plot([])

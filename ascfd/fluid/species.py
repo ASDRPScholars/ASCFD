@@ -129,7 +129,7 @@ class FluidSpecies:
         # print("!*! MIN MAX OF damping_source IS", np.min(damping_source), np.max(damping_source))
 
         # !GOODENOUGH!
-        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += damping_source * self.dt * 100
+        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] -= damping_source * self.dt * 100
 
     
     def _apply_lorentz_source_terms(self, consU_new):
