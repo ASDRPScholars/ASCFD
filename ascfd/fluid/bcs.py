@@ -34,8 +34,8 @@ class FluidBoundaryConditions:
                 self.f_lo[idim] = self.neumann_der_constant_lo
             elif self.types_lo[idim] == "periodic":
                 self.f_lo[idim] = self.periodic_lo
-            elif self.types_lo[idim] == "inflow":
-                self.f_lo[idim] = self.inflow_lo
+            elif self.types_lo[idim] == "tame_inflow":
+                self.f_lo[idim] = self.tame_inflow_lo
             else:
                 # error if unsupported boundary condition type is provided
                 raise RuntimeError(f"BC Lo Type not supported: {self.types_lo[idim]}")
@@ -62,12 +62,12 @@ class FluidBoundaryConditions:
 
     def apply_lo(self) -> None:
         # apply low boundary conditions for all dimensions
-        for idim in range(2): # two dimensions
+        for idim in range(1, -1, -1): # two dimensions
             self.f_lo[idim](self.grid, idim)
         
     def apply_hi(self) -> None:
         # apply high boundary conditions for all dimensions
-        for idim in range(2): # two dimensions
+        for idim in range(1, -1, -1): # two dimensions
             self.f_hi[idim](self.grid, idim)
 
     def null_bcs(self, grid, dim: int) -> None:
@@ -185,6 +185,7 @@ class FluidBoundaryConditions:
                         boundary_idx = self.inp.ng
                         interior_idx = self.inp.ng + 1
                         grid[var, i, j] = 2 * grid[var, i, boundary_idx] - grid[var, i, interior_idx]
+                        print(f"NEUMANN SET {i}, {j} to", grid[self.c.UCOMP, i, j])
                         
         # Handle corners for low boundaries
         for var in range(self.c.NUMQ):
@@ -200,6 +201,7 @@ class FluidBoundaryConditions:
                     extrap_x = 2 * grid[var, boundary_x, boundary_y] - grid[var, interior_x, boundary_y]
                     extrap_y = 2 * grid[var, boundary_x, boundary_y] - grid[var, boundary_x, interior_y]
                     grid[var, i, j] = 0.5 * (extrap_x + extrap_y)
+                    print(f"NEUMANN SET {i}, {j} to", grid[self.c.UCOMP, i, j])
 
     
     def neumann_der_constant_hi(self, grid, dim: int) -> None:
@@ -258,6 +260,8 @@ class FluidBoundaryConditions:
                     extrap_y = 2 * grid[var, boundary_x, boundary_y] - grid[var, boundary_x, interior_y]
                     grid[var, i, j] = 0.5 * (extrap_x + extrap_y)
 
+                    print(f"NEUMANN SET {i}, {j} to", grid[self.c.UCOMP, i, j])
+
     
     def periodic_hi(self, grid, dim: int) -> None:
         # periodic boundary condition at the high boundary
@@ -272,18 +276,35 @@ class FluidBoundaryConditions:
                         grid[var, i, j] = grid[var, i, j - self.inp.ny]
                         
                         
-    def inflow_lo(self, grid, dim: int) -> None:
+    def tame_inflow_lo(self, grid, dim: int) -> None:
 
         if dim == 0:  # low boundary in x-direction
+            # Fill main boundary region
             for i in range(self.inp.ng): # ghost cells
-                for j in range(self.inp.ny_with_ghosts):  # valid y-range
+                for j in range(self.inp.ny_with_ghosts):  # main boundary
                     grid[self.c.RHOCOMP, i, j] = 1
                     grid[self.c.PCOMP, i, j] = 1
                     grid[self.c.UCOMP, i, j] = 1
                     grid[self.c.VCOMP, i, j] = 0
+            
+            # Fill corners (bottom-left and top-left)
+            for i in range(self.inp.ng):
+                # Bottom-left corner
+                for j in range(self.inp.ng):
+                    grid[self.c.RHOCOMP, i, j] = 1
+                    grid[self.c.PCOMP, i, j] = 1
+                    grid[self.c.UCOMP, i, j] = 1  # x-direction dominates
+                    grid[self.c.VCOMP, i, j] = 1  # y-direction dominates
+                # Top-left corner  
+                for j in range(self.inp.ny + self.inp.ng, self.inp.ny + 2*self.inp.ng):
+                    grid[self.c.RHOCOMP, i, j] = 1
+                    grid[self.c.PCOMP, i, j] = 1
+                    grid[self.c.UCOMP, i, j] = 1  # x-direction dominates
+                    grid[self.c.VCOMP, i, j] = -1  # y-direction dominates
                     
         else:  # low boundary in y-direction
-            for i in range(self.inp.nx_with_ghosts): # valid x-range
+            # Fill main boundary region only (corners handled by x-direction)
+            for i in range(self.inp.nx_with_ghosts): # main boundary
                 for j in range(self.inp.ng): # ghost cells
                     grid[self.c.RHOCOMP, i, j] = 1
                     grid[self.c.PCOMP, i, j] = 1
@@ -293,21 +314,22 @@ class FluidBoundaryConditions:
                     
     def tame_inflow_hi(self, grid, dim: int) -> None:
 
-        # neumann boundary condition at the low boundary
-
         if dim == 0:  # hi boundary in x-direction
-            # pass
             print("CALLING HIGH INFLOW X")
+            # Fill main boundary region
+            print("GRID SHAPE IS", np.shape(grid))
             for i in range(self.inp.nx + self.inp.ng, self.inp.nx + 2*self.inp.ng): # ghost cells in high x-range
-                for j in range(self.inp.ny_with_ghosts):  # valid y-range
+                for j in range(self.inp.ny_with_ghosts):  # main boundary
+                    print("CURRENTLY AT J =", j) 
                     grid[self.c.RHOCOMP, i, j] = 1
                     grid[self.c.PCOMP, i, j] = 1
                     grid[self.c.UCOMP, i, j] = -1
+                    print(f"SET U AT {i}, {j} TO", grid[self.c.UCOMP, i, j])
                     grid[self.c.VCOMP, i, j] = 0
                     
         else:  # hi boundary in y-direction
-            # print("!!! WELRE ACLLING THIS RIGHT")
-            for i in range(self.inp.nx_with_ghosts): #valid x-range
+            # Fill main boundary region only (corners handled by x-direction)
+            for i in range(self.inp.nx_with_ghosts): # main boundary
                 for j in range(self.inp.ny + self.inp.ng, self.inp.ny + 2*self.inp.ng): # ghost cells in high y-range
                     grid[self.c.RHOCOMP, i, j] = 1
                     grid[self.c.PCOMP, i, j] = 1
