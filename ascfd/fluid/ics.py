@@ -238,8 +238,8 @@ class FluidInitialConditions:
         ic = np.zeros_like(self.grid)
 
         # Normalized values (order unity)
-        rho_norm = 0.1                  # ρ/ρ_ref = 1
-        u_norm = 0.0                    # u/v_ref = 0  
+        rho_norm = 1                  # ρ/ρ_ref = 1
+        u_norm = -0.25                    # u/v_ref = 0  
         v_norm = 0.0                    # v/v_ref = 0
         T_norm = 1.0                    # T/T_ref = 1
         p_norm = rho_norm * T_norm      # p/p_ref = (ρ/ρ_ref)(T/T_ref)
