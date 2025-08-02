@@ -480,7 +480,7 @@ class ParticleSpecies:
                 
                 if event.event_type == "ionization":
                     new_particles.extend(event.products)
-                    print("!#! IONIZED")
+                    # print("!#! IONIZED")
                 elif event.event_type in ["first_excitation", "second_excitation", "third_excitation", "fourth_excitation"]:
                     self._apply_energy_loss(n, event.energy_change)
                 elif event.event_type.startswith("elastic"):
