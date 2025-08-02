@@ -11,6 +11,7 @@ from ascfd.particle.cross_sections.xe import XenonCollisionData
 import numpy as np
 from scipy.spatial import cKDTree
 from scipy.interpolate import interp1d
+from scipy.ndimage import gaussian_filter
 from collections import deque
 
 class CollisionEvent:
@@ -370,8 +371,8 @@ class ParticleSpecies:
                 Ex_values, Ey_values = self._interpolate_electric_field_batch(x_positions, y_positions)
                 
                 # Vectorized acceleration calculation using pre-computed ratio
-                ax_values = self.acceleration_factor * Ex_values * self.dt
-                ay_values = self.acceleration_factor * Ey_values * self.dt
+                ax_values = self.acceleration_factor * Ex_values * self.dt * 100
+                ay_values = self.acceleration_factor * Ey_values * self.dt * 100
                 
                 # Check for invalid fields/accelerations
                 invalid_mask = (np.isnan(Ex_values) | np.isnan(Ey_values) | 
@@ -474,6 +475,13 @@ class ParticleSpecies:
         neutral_density_field = self.get_species_density_field("n")
         particles_to_remove = []
 
+        # Pre-calculate smoothed ion density field once per timestep for electrons
+        ion_density_smooth = None
+        if self.params.type == "e":
+            ion_density_field = self.get_species_density_field("i")
+            if ion_density_field.size > 0:
+                ion_density_smooth = gaussian_filter(ion_density_field, sigma=3.0)
+
         # print("!#@! PROCESS COLLISIONS FOR", self.params.type)
         active_count = np.sum(self.is_active)
         # print("N ACTIVE PARTICLES", active_count)
@@ -484,7 +492,7 @@ class ParticleSpecies:
             print(f"Processing {len(active_indices)} active particles")
         
         for n in active_indices:
-            events = self._attempt_collisions(n, neutral_density_field)
+            events = self._attempt_collisions(n, neutral_density_field, ion_density_smooth)
             
             for event in events:
                 collision_events.append(event)
@@ -503,7 +511,7 @@ class ParticleSpecies:
         self.collision_events.extend(collision_events)
         return new_particles
 
-    def _attempt_collisions(self, particle_idx: int, neutral_density_field: np.ndarray):
+    def _attempt_collisions(self, particle_idx: int, neutral_density_field: np.ndarray, ion_density_smooth: np.ndarray = None):
         # print("!#! ATTEMPT COLLISION FOR", self.params.type)
         
         # Safety check for valid particle index
@@ -566,6 +574,16 @@ class ParticleSpecies:
             i, j = self._get_grid_coordinates(x, y)
             if 0 <= i < self.inp.nx and 0 <= j < self.inp.ny:
                 self.sigma_temp_storage[i][j].append(sigma)
+
+            # Check ionization density cap before proceeding with ionization
+            if collision_type == "ionization" and self.params.type == "e" and ion_density_smooth is not None:
+                # Get local density at particle position using pre-calculated smoothed field
+                local_ion_density = self._interpolate_density(x, y, ion_density_smooth)
+                
+                # Skip ionization if density exceeds threshold
+                if local_ion_density > 0.5:
+                    #print(f"Ionization blocked: local ion density {local_ion_density:.3f} > 0.5")
+                    continue
 
             # nu = n * sigma * v
             nu_collision = neutral_density * sigma * v_rel
