@@ -27,7 +27,7 @@ class FieldInitialConditions:
         
         # !GOODENOUGH!
         B_max = 0.02 # 0.237 -> 0.02 per claude
-        x_c = 0.8
+        x_c = 0.6
         sigma = 0.05
         
         x = np.linspace(self.inp.xlim[0], self.inp.xlim[1], self.inp.nx)
