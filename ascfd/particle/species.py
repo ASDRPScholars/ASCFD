@@ -41,6 +41,14 @@ class ParticleSpecies:
 
         self.collision_count = np.zeros(3)
         
+        # Pre-compute frequently used constants for optimization
+        self.charge_to_mass_ratio = self.params.charge / self.params.mass if self.params.mass != 0 else 0.0
+        self.acceleration_factor = self.charge_to_mass_ratio * 5e7  # Include the scaling factor
+        
+        # Cache for active particles to reduce recomputation
+        self._active_indices_cache = None
+        self._cache_valid = False
+        
         # Pre-allocate particle arrays with 3x initial capacity for growth
         initial_capacity = max(self.inp.n_particles * 3, 1000) if self.params.type != "i" else 1000
         self.capacity = initial_capacity
@@ -168,34 +176,47 @@ class ParticleSpecies:
         
         density_field = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
         
-        # Only iterate over active particles
-        # Only compute density for particles with valid positions
-        safe_capacity = min(species.capacity, species.particles.shape[1], len(species.is_active))
-        active_indices = []
-        for i in range(safe_capacity):
-            if (species.is_active[i] and 
-                not np.isnan(species.particles[self.pc.XCOMP, i]) and 
-                not np.isnan(species.particles[self.pc.YCOMP, i]) and
-                not np.isinf(species.particles[self.pc.XCOMP, i]) and 
-                not np.isinf(species.particles[self.pc.YCOMP, i])):
-                active_indices.append(i)
-            elif species.is_active[i]:  # Active but invalid data - cleanup
-                print(f"WARNING: Density computation deactivating {species.params.type} particle {i} with invalid position")
-                species.is_active[i] = False
-                species.free_slots.append(i)
-                species.particles[:, i] = 0.0  # Clear corrupted data
-        for i in active_indices:
-            x = species.particles[self.pc.XCOMP, i]
-            y = species.particles[self.pc.YCOMP, i]
+        # Use optimized active particle retrieval
+        if hasattr(species, '_get_active_indices'):
+            active_indices = species._get_active_indices()
+        else:
+            # Fallback for species without optimization
+            safe_capacity = min(species.capacity, species.particles.shape[1], len(species.is_active))
+            active_indices = []
+            for i in range(safe_capacity):
+                if (species.is_active[i] and 
+                    not np.isnan(species.particles[self.pc.XCOMP, i]) and 
+                    not np.isnan(species.particles[self.pc.YCOMP, i]) and
+                    not np.isinf(species.particles[self.pc.XCOMP, i]) and 
+                    not np.isinf(species.particles[self.pc.YCOMP, i])):
+                    active_indices.append(i)
+                elif species.is_active[i]:  # Active but invalid data - cleanup
+                    print(f"WARNING: Density computation deactivating {species.params.type} particle {i} with invalid position")
+                    species.is_active[i] = False
+                    species.free_slots.append(i)
+                    species.particles[:, i] = 0.0  # Clear corrupted data
+        
+        if len(active_indices) > 0:
+            # Vectorized density computation
+            x_positions = species.particles[self.pc.XCOMP, active_indices]
+            y_positions = species.particles[self.pc.YCOMP, active_indices]
+            weights = species.particles[self.WEIGHT, active_indices]
             
-            # print("ALL WEIGHTS FOR", species.params.type, species.particles[self.WEIGHT, :])
-            weight = species.particles[self.WEIGHT, i]
+            # Vectorized grid index calculation
+            ix_values = ((x_positions - self.inp.grid_x[0]) / self.inp.dx).astype(int)
+            iy_values = ((y_positions - self.inp.grid_y[0]) / self.inp.dy).astype(int)
             
-            ix = int((x - self.inp.grid_x[0]) / self.inp.dx)
-            iy = int((y - self.inp.grid_y[0]) / self.inp.dy)
+            # Bounds check
+            valid_mask = ((ix_values >= 0) & (ix_values < self.inp.nx_with_ghosts) & 
+                         (iy_values >= 0) & (iy_values < self.inp.ny_with_ghosts))
             
-            if 0 <= ix < self.inp.nx_with_ghosts and 0 <= iy < self.inp.ny_with_ghosts:
-                density_field[ix, iy] += weight / (self.inp.dx * self.inp.dy)
+            if np.any(valid_mask):
+                ix_valid = ix_values[valid_mask]
+                iy_valid = iy_values[valid_mask]
+                weights_valid = weights[valid_mask]
+                
+                # Use np.add.at for efficient accumulation
+                np.add.at(density_field, (ix_valid, iy_valid), weights_valid / (self.inp.dx * self.inp.dy))
         
         return density_field
 
@@ -288,13 +309,20 @@ class ParticleSpecies:
                 
             self.particles[:, slot] = particle_data.flatten()
             self.is_active[slot] = True
+            # Invalidate cache when adding particles
+            self._cache_valid = False
             print(self.params.type, "!%! added particle to slot", slot)
         else:
             print(f"Warning: Invalid particle data format for species {self.params.type}")
     
     def add_particles(self, particle_list):
         """Efficiently add multiple particles"""
+        if not particle_list:
+            return
+            
         expected_components = self.particles.shape[0]
+        added_count = 0
+        
         for particle_data in particle_list:
             if isinstance(particle_data, np.ndarray) and particle_data.shape[0] == expected_components:
                 slot = self._get_free_slot()
@@ -303,8 +331,13 @@ class ParticleSpecies:
                     continue
                 self.particles[:, slot] = particle_data.flatten()
                 self.is_active[slot] = True
+                added_count += 1
             else:
                 print(f"Warning: Skipping particle with wrong component count: got {particle_data.shape[0] if hasattr(particle_data, 'shape') else 'invalid'}, expected {expected_components}")
+        
+        # Invalidate cache only once after adding all particles
+        if added_count > 0:
+            self._cache_valid = False
 
     def estimate_initial_weight(self):
         return (self.params.density * self.inp.dx * self.inp.dy) / self.inp.n_ppc
@@ -312,86 +345,72 @@ class ParticleSpecies:
     def update(self):
         
         self.num_collisions.fill(0)
-        # print("!PARTICLE! update particle!")
+        # Invalidate active particle cache at start of update
+        self._cache_valid = False
         
-        # print(f"!PARTICLE! U for {self.params.type} is", self.particles[self.pc.UCOMP])
-        # print(f"!PARTICLE! V for {self.params.type} is", self.particles[self.pc.VCOMP])
-        
-        # print("!#@! TYPE", self.params.type)
-
         particles_to_remove = []
         
         if self.params.type == "n":
             self.bcs.apply_bcs()
             
         if self.params.type in ["i", "n"]:
-            # TODO: add leapfrog algorithm here!
-            # Only iterate over active particles with valid data
-            safe_capacity = min(self.capacity, self.particles.shape[1], len(self.is_active))
-            active_indices = []
-            for i in range(safe_capacity):
-                if (self.is_active[i] and 
-                    not np.isnan(self.particles[self.pc.XCOMP, i]) and 
-                    not np.isnan(self.particles[self.pc.YCOMP, i]) and
-                    not np.isinf(self.particles[self.pc.XCOMP, i]) and 
-                    not np.isinf(self.particles[self.pc.YCOMP, i])):
-                    active_indices.append(i)
-                elif self.is_active[i]:  # Active but invalid data
-                    print(f"WARNING: Deactivating {self.params.type} particle {i} with invalid position: x={self.particles[self.pc.XCOMP, i]}, y={self.particles[self.pc.YCOMP, i]}")
-                    self.is_active[i] = False
-                    self.free_slots.append(i)
-                    self.particles[:, i] = 0.0  # Clear corrupted data
+            # Vectorized particle update for better performance
+            active_indices = self._get_active_indices()
             
-            for n in active_indices:
-                x = self.particles[self.pc.XCOMP, n]
-                y = self.particles[self.pc.YCOMP, n]
-            
-                Ex, Ey = self._interpolate_electric_field(x, y)
-                # Ex, Ey = self.get_coloumb_source(n)
-        
-                # Validate inputs to prevent NaN propagation
-                if np.isnan(Ex) or np.isnan(Ey) or np.isinf(Ex) or np.isinf(Ey):
-                    print(f"WARNING: Invalid electric field at particle {n}: Ex={Ex}, Ey={Ey}")
-                    particles_to_remove.append(n)
-                    continue
+            if len(active_indices) > 0:
+                # Extract positions for all active particles at once
+                x_positions = self.particles[self.pc.XCOMP, active_indices]
+                y_positions = self.particles[self.pc.YCOMP, active_indices]
                 
-                # a = (q/m) * E - check for division by zero
-                if self.params.mass == 0:
-                    print(f"ERROR: Zero mass for {self.params.type} particle {n}")
-                    particles_to_remove.append(n)
-                    continue
+                # Batch interpolate electric fields
+                Ex_values, Ey_values = self._interpolate_electric_field_batch(x_positions, y_positions)
+                
+                # Vectorized acceleration calculation using pre-computed ratio
+                ax_values = self.acceleration_factor * Ex_values * self.dt
+                ay_values = self.acceleration_factor * Ey_values * self.dt
+                
+                # Check for invalid fields/accelerations
+                invalid_mask = (np.isnan(Ex_values) | np.isnan(Ey_values) | 
+                               np.isinf(Ex_values) | np.isinf(Ey_values) |
+                               np.isnan(ax_values) | np.isnan(ay_values) |
+                               np.isinf(ax_values) | np.isinf(ay_values))
+                
+                if np.any(invalid_mask):
+                    invalid_indices = np.array(active_indices)[invalid_mask]
+                    particles_to_remove.extend(invalid_indices.tolist())
+                    print(f"WARNING: Removing {np.sum(invalid_mask)} particles with invalid fields")
+                
+                # Update velocities for valid particles
+                valid_mask = ~invalid_mask
+                valid_indices = np.array(active_indices)[valid_mask]
+                
+                if len(valid_indices) > 0:
+                    # Vectorized velocity update
+                    self.particles[self.pc.UCOMP, valid_indices] += ax_values[valid_mask]
+                    self.particles[self.pc.VCOMP, valid_indices] += ay_values[valid_mask]
                     
-                ax = (self.params.charge / self.params.mass) * Ex
-                ay = (self.params.charge / self.params.mass) * Ey
-                
-                # Check for NaN in acceleration
-                if np.isnan(ax) or np.isnan(ay) or np.isinf(ax) or np.isinf(ay):
-                    print(f"WARNING: Invalid acceleration for particle {n}: ax={ax}, ay={ay}")
-                    particles_to_remove.append(n)
-                    continue
-
-        
-                # v^(n+1/2) = v^(n-1/2) + Δt * a
-                self.particles[self.pc.UCOMP, n] += self.dt * ax * 5e7
-                self.particles[self.pc.VCOMP, n] += self.dt * ay * 5e7
-        
-                if self.particles[self.pc.UCOMP, n] <= 1e-5 or self.particles[self.pc.VCOMP, n] <= 1e-5:
-                    particles_to_remove.append(n)
-
-                # x^(n+1) = x^n + Δt * v^(n+1/2)
-                self.particles[self.pc.XCOMP, n] += self.dt * self.particles[self.pc.UCOMP, n]
-                self.particles[self.pc.YCOMP, n] += self.dt * self.particles[self.pc.VCOMP, n]
-                
-                # Validate final position
-                if (np.isnan(self.particles[self.pc.XCOMP, n]) or np.isnan(self.particles[self.pc.YCOMP, n]) or
-                    np.isinf(self.particles[self.pc.XCOMP, n]) or np.isinf(self.particles[self.pc.YCOMP, n])):
-                    print(f"WARNING: Particle {n} position became invalid after update: x={self.particles[self.pc.XCOMP, n]}, y={self.particles[self.pc.YCOMP, n]}")
-                    particles_to_remove.append(n)
-                    continue
-
-                # if not np.isnan(self.particles[self.pc.XCOMP, n]) and not np.isnan(self.particles[self.pc.YCOMP, n]) is not None:
-                if (self._get_grid_coordinates(self.particles[self.pc.XCOMP, n], self.particles[self.pc.YCOMP, n]) is None):
-                    particles_to_remove.append(n)
+                    # Check for near-zero velocities
+                    low_vel_mask = ((self.particles[self.pc.UCOMP, valid_indices] <= 1e-5) |
+                                   (self.particles[self.pc.VCOMP, valid_indices] <= 1e-5))
+                    if np.any(low_vel_mask):
+                        low_vel_indices = valid_indices[low_vel_mask]
+                        particles_to_remove.extend(low_vel_indices.tolist())
+                    
+                    # Vectorized position update for remaining particles
+                    good_vel_mask = ~low_vel_mask
+                    good_indices = valid_indices[good_vel_mask]
+                    
+                    if len(good_indices) > 0:
+                        self.particles[self.pc.XCOMP, good_indices] += (self.dt * 
+                                                                       self.particles[self.pc.UCOMP, good_indices])
+                        self.particles[self.pc.YCOMP, good_indices] += (self.dt * 
+                                                                       self.particles[self.pc.VCOMP, good_indices])
+                        
+                        # Check for particles that moved outside domain
+                        for idx in good_indices:
+                            if (self._get_grid_coordinates(self.particles[self.pc.XCOMP, idx], 
+                                                         self.particles[self.pc.YCOMP, idx]) is None):
+                                particles_to_remove.append(idx)
             
 
         if particles_to_remove:
@@ -408,9 +427,9 @@ class ParticleSpecies:
             new_particles = self.process_collisions()
             # print("FROM PARTICLE.UPDATE() - new_particles is", new_particles)
             
-            # Add new particles from collisions
-            for particle in new_particles:
-                self.add_particle(particle)
+            # Batch add new particles from collisions for better performance
+            if new_particles:
+                self.add_particles(new_particles)
 
         # particle per cell enforcement
         if self.params.type != "e":
@@ -455,22 +474,10 @@ class ParticleSpecies:
         active_count = np.sum(self.is_active)
         # print("N ACTIVE PARTICLES", active_count)
         
-        # Only process active particles - ensure indices are within array bounds
-        actual_array_size = self.particles.shape[1]
-        safe_capacity = min(self.capacity, actual_array_size, len(self.is_active))
-        
-        # Debug info if there's a mismatch (but don't spam the console)
-        if self.capacity != actual_array_size and hasattr(self, '_last_mismatch_warning'):
-            if self._last_mismatch_warning != (self.capacity, actual_array_size):
-                print(f"WARNING: capacity mismatch! self.capacity={self.capacity}, array_size={actual_array_size}, is_active_len={len(self.is_active)}")
-                self._last_mismatch_warning = (self.capacity, actual_array_size)
-        elif self.capacity != actual_array_size:
-            print(f"WARNING: capacity mismatch! self.capacity={self.capacity}, array_size={actual_array_size}, is_active_len={len(self.is_active)}")
-            self._last_mismatch_warning = (self.capacity, actual_array_size)
-        
-        active_indices = [i for i in range(safe_capacity) if i < len(self.is_active) and self.is_active[i]]
+        # Use optimized active particle retrieval
+        active_indices = self._get_active_indices()
         if len(active_indices) < 100:  # Only print for small numbers to avoid spam
-            print(f"Processing {len(active_indices)} active particles out of {safe_capacity} capacity")
+            print(f"Processing {len(active_indices)} active particles")
         
         for n in active_indices:
             events = self._attempt_collisions(n, neutral_density_field)
@@ -764,10 +771,96 @@ class ParticleSpecies:
         if self.pc.WCOMP < self.pc.NUMQ:
             self.particles[self.pc.WCOMP, particle_idx] = v_magnitude * np.cos(phi)
 
+    def _get_active_indices(self):
+        """Get cached active particle indices to avoid recomputation"""
+        if not self._cache_valid:
+            safe_capacity = min(self.capacity, self.particles.shape[1], len(self.is_active))
+            active_indices = []
+            for i in range(safe_capacity):
+                if (self.is_active[i] and 
+                    not np.isnan(self.particles[self.pc.XCOMP, i]) and 
+                    not np.isnan(self.particles[self.pc.YCOMP, i]) and
+                    not np.isinf(self.particles[self.pc.XCOMP, i]) and 
+                    not np.isinf(self.particles[self.pc.YCOMP, i])):
+                    active_indices.append(i)
+                elif self.is_active[i]:  # Active but invalid data
+                    print(f"WARNING: Deactivating {self.params.type} particle {i} with invalid position")
+                    self.is_active[i] = False
+                    self.free_slots.append(i)
+                    self.particles[:, i] = 0.0
+            
+            self._active_indices_cache = active_indices
+            self._cache_valid = True
+        
+        return self._active_indices_cache
+    
+    def _interpolate_electric_field_batch(self, x_positions, y_positions):
+        """Batch interpolate electric fields for multiple particles"""
+        if len(x_positions) == 0:
+            return np.array([]), np.array([])
+        
+        # Vectorized grid coordinate calculation
+        x_grid = (x_positions - self.inp.grid_x[0]) / self.inp.dx
+        y_grid = (y_positions - self.inp.grid_y[0]) / self.inp.dy
+        
+        ix = np.floor(x_grid).astype(int)
+        iy = np.floor(y_grid).astype(int)
+        
+        # Interpolation weights
+        wx = x_grid - ix
+        wy = y_grid - iy
+        
+        # Get array bounds
+        nx_max = self.fields.E.shape[0] - 1
+        ny_max = self.fields.E.shape[1] - 1
+        
+        # Initialize output arrays
+        Ex_values = np.zeros_like(x_positions)
+        Ey_values = np.zeros_like(y_positions)
+        
+        # Vectorized bounds checking and interpolation
+        valid_mask = ((ix >= 0) & (ix <= nx_max) & (iy >= 0) & (iy <= ny_max))
+        
+        if np.any(valid_mask):
+            ix_valid = ix[valid_mask]
+            iy_valid = iy[valid_mask]
+            wx_valid = wx[valid_mask]
+            wy_valid = wy[valid_mask]
+            
+            # Bilinear interpolation for valid points
+            Ex_interp = (self.fields.E[ix_valid, iy_valid, 0] * (1 - wx_valid) * (1 - wy_valid))
+            Ey_interp = (self.fields.E[ix_valid, iy_valid, 1] * (1 - wx_valid) * (1 - wy_valid))
+            
+            # Add contributions from neighboring points where they exist
+            right_valid = (ix_valid + 1 <= nx_max)
+            if np.any(right_valid):
+                Ex_interp[right_valid] += (self.fields.E[ix_valid[right_valid] + 1, iy_valid[right_valid], 0] * 
+                                         wx_valid[right_valid] * (1 - wy_valid[right_valid]))
+                Ey_interp[right_valid] += (self.fields.E[ix_valid[right_valid] + 1, iy_valid[right_valid], 1] * 
+                                         wx_valid[right_valid] * (1 - wy_valid[right_valid]))
+            
+            top_valid = (iy_valid + 1 <= ny_max)
+            if np.any(top_valid):
+                Ex_interp[top_valid] += (self.fields.E[ix_valid[top_valid], iy_valid[top_valid] + 1, 0] * 
+                                       (1 - wx_valid[top_valid]) * wy_valid[top_valid])
+                Ey_interp[top_valid] += (self.fields.E[ix_valid[top_valid], iy_valid[top_valid] + 1, 1] * 
+                                       (1 - wx_valid[top_valid]) * wy_valid[top_valid])
+            
+            corner_valid = right_valid & top_valid
+            if np.any(corner_valid):
+                Ex_interp[corner_valid] += (self.fields.E[ix_valid[corner_valid] + 1, iy_valid[corner_valid] + 1, 0] * 
+                                          wx_valid[corner_valid] * wy_valid[corner_valid])
+                Ey_interp[corner_valid] += (self.fields.E[ix_valid[corner_valid] + 1, iy_valid[corner_valid] + 1, 1] * 
+                                          wx_valid[corner_valid] * wy_valid[corner_valid])
+            
+            Ex_values[valid_mask] = Ex_interp
+            Ey_values[valid_mask] = Ey_interp
+        
+        return Ex_values, Ey_values
+    
     def _get_grid_coordinates(self, x: float, y: float):
         # Validate inputs first
         if np.isnan(x) or np.isnan(y) or np.isinf(x) or np.isinf(y):
-            print(f"ERROR: Invalid particle position: x={x}, y={y}")
             return None
             
         ix = int((x - self.inp.grid_x[0]) / self.inp.dx)
@@ -884,6 +977,9 @@ class ParticleSpecies:
         if not indices_to_remove:
             return
         
+        # Invalidate cache when removing particles
+        self._cache_valid = False
+        
         # Mark slots as inactive and add to free list
         for idx in indices_to_remove:
             if 0 <= idx < self.capacity and self.is_active[idx]:
@@ -943,29 +1039,23 @@ class ParticleSpecies:
         """Enforce particles per cell using efficient slot-based system"""
         cell_map = {}
         
-        # Only iterate over active particles - ensure bounds safety and validate data
-        safe_capacity = min(self.capacity, self.particles.shape[1], len(self.is_active))
-        active_indices = []
-        for i in range(safe_capacity):
-            if (self.is_active[i] and 
-                not np.isnan(self.particles[self.pc.XCOMP, i]) and 
-                not np.isnan(self.particles[self.pc.YCOMP, i]) and
-                not np.isinf(self.particles[self.pc.XCOMP, i]) and 
-                not np.isinf(self.particles[self.pc.YCOMP, i])):
-                active_indices.append(i)
-            elif self.is_active[i]:  # Active but invalid data
-                print(f"WARNING: Deactivating {self.params.type} particle {i} with invalid position: x={self.particles[self.pc.XCOMP, i]}, y={self.particles[self.pc.YCOMP, i]}")
-                self.is_active[i] = False
-                self.free_slots.append(i)
-                self.particles[:, i] = 0.0  # Clear corrupted data
-        for i in active_indices:
-            x = self.particles[self.pc.XCOMP, i]
-            y = self.particles[self.pc.YCOMP, i]
-            ix = int((x - self.inp.grid_x[0]) / self.inp.dx)
-            iy = int((y - self.inp.grid_y[0]) / self.inp.dy)
-            if (ix, iy) not in cell_map:
-                cell_map[(ix, iy)] = []
-            cell_map[(ix, iy)].append(i)
+        # Use optimized active particle retrieval
+        active_indices = self._get_active_indices()
+        
+        if len(active_indices) > 0:
+            # Vectorized cell mapping
+            x_positions = self.particles[self.pc.XCOMP, active_indices]
+            y_positions = self.particles[self.pc.YCOMP, active_indices]
+            
+            ix_values = ((x_positions - self.inp.grid_x[0]) / self.inp.dx).astype(int)
+            iy_values = ((y_positions - self.inp.grid_y[0]) / self.inp.dy).astype(int)
+            
+            # Build cell map efficiently
+            for i, (ix, iy) in enumerate(zip(ix_values, iy_values)):
+                cell_key = (ix, iy)
+                if cell_key not in cell_map:
+                    cell_map[cell_key] = []
+                cell_map[cell_key].append(active_indices[i])
             
         for (ix, iy), indices in cell_map.items():
             count = len(indices)
@@ -985,73 +1075,63 @@ class ParticleSpecies:
         """Compute charge density field from active particles only"""
         rho = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
         
-        # Only iterate over active particles - ensure bounds safety and validate data
-        safe_capacity = min(self.capacity, self.particles.shape[1], len(self.is_active))
-        active_indices = []
-        for i in range(safe_capacity):
-            if (self.is_active[i] and 
-                not np.isnan(self.particles[self.pc.XCOMP, i]) and 
-                not np.isnan(self.particles[self.pc.YCOMP, i]) and
-                not np.isinf(self.particles[self.pc.XCOMP, i]) and 
-                not np.isinf(self.particles[self.pc.YCOMP, i])):
-                active_indices.append(i)
-            elif self.is_active[i]:  # Active but invalid data
-                print(f"WARNING: Deactivating {self.params.type} particle {i} with invalid position: x={self.particles[self.pc.XCOMP, i]}, y={self.particles[self.pc.YCOMP, i]}")
-                self.is_active[i] = False
-                self.free_slots.append(i)
-                self.particles[:, i] = 0.0  # Clear corrupted data
-        for i in active_indices:
-            x = self.particles[self.pc.XCOMP, i]
-            y = self.particles[self.pc.YCOMP, i]
-            ix = int((x - self.inp.grid_x[0]) / self.inp.dx)
-            iy = int((y - self.inp.grid_y[0]) / self.inp.dy)
-            if 0 <= ix < self.inp.nx_with_ghosts and 0 <= iy < self.inp.ny_with_ghosts:
-                rho[ix, iy] += self.params.charge
+        # Use optimized active particle retrieval
+        active_indices = self._get_active_indices()
+        
+        if len(active_indices) > 0:
+            # Vectorized charge density computation
+            x_positions = self.particles[self.pc.XCOMP, active_indices]
+            y_positions = self.particles[self.pc.YCOMP, active_indices]
+            
+            # Vectorized grid index calculation
+            ix_values = ((x_positions - self.inp.grid_x[0]) / self.inp.dx).astype(int)
+            iy_values = ((y_positions - self.inp.grid_y[0]) / self.inp.dy).astype(int)
+            
+            # Bounds check
+            valid_mask = ((ix_values >= 0) & (ix_values < self.inp.nx_with_ghosts) & 
+                         (iy_values >= 0) & (iy_values < self.inp.ny_with_ghosts))
+            
+            if np.any(valid_mask):
+                ix_valid = ix_values[valid_mask]
+                iy_valid = iy_values[valid_mask]
+                
+                # Use np.add.at for efficient accumulation
+                np.add.at(rho, (ix_valid, iy_valid), self.params.charge)
+        
         return rho
     
     def _sort_particles_spatially(self):
         """Sort active particles by spatial position for better cache locality"""
-        # Only sort particles with valid positions
-        safe_capacity = min(self.capacity, self.particles.shape[1], len(self.is_active))
-        active_indices = []
-        for i in range(safe_capacity):
-            if (self.is_active[i] and 
-                not np.isnan(self.particles[self.pc.XCOMP, i]) and 
-                not np.isnan(self.particles[self.pc.YCOMP, i]) and
-                not np.isinf(self.particles[self.pc.XCOMP, i]) and 
-                not np.isinf(self.particles[self.pc.YCOMP, i])):
-                active_indices.append(i)
-            elif self.is_active[i]:  # Active but invalid data
-                print(f"WARNING: Spatial sort deactivating {self.params.type} particle {i} with invalid position: x={self.particles[self.pc.XCOMP, i]}, y={self.particles[self.pc.YCOMP, i]}")
-                self.is_active[i] = False
-                self.free_slots.append(i)
-                self.particles[:, i] = 0.0  # Clear corrupted data
+        # Use optimized active particle retrieval
+        active_indices = self._get_active_indices()
                 
         if len(active_indices) < 2:
             return
         
-        # Get positions of active particles
-        positions = [(self.particles[self.pc.XCOMP, i], self.particles[self.pc.YCOMP, i], i) 
-                    for i in active_indices]
+        # Vectorized position extraction
+        x_positions = self.particles[self.pc.XCOMP, active_indices]
+        y_positions = self.particles[self.pc.YCOMP, active_indices]
         
-        # Sort by x-coordinate, then y-coordinate (Z-order could be better but more complex)
-        positions.sort(key=lambda p: (p[0], p[1]))
+        # Create sorting indices based on spatial coordinates
+        # Z-order sorting for better 2D locality
+        sort_indices = np.lexsort((y_positions, x_positions))
+        sorted_active_indices = np.array(active_indices)[sort_indices]
         
         # Create new particle array with sorted order
         temp_particles = np.zeros_like(self.particles)
         temp_is_active = np.zeros_like(self.is_active)
         
-        # Place sorted particles in contiguous slots starting from 0
-        for new_idx, (x, y, old_idx) in enumerate(positions):
-            temp_particles[:, new_idx] = self.particles[:, old_idx]
-            temp_is_active[new_idx] = True
+        # Vectorized copy of sorted particles
+        temp_particles[:, :len(sorted_active_indices)] = self.particles[:, sorted_active_indices]
+        temp_is_active[:len(sorted_active_indices)] = True
         
         # Update arrays
         self.particles = temp_particles
         self.is_active = temp_is_active
         
-        # Update free slots list - all slots after active particles are free
+        # Update free slots list and invalidate cache
         self.free_slots = deque(range(len(active_indices), self.capacity))
+        self._cache_valid = False
         
         print(f"Sorted {len(active_indices)} {self.params.type} particles spatially")
     

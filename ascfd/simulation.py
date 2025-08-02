@@ -232,7 +232,7 @@ class Simulation:
                 # print("!!SIMULATION!! p electrons v:", self.pelectrons.particles[self.pc.VCOMP])
                 # print("!!SIMULATION!! p electrons w:", self.pelectrons.particles[self.pc.WCOMP])
 
-                axs[q].scatter(self.neutrals.particles[self.pc.XCOMP], self.neutrals.particles[self.pc.YCOMP], s=5, color='gray', alpha=0.2)
+                # axs[q].scatter(self.neutrals.particles[self.pc.XCOMP], self.neutrals.particles[self.pc.YCOMP], s=5, color='gray', alpha=0.2)
                 axs[q].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=5, color='blue', alpha=0.2)
 
             axs[q].set_xlim(self.inp.xlim)
