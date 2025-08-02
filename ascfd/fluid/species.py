@@ -112,8 +112,8 @@ class FluidSpecies:
         rho_e = self.grid[self.c.RHOCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
         V_x = self._get_V()[:, :, 0]
 
-        print("!DEBUG DAMPING! n-n is", n_n)
-        print("!DEBUG DAMPING! sigma is", sigma)
+        # print("!DEBUG DAMPING! n-n is", n_n)
+        # print("!DEBUG DAMPING! sigma is", sigma)
 
         # np.set_printoptions(threshold=sys.maxsize)
         # print("SIGMA", sigma)
@@ -123,7 +123,7 @@ class FluidSpecies:
 
         damping_source = sigma * n_n * rho_e * V_x
 
-        print("!*! MIN MAX OF damping_source IS", np.min(damping_source), np.max(damping_source))
+        # print("!*! MIN MAX OF damping_source IS", np.min(damping_source), np.max(damping_source))
 
         # !GOODENOUGH!
         consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += damping_source * self.dt * 100
@@ -147,8 +147,8 @@ class FluidSpecies:
         y_mom_source = charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] * E[:, :, 1]
 
         np.set_printoptions(threshold=sys.maxsize)
-        print("!LORENTZ DEBUG! charge_density arr is", charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng])
-        print("!LORENTZ DEBUG! Ex arr is", E[:, :, 0])
+        # print("!LORENTZ DEBUG! charge_density arr is", charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng])
+        # print("!LORENTZ DEBUG! Ex arr is", E[:, :, 0])
         
         # Z-momentum can be deposited from v×B cross product (azimuthal component)
         # For now, using electric field z-component if available, otherwise zero
@@ -201,7 +201,7 @@ class FluidSpecies:
         consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt * 10
         consU_new[self.c.MWCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += z_mom_source * self.dt * 100
 
-        print("!LORENTZ DEBUG! new MUCOMP:", consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] )
+        # print("!LORENTZ DEBUG! new MUCOMP:", consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] )
         print(f"!@! Electromagnetic coupling strengths:")
         print(f"!@! Max |Ex|: {np.max(np.abs(E[:, :, 0])):.3e}")
         print(f"!@! Max |Ey|: {np.max(np.abs(E[:, :, 1])):.3e}")

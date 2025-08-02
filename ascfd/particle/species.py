@@ -420,7 +420,7 @@ class ParticleSpecies:
             charge_density = self.get_charge_density()
             self.fields.add_charge_density(charge_density)
         
-            print("IONS ADDED CHARGE DENSITY:", charge_density)
+            # print("IONS ADDED CHARGE DENSITY:", charge_density)
         
             self.fields.update_E()
         
@@ -486,8 +486,8 @@ class ParticleSpecies:
                 elif event.event_type.startswith("elastic"):
                     self._apply_elastic_scattering(n, event)
                     
-                print(event)
-                print(event.event_type)
+                # print(event)
+                # print(event.event_type)
 
         self.collision_events.extend(collision_events)
         return new_particles
