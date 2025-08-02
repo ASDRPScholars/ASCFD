@@ -213,7 +213,7 @@ class Simulation:
         # Set up 1D plots
         fig1d, axs1d = plt.subplots(1, 3, figsize=(12, 4))
 
-        for q in range(self.c.NUMQ):
+        for q in range(self.c.NUMQ - 1):
             extent = [self.inp.xlim[0], self.inp.xlim[1], self.inp.ylim[0], self.inp.ylim[1]]
 
             # 2D plot
@@ -281,6 +281,11 @@ class Simulation:
             axs1d[2].set_xlabel('x grid index')
             axs1d[2].set_ylabel('ionizations per timestep')
 
+        im = axs[4].imshow(self.ions._compute_particle_density_field(self.ions).T, extent=extent, origin='lower', cmap='coolwarm')
+        plt.colorbar(im, ax=axs[4])
+        axs[4].set_title("iuon density")
+        print("ION DENSITY", self.ions._compute_particle_density_field(self.ions))
+
         # Field overlays
         im = axs[5].imshow(self.fields.E[:, :, 0].T, extent=extent, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[5])
@@ -295,6 +300,7 @@ class Simulation:
         im = axs[7].imshow(self.fields.charge_density.T, extent=extent, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[7])
         axs[7].set_title("charge density")
+
 
         # Save both figures
         fig.suptitle(f"Time: {self.t:.4f}, Timestep: {self.timestep}")
