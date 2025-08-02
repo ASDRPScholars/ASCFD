@@ -329,15 +329,22 @@ class Simulation:
         # axs[10].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=5, color='blue', alpha=0.2, clip_on=True)
         # axs[10].set_title("Ion Density", weight='bold')
 
-        energy_data = self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-        im = axs[10].imshow(energy_data.T, extent=extent, origin='lower', cmap='magma')
-        plt.colorbar(im, ax=axs[10])
-        axs[10].set_title("Energy (eV)", weight='bold')
+        # energy_data = self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+        # im = axs[10].imshow(energy_data.T, extent=extent, origin='lower', cmap='magma')
+        # plt.colorbar(im, ax=axs[10])
+        # axs[10].set_title("Energy", weight='bold')
 
-        x_mom_data = self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-        im = axs[11].imshow(energy_data.T, extent=extent, origin='lower', cmap='magma')
+        neutral_density = self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+        neutral_smooth = gaussian_filter(neutral_density, sigma=3)
+        im = axs[10].imshow(neutral_smooth.T, extent=extent, origin='lower', cmap=mpl.cm.Greys)
+        plt.colorbar(im, ax=axs[10])
+        axs[10].set_title("Neutral Density", weight='bold')
+
+        sigma = self.electrons.pelectrons.cross_section_grid
+        sigma_smooth = gaussian_filter(sigma, sigma=3)
+        im = axs[11].imshow(sigma_smooth.T, extent=extent, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[11])
-        axs[11].set_title("X-Momentum", weight='bold')
+        axs[11].set_title("Electron Collision Cross-Sections", weight='bold')
 
 
 

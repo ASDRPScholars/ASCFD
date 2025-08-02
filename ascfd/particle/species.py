@@ -38,6 +38,7 @@ class ParticleSpecies:
         self.num_collisions = np.zeros((self.inp.nx, self.inp.ny))
         self.cross_section_grid = np.zeros((self.inp.nx, self.inp.ny))
         self.sigma_temp_storage = [[[] for _ in range(self.inp.ny)] for _ in range(self.inp.nx)]
+        self.sigma = np.zeros((self.inp.nx, self.inp.ny))
 
         self.collision_count = np.zeros(3)
         
