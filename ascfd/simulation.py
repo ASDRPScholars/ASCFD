@@ -12,6 +12,14 @@ import matplotlib.pyplot as plt
 import os
 import sys
 import subprocess
+import scienceplots
+import cmocean
+
+plt.rcParams['text.usetex'] = True
+plt.style.use(['science','ieee'])
+plt.rcParams['text.usetex'] = True  # Ensure this stays set
+plt.rcParams['font.family'] = 'serif'
+plt.rcParams['font.serif'] = ['Computer Modern Roman']
 
 class Simulation:
     def __init__(self, a_inputs: Inputs):
@@ -205,7 +213,7 @@ class Simulation:
 
         # Set up 2D field plots
         if self.inp.system == "euler2d":
-            fig, axs = plt.subplots(2, 4, figsize=(35, 15))
+            fig, axs = plt.subplots(2, 4, figsize=(20, 5))
         elif self.inp.system == "mhd2d":
             fig, axs = plt.subplots(2, 4, figsize=(36, 18))
         axs = axs.ravel()
