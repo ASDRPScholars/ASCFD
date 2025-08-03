@@ -83,6 +83,10 @@ class Simulation:
             print("do we enter run loop?")
             print("\033[1m" + f"Timestep: {self.timestep}, Current time: {self.t}" + "\033[0m")
             
+            # Print memory usage every 200 timesteps for monitoring (less frequent)
+            if self.timestep % 200 == 0 and self.timestep > 0:
+                self._print_memory_usage()
+            
             if self.inp.timeStepper == "RK1":
                 new_particles = []
                 
@@ -95,11 +99,21 @@ class Simulation:
                 
                 # Add all new particles at once (more efficient than per-particle loop)
                 if new_particles:
+                    # Batch operations for better performance
+                    if len(new_particles) > 100:
+                        print(f"WARNING: Large particle creation batch ({len(new_particles)}), may impact performance")
+                    
                     # Add to ions and fluid electrons as before
                     for particle in new_particles:
                         self.ions.add_particle(particle)
                     # Add all particles to fluid electrons at once
-                    self.electrons.add_particles(new_particles)   
+                    self.electrons.add_particles(new_particles)
+                    
+                    # Trigger memory cleanup if too many new particles
+                    if len(new_particles) > 1000:
+                        for species in self.all_species:
+                            if hasattr(species, '_perform_memory_cleanup'):
+                                species._perform_memory_cleanup()   
                 
             else:
                 raise ValueError(f"Unknown time stepper: {self.inp.timeStepper}")
@@ -119,6 +133,29 @@ class Simulation:
 
         if self.inp.make_movie:
             self.generate_movie()
+    
+    def _print_memory_usage(self):
+        """Print memory usage statistics for monitoring"""
+        print("\n=== MEMORY USAGE MONITOR ===")
+        total_memory = 0
+        
+        if hasattr(self, 'all_species'):
+            for species in self.all_species:
+                if hasattr(species, 'get_memory_usage_info'):
+                    info = species.get_memory_usage_info()
+                    print(f"{info['type']}: {info['active_particles']}/{info['capacity']} particles, "
+                          f"{info['memory_mb']:.1f}MB, events:{info['collision_events']}")
+                    total_memory += info['memory_mb']
+        
+        # Add particle electron memory if exists
+        if hasattr(self, 'pelectrons') and hasattr(self.pelectrons, 'get_memory_usage_info'):
+            info = self.pelectrons.get_memory_usage_info()
+            print(f"p{info['type']}: {info['active_particles']}/{info['capacity']} particles, "
+                  f"{info['memory_mb']:.1f}MB, events:{info['collision_events']}")
+            total_memory += info['memory_mb']
+        
+        print(f"Total particle memory: {total_memory:.1f}MB")
+        print("===========================\n")
         
         
     def get_dt(self):

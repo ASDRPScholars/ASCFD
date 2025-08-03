@@ -153,6 +153,15 @@ class ParticleSpecies:
             self.collision_data = None
         
         self.collision_events = []
+        self.max_collision_events = 10000  # Prevent unbounded growth
+        
+        # Memory cleanup counters
+        self.cleanup_counter = 0
+        self.cleanup_frequency = 500  # Clean up every 500 timesteps (less frequent)
+        
+        # Maximum limits to prevent unbounded growth
+        self.max_ionization_positions = 50000
+        self.max_free_slots = 1000
 
     # def set_simulation(self, simulation):
     #     """Allow access to other species through simulation reference"""
@@ -235,6 +244,13 @@ class ParticleSpecies:
                 return None
             return slot
         
+        # Limit free_slots deque size to prevent excessive memory usage
+        if len(self.free_slots) > self.max_free_slots:
+            # Convert to list, sort by index, and keep only the first max_free_slots
+            sorted_slots = sorted(list(self.free_slots))[:self.max_free_slots]
+            self.free_slots.clear()
+            self.free_slots.extend(sorted_slots)
+        
         # Next, try to use a new slot within current array bounds
         current_array_size = self.particles.shape[1]
         if self.active_count < current_array_size:
@@ -242,27 +258,37 @@ class ParticleSpecies:
             self.active_count += 1
             return slot
         
-        # Need to expand capacity - array is full
-        if current_array_size >= self.capacity:
-            old_size = self.particles.shape[1]
-            self._expand_capacity()
-            new_size = self.particles.shape[1]
-            print(f"Expanded array from {old_size} to {new_size} (capacity now {self.capacity})")
-            
-            # After expansion, active_count should be valid
+        # Need to expand array - we're out of slots
+        print(f"Expanding array: active_count={self.active_count}, array_size={current_array_size}, capacity={self.capacity}")
+        old_size = self.particles.shape[1]
+        self._expand_capacity()
+        new_size = self.particles.shape[1]
+        print(f"Expanded array from {old_size} to {new_size} (capacity now {self.capacity})")
+        
+        # After expansion, active_count should be valid
+        if self.active_count < self.particles.shape[1]:
             slot = self.active_count
             self.active_count += 1
             return slot
         else:
-            print(f"ERROR: active_count {self.active_count} >= array_size {current_array_size} but capacity {self.capacity} > array_size")
+            print(f"ERROR: Even after expansion, active_count {self.active_count} >= array_size {self.particles.shape[1]}")
             return None
     
     def _expand_capacity(self):
-        """Double the particle array capacity when needed"""
+        """Intelligently expand particle array capacity"""
         old_capacity = self.capacity
         old_shape = self.particles.shape  # (components, particles)
         old_is_active_size = len(self.is_active)
-        self.capacity *= 2
+        
+        # Use more conservative growth for large arrays to reduce memory waste
+        if self.capacity > 50000:
+            growth_factor = 1.5
+        elif self.capacity > 10000:
+            growth_factor = 1.7
+        else:
+            growth_factor = 2.0
+        
+        self.capacity = int(self.capacity * growth_factor)
         
         print(f"Expanding {self.params.type}: old_capacity={old_capacity}, old_shape={old_shape}, old_is_active_size={old_is_active_size}, new_capacity={self.capacity}")
         
@@ -315,7 +341,7 @@ class ParticleSpecies:
             self.is_active[slot] = True
             # Invalidate cache when adding particles
             self._cache_valid = False
-            print(self.params.type, "!%! added particle to slot", slot)
+            # print(self.params.type, "!%! added particle to slot", slot)
         else:
             print(f"Warning: Invalid particle data format for species {self.params.type}")
     
@@ -353,6 +379,12 @@ class ParticleSpecies:
         # Invalidate active particle cache at start of update
         self._cache_valid = False
         
+        # Periodic memory cleanup
+        self.cleanup_counter += 1
+        if self.cleanup_counter >= self.cleanup_frequency:
+            self._perform_memory_cleanup()
+            self.cleanup_counter = 0
+        
         particles_to_remove = []
         
         if self.params.type == "n":
@@ -371,11 +403,11 @@ class ParticleSpecies:
                 Ex_values, Ey_values = self._interpolate_electric_field_batch(x_positions, y_positions)
                 
                 # Vectorized acceleration calculation using pre-computed ratio
-                ax_values = Ex_values * self.dt * 10000
-                ay_values = Ey_values * self.dt * 10000
+                ax_values = Ex_values * self.dt * 40000
+                ay_values = Ey_values * self.dt * 40000
 
-                print("ax is", ax_values)
-                print("because Ex is", Ex_values)
+                # print("ax is", ax_values)
+                # print("because Ex is", Ex_values)
                 
                 # Check for invalid fields/accelerations
                 invalid_mask = (np.isnan(Ex_values) | np.isnan(Ey_values) | 
@@ -423,10 +455,10 @@ class ParticleSpecies:
 
         if particles_to_remove:
             active_before = np.sum(self.is_active)
-            print("!%! BEFORE REMOVE THERE ARE:", active_before)
+            # print("!%! BEFORE REMOVE THERE ARE:", active_before)
             self._remove_particles(particles_to_remove)
             active_after = np.sum(self.is_active)
-            print("!%! AFTER REMOVE THERE ARE:", active_after)
+            # print("!%! AFTER REMOVE THERE ARE:", active_after)
     
         new_particles = []
         
@@ -504,7 +536,13 @@ class ParticleSpecies:
                 # print(event)
                 # print(event.event_type)
 
-        self.collision_events.extend(collision_events)
+        # Limit collision events to prevent unbounded growth
+        if len(collision_events) > 0:
+            if len(self.collision_events) + len(collision_events) > self.max_collision_events:
+                # Keep only the most recent events
+                self.collision_events = self.collision_events[-(self.max_collision_events // 2):]
+            self.collision_events.extend(collision_events)
+        
         return new_particles
 
     def _attempt_collisions(self, particle_idx: int, neutral_density_field: np.ndarray):
@@ -594,9 +632,14 @@ class ParticleSpecies:
 
                     if event.event_type == "ionization":
                         self.collision_count[0] += 1
-                        # Store X position of ionization event
-                        x_pos = x
-                        self.ionization_positions_x.append(x_pos)
+                        # Store X position of ionization event with bounds checking
+                        if len(self.ionization_positions_x) < self.max_ionization_positions:
+                            x_pos = x
+                            self.ionization_positions_x.append(x_pos)
+                        else:
+                            # Remove oldest half when limit reached
+                            self.ionization_positions_x = self.ionization_positions_x[self.max_ionization_positions // 2:]
+                            self.ionization_positions_x.append(x)
                     elif event.event_type.endswith("excitation"):
                         self.collision_count[1] += 1
                         self.ionization_positions_x.append(x_pos)
@@ -1146,7 +1189,49 @@ class ParticleSpecies:
         self.free_slots = deque(range(len(active_indices), self.capacity))
         self._cache_valid = False
         
-        print(f"Sorted {len(active_indices)} {self.params.type} particles spatially")
+        # print(f"Sorted {len(active_indices)} {self.params.type} particles spatially")
+    
+    def _perform_memory_cleanup(self):
+        """Perform periodic memory cleanup to prevent accumulation"""
+        # print(f"Performing memory cleanup for {self.params.type} particles...")
+        
+        # Clear old collision events
+        if len(self.collision_events) > 1000:
+            self.collision_events = self.collision_events[-500:]
+        
+        # Trim ionization positions if too large
+        if len(self.ionization_positions_x) > self.max_ionization_positions // 2:
+            self.ionization_positions_x = self.ionization_positions_x[-(self.max_ionization_positions // 4):]
+        
+        # Compact free slots deque
+        if len(self.free_slots) > 100:
+            # Keep only valid slots and limit size
+            valid_slots = [slot for slot in self.free_slots if slot < self.particles.shape[1]]
+            self.free_slots.clear()
+            self.free_slots.extend(valid_slots[:100])
+        
+        # Clear sigma temporary storage periodically
+        for i in range(self.inp.nx):
+            for j in range(self.inp.ny):
+                if len(self.sigma_temp_storage[i][j]) > 100:
+                    self.sigma_temp_storage[i][j] = self.sigma_temp_storage[i][j][-50:]
+        
+        # Removed garbage collection to improve performance
+        
+        # print(f"Memory cleanup completed. Collision events: {len(self.collision_events)}, Ionization positions: {len(self.ionization_positions_x)}, Free slots: {len(self.free_slots)}")
+    
+    def get_memory_usage_info(self):
+        """Get memory usage statistics for this species"""
+        return {
+            'type': self.params.type,
+            'capacity': self.capacity,
+            'array_size': self.particles.shape[1],
+            'active_particles': np.sum(self.is_active),
+            'collision_events': len(self.collision_events),
+            'ionization_positions': len(self.ionization_positions_x),
+            'free_slots': len(self.free_slots),
+            'memory_mb': (self.particles.nbytes + self.is_active.nbytes) / (1024 * 1024)
+        }
     
     def get_coloumb_source(self, idx):
         x = self.particles[self.pc.XCOMP, idx]
