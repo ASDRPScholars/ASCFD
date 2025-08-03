@@ -24,6 +24,11 @@ class ParticleBoundaryConditions:
         kB = 1
         v_th = np.sqrt(2 * kB * self.params.temperature / self.params.mass)
         
+        # For realistic neutral injection, use appropriate flow velocity
+        # Scale injection velocity with mass ratio to maintain reasonable flow rates
+        mass_ratio_correction = np.sqrt(self.params.mass / 100)  # Compensate for mass change
+        neutral_injection_speed = 20 / mass_ratio_correction  # Maintain effective injection rate
+        
         # Create n_ppc particles per boundary cell to match target density
         for j in range(self.inp.ny):
             for p in range(self.inp.n_ppc):  # Critical fix: create n_ppc particles per cell
@@ -41,7 +46,7 @@ class ParticleBoundaryConditions:
                 
                 particle_data[self.pc.XCOMP] = x_offset * self.inp.dx
                 particle_data[self.pc.YCOMP] = (j + y_offset - 1) * self.inp.dy
-                particle_data[self.pc.UCOMP] = vx + 20
+                particle_data[self.pc.UCOMP] = vx + neutral_injection_speed
                 particle_data[self.pc.VCOMP] = vy
                 particle_data[WEIGHT] = weight
                 

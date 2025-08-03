@@ -18,3 +18,4 @@ myEnv/
 *.dll
 *.dylib
 *.ipynb
+dev.ipynb

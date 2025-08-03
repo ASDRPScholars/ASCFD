@@ -128,8 +128,8 @@ class FluidSpecies:
 
         # print("!*! MIN MAX OF damping_source IS", np.min(damping_source), np.max(damping_source))
 
-        # !GOODENOUGH!
-        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] -= damping_source * self.dt * 100
+        # Apply collision damping with proper physics
+        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] -= damping_source * self.dt
 
     
     def _apply_lorentz_source_terms(self, consU_new):
@@ -181,10 +181,10 @@ class FluidSpecies:
                 # This represents realistic Hall thruster physics where azimuthal velocity 
                 # eventually saturates due to collisions, geometry, etc.
 
-                # !GOODENOUGH!
-                v_sat = 0.2  # Saturation velocity scale
+                # Physics-based saturation: momentum source decreases as vz increases
+                v_sat = 0.2  # Saturation velocity scale (may need adjustment based on physics)
                 saturation_factor = 1.0 / (1.0 + (np.abs(vz) / v_sat)**2)  # Smooth saturation
-                z_mom_source = charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] * cross_product * saturation_factor * 100
+                z_mom_source = charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] * cross_product * saturation_factor
                 
                 # Debug saturation effect
                 if np.any(saturation_factor < 0.9):
@@ -199,10 +199,10 @@ class FluidSpecies:
             else:
                 z_mom_source = np.zeros_like(x_mom_source)
         
-        # !GOODENOUGH!
-        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt * 10
-        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt * 10
-        consU_new[self.c.MWCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += z_mom_source * self.dt * 100
+        # Proper Lorentz force application without arbitrary scaling
+        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt
+        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt
+        consU_new[self.c.MWCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += z_mom_source * self.dt
 
         # print("!LORENTZ DEBUG! new MUCOMP:", consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] )
         print(f"!@! Electromagnetic coupling strengths:")
@@ -225,21 +225,20 @@ class FluidSpecies:
         vy = prim_new[self.c.VCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
         vz = prim_new[self.c.WCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
         
-        # Electric field work
+        # Electric field work: ρq(E·v)
         if E.shape[2] > 2:
             electric_work = charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] * \
-                (E[:, :, 0] * vx + E[:, :, 1] * vy + E[:, :, 2] * vz) / 10
+                (E[:, :, 0] * vx + E[:, :, 1] * vy + E[:, :, 2] * vz)
         else:
             electric_work = charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] * \
-                (E[:, :, 0] * vx + E[:, :, 1] * vy) / 10
+                (E[:, :, 0] * vx + E[:, :, 1] * vy)
         
-        # CRITICAL: Add work done by z-momentum acceleration  
-        # Work = F_z · v_z, but be careful with multiplier scaling!
+        # Add work done by z-momentum acceleration  
+        # Work = F_z · v_z with proper physics-based calculation
         if B.shape[2] > 2:
             rho_interior = prim_new[self.c.RHOCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-            # z_mom_source already has *100, so remove it for work calculation
-            z_mom_source_unscaled = z_mom_source / 100  # Remove the arbitrary multiplier
-            z_force_per_volume = z_mom_source_unscaled / self.dt  # Force per unit volume (proper units)
+            # Use the proper z_mom_source without arbitrary scaling
+            z_force_per_volume = z_mom_source / self.dt  # Force per unit volume (proper units)
             z_force_per_mass = z_force_per_volume / (rho_interior + 1e-12)  # Force per unit mass
             z_work = z_force_per_mass * vz  # Work per unit mass per unit time
             z_work *= rho_interior  # Convert back to work per unit volume
@@ -253,8 +252,8 @@ class FluidSpecies:
         print(f"!@! Max |energy_source|: {np.max(np.abs(energy_source)):.3e}")
         print(f"!@! Energy source range: [{np.min(energy_source):.3e}, {np.max(energy_source):.3e}]")
 
-        # !GOODENOUGH!
-        consU_new[self.c.ECOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += energy_source * self.dt * 100
+        # Apply energy source with proper physics
+        consU_new[self.c.ECOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += energy_source * self.dt
         
     
     def get_charge_density(self):

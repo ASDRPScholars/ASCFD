@@ -35,12 +35,10 @@ class Simulation:
         
         # Normalized species parameters (dimensionless)
         
-        # !APPROX! assuming m_i / m_e is only 100
+        # Realistic xenon mass ratio: m_i / m_e ≈ 240,000
         e_params = SpeciesParams(-1.0, 1.0, 5/3, "e", density=1.0, temperature=100.0)  # electrons (normalized)
-        xe_i_params = SpeciesParams(1.0, 100, 5/3, "i", density=0.5, temperature=10.0)  # Xe+ ions  
-        
-        # TODO: 99? 100? does it make a difference?
-        xe_n_params = SpeciesParams(0.0, 99, 5/3, "n", density=5.0, temperature=10.0)  # Xe neutrals
+        xe_i_params = SpeciesParams(1.0, 240000, 5/3, "i", density=0.5, temperature=10.0)  # Xe+ ions (realistic mass)
+        xe_n_params = SpeciesParams(0.0, 240000, 5/3, "n", density=5.0, temperature=10.0)  # Xe neutrals (realistic mass)
         
         self.electrons = FluidSpecies(e_params, self.inp, self.fields, self)
         
