@@ -371,8 +371,8 @@ class ParticleSpecies:
                 Ex_values, Ey_values = self._interpolate_electric_field_batch(x_positions, y_positions)
                 
                 # Vectorized acceleration calculation using pre-computed ratio
-                ax_values = Ex_values * self.dt * 50000
-                ay_values = Ey_values * self.dt * 50000
+                ax_values = Ex_values * self.dt * 10000
+                ay_values = Ey_values * self.dt * 10000
 
                 print("ax is", ax_values)
                 print("because Ex is", Ex_values)
