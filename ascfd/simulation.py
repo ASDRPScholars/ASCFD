@@ -329,13 +329,13 @@ class Simulation:
 
         from scipy.ndimage import gaussian_filter
         charge_density_data = self.fields.charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-        charge_density_smooth = gaussian_filter(charge_density_data, sigma=3.0)
+        charge_density_smooth = gaussian_filter(charge_density_data, sigma=4.5)
         im = axs[8].imshow(charge_density_smooth.T, extent=extent, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[8])
         axs[8].set_title("Charge Density", weight='bold')
 
         ion_density_data = self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-        ion_density_smooth = gaussian_filter(ion_density_data, sigma=3.0)
+        ion_density_smooth = gaussian_filter(ion_density_data, sigma=4.5)
         im = axs[9].imshow(ion_density_smooth.T, extent=extent, origin='lower', cmap=mpl.cm.Blues)
         plt.colorbar(im, ax=axs[9])
         axs[9].set_title("Ion Density", weight='bold')
@@ -351,7 +351,7 @@ class Simulation:
         # axs[10].set_title("Energy", weight='bold')
 
         neutral_density = self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-        neutral_smooth = gaussian_filter(neutral_density, sigma=3)
+        neutral_smooth = gaussian_filter(neutral_density, sigma=4.5)
         im = axs[10].imshow(neutral_smooth.T, extent=extent, origin='lower', cmap=mpl.cm.Greys)
         plt.colorbar(im, ax=axs[10])
         axs[10].set_title("Neutral Density", weight='bold')
