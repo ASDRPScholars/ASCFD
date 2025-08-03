@@ -198,8 +198,8 @@ class Simulation:
 
         # File names
         output_filename = os.path.join(data_dir, f"output_{str(self.timestep).zfill(6)}.txt")
-        output_plotname = os.path.join(frames_dir, f"output_{str(self.timestep).zfill(6)}.png")
-        output_lineplotname = os.path.join(lineplot_dir, f"output_{str(self.timestep).zfill(6)}.png")
+        output_plotname = os.path.join(frames_dir, f"output_{str(self.timestep).zfill(6)}.pdf")
+        output_lineplotname = os.path.join(lineplot_dir, f"output_{str(self.timestep).zfill(6)}.pdf")
 
         # Write raw text data
         with open(output_filename, 'w') as f:
@@ -220,7 +220,7 @@ class Simulation:
         axs = axs.ravel()
 
         # Set up 1D plots
-        fig1d, axs1d = plt.subplots(1, 5, figsize=(20, 4))
+        fig1d, axs1d = plt.subplots(1, 5, figsize=(15, 2))
 
         for q in range(self.c.NUMQ):
             extent = [self.inp.xlim[0], self.inp.xlim[1], self.inp.ylim[0], self.inp.ylim[1]]
@@ -253,6 +253,7 @@ class Simulation:
         
         plot_data_1d = self.electrons.grid[0, self.inp.ng:-self.inp.ng, iy]
         axs1d[0].plot(plot_data_1d)
+        axs1d[0].set_ylim(top=1.2)
         axs1d[0].set_title("Electron Density", weight='bold')
         
         energy_1d = 0.5 * self.electrons.grid[0, self.inp.ng:-self.inp.ng, iy] * (self.electrons.grid[1, self.inp.ng:-self.inp.ng, iy] ** 2 + self.electrons.grid[2, self.inp.ng:-self.inp.ng, iy] ** 2 + self.electrons.grid[3, self.inp.ng:-self.inp.ng, iy] ** 2)
@@ -274,7 +275,7 @@ class Simulation:
                 window_size = min(5, len(ionization_freq) // 3)  # Adaptive window size
                 if window_size >= 3:
                     from scipy.ndimage import gaussian_filter1d
-                    ionization_freq_smooth = gaussian_filter1d(ionization_freq.astype(float), sigma=1.5)
+                    ionization_freq_smooth = gaussian_filter1d(ionization_freq.astype(float), sigma=4)
                 else:
                     ionization_freq_smooth = ionization_freq
                 
@@ -285,14 +286,14 @@ class Simulation:
         ion_density_data = self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
         ion_density_1d = ion_density_data[:, iy]
         from scipy.ndimage import gaussian_filter1d
-        ion_density_1d_smooth = gaussian_filter1d(ion_density_1d.astype(float), sigma=1.5)
+        ion_density_1d_smooth = gaussian_filter1d(ion_density_1d.astype(float), sigma=4)
         axs1d[3].plot(ion_density_1d_smooth)
         axs1d[3].set_title("Ion Density", weight='bold')
         
         # Neutral density 1D cross-section  
         neutral_density_data = self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
         neutral_density_1d = neutral_density_data[:, iy]
-        neutral_density_1d_smooth = gaussian_filter1d(neutral_density_1d.astype(float), sigma=1.5)
+        neutral_density_1d_smooth = gaussian_filter1d(neutral_density_1d.astype(float), sigma=4)
         axs1d[4].plot(neutral_density_1d_smooth)
         axs1d[4].set_title("Neutral Density", weight='bold')
 
