@@ -33,10 +33,6 @@ class ParticleInitialConditions:
     def random(self):
         print("initializing random!")
         ic_particles = np.zeros_like(self.particles)
-        
-        # Scale drift velocity to account for realistic mass ratio
-        mass_ratio_correction = np.sqrt(self.params.mass / 100)  # Compensate for mass change
-        drift_velocity = 20 / mass_ratio_correction  # Maintain effective flow rate
     
         for n in range(self.inp.n_particles):
             random_x, random_y = np.random.rand() * (self.inp.xlim[1] - self.inp.xlim[0]), np.random.rand() * (self.inp.ylim[1] - self.inp.ylim[0])
@@ -44,7 +40,7 @@ class ParticleInitialConditions:
 
             ic_particles[self.pc.XCOMP, n] = random_x
             ic_particles[self.pc.YCOMP, n] = random_y
-            ic_particles[self.pc.UCOMP, n] = vx + drift_velocity
+            ic_particles[self.pc.UCOMP, n] = vx + 20
             ic_particles[self.pc.VCOMP, n] = vy
             if self.pc.WCOMP < self.pc.NUMQ:
                 ic_particles[self.pc.WCOMP, n] = vz

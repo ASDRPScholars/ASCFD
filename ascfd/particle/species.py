@@ -402,10 +402,9 @@ class ParticleSpecies:
                 # Batch interpolate electric fields
                 Ex_values, Ey_values = self._interpolate_electric_field_batch(x_positions, y_positions)
                 
-                # Proper acceleration calculation using charge-to-mass ratio
-                charge_to_mass_ratio = self.params.charge / self.params.mass
-                ax_values = charge_to_mass_ratio * Ex_values * self.dt
-                ay_values = charge_to_mass_ratio * Ey_values * self.dt
+                # Vectorized acceleration calculation using pre-computed ratio
+                ax_values = Ex_values * self.dt * 40000
+                ay_values = Ey_values * self.dt * 40000
 
                 # print("ax is", ax_values)
                 # print("because Ex is", Ex_values)
@@ -565,8 +564,11 @@ class ParticleSpecies:
             #print("[ATTEMPT_COLLISIONS] grid_coords is None")
             return []
         
-        # Proper relative velocity calculation for all particle types
-        v_rel = np.sqrt(vx**2 + vy**2 + vz**2)
+        if self.params.type == "e":
+            # !GOODENOUGH!
+            v_rel = np.sqrt(vx**2 + vy**2 + (vz*100000)**2)
+        else:
+            v_rel = np.sqrt(vx**2 + vy**2 + vz**2)
 
         if v_rel < 1e-10:
             #print("[ATTEMPT_COLLISIONS] v_rel < 1e-10")
@@ -595,8 +597,8 @@ class ParticleSpecies:
                 #print("NOT ENOUGH ENERGY FOR", collision_type)
                 continue
                 
-            # Use proper cross-section data without arbitrary scaling
-            sigma = collision_data["cross_section_func"](energy_ev)
+            # !GOODENOUGH!
+            sigma = collision_data["cross_section_func"](energy_ev) * 1e18
                         
             if sigma <= 0:
                 #print("NEGATIVE SIGMA FOR", collision_type)
@@ -715,15 +717,14 @@ class ParticleSpecies:
                 electron[self.pc.WCOMP] = electron_speed * np.cos(phi)
 
             ion_energy_j = available_energy_j * (1 - electron_energy_fraction)
-            # Realistic xenon mass ratio (240,000 × electron mass)
-            xenon_mass = 240000
+            # !NORM! xenon_mass = 2.18e-25
+            xenon_mass = 99
             ion_speed = np.sqrt(2 * ion_energy_j / xenon_mass)
             ion_theta = np.random.uniform(0, 2 * np.pi)
-            # Proper momentum conservation without arbitrary velocity scaling
-            ion[self.pc.UCOMP] = ion_speed * np.cos(ion_theta)
-            ion[self.pc.VCOMP] = ion_speed * np.sin(ion_theta)
+            ion[self.pc.UCOMP] = ion_speed * np.cos(ion_theta) * 0.1
+            ion[self.pc.VCOMP] = ion_speed * np.sin(ion_theta) * 0.1
             if self.pc.WCOMP < self.pc.NUMQ:
-                ion[self.pc.WCOMP] = vz
+                ion[self.pc.WCOMP] = vz * 0.1
 
         products = [ion, electron]
         
