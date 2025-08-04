@@ -29,7 +29,7 @@ class ParticleBoundaryConditions:
             for p in range(self.inp.n_ppc):  # Critical fix: create n_ppc particles per cell
                 particle_data = np.zeros(self.pc.NUMQ + 1)
                 
-                x_offset = np.random.uniform(0.1, 0.5)
+                x_offset = np.random.uniform(0.1, 15)
                 y_offset = np.random.uniform(-0.4999, 0.5)
                             
                 R1, R2 = np.random.rand(2)
