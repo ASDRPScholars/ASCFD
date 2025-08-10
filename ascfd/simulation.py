@@ -16,10 +16,10 @@ import subprocess
 import scienceplots
 import cmocean
 
-plt.rcParams['text.usetex'] = True
-plt.style.use(['science','ieee'])
-plt.rcParams['text.usetex'] = True  # Ensure this stays set
-plt.rcParams['font.family'] = 'serif'
+# plt.rcParams['text.usetex'] = True
+# plt.style.use(['science','ieee'])
+# plt.rcParams['text.usetex'] = True  # Ensure this stays set
+# plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = ['Computer Modern Roman']
 
 class Simulation:
@@ -30,17 +30,17 @@ class Simulation:
         self.fields = Fields(self.inp)
         
         # Initialize plasma normalization
-        from ascfd.fluid.plasma_refs import PlasmaReferences
-        plasma_refs = PlasmaReferences(n0=1e18, T0=1000.0, species_mass=9.1e-31, species_charge=1.6e-19)
+        from ascfd.plasma_refs import PlasmaReferences
+        self.ref = PlasmaReferences(n0=1e18, T0=1000.0, species_mass=9.1e-31, species_charge=1.6e-19)
         
         # Normalized species parameters (dimensionless)
         
         # !APPROX! assuming m_i / m_e is only 100
-        e_params = SpeciesParams(-1.0, 1.0, 5/3, "e", density=1.0, temperature=100.0)  # electrons (normalized)
-        xe_i_params = SpeciesParams(1.0, 100, 5/3, "i", density=0.5, temperature=10.0)  # Xe+ ions  
+        e_params = SpeciesParams(-1.0, 5e-6, 5/3, "e", density=1.0, temperature=100.0)  # electrons (normalized)
+        xe_i_params = SpeciesParams(1.0, 1, 5/3, "i", density=0.5, temperature=10.0)  # Xe+ ions  
         
         # TODO: 99? 100? does it make a difference?
-        xe_n_params = SpeciesParams(0.0, 99, 5/3, "n", density=5.0, temperature=10.0)  # Xe neutrals
+        xe_n_params = SpeciesParams(0.0, 1, 5/3, "n", density=5.0, temperature=10.0)  # Xe neutrals
         
         self.electrons = FluidSpecies(e_params, self.inp, self.fields, self)
         
@@ -77,6 +77,38 @@ class Simulation:
         if self.inp.output_freq >= 0:
             self.output()
         
+        
+    def _phys_to_normal(self):
+        normal_inp = Inputs()
+        ref = self.ref
+        inp = self.inp
+        
+        normal_inp.m_e = inp.m_e / ref.m
+        normal_inp.m_i = inp.m_i / ref.m
+        normal_inp.m_n = inp.m_n / ref.m
+        
+        normal_inp.rho_e = ref.L ** 3 * inp.rho_e
+        normal_inp.n_n = ref.L ** 3 * inp.n_n
+        
+        normal_inp.q = inp.q / ref.q
+        
+        normal_inp.xlim = (inp.xlim[1] / ref.L, inp.xlim[0])
+        normal_inp.ylim = (inp.ylim[1] / ref.L, inp.ylim[0])
+        normal_inp.t_finish = (ref.L / ref.v) * inp.t_finish
+        # v should automatically be normalized from x and t normalization
+        
+        normal_inp.V_anode = (ref.q / (ref.m * ref.v ** 2)) * inp.V_anode 
+        normal_inp.V_cathode = (ref.q / (ref.m * ref.v ** 2)) * inp.V_cathode
+        normal_inp.B_max = ((ref.q * ref.L) / (ref.m * ref.v)) * inp.B_max
+        
+        normal_inp.cross_sections = inp.cross_sections / (ref.L ** 2)
+        
+        # TODO: how to do ics?? add ic values into inputs? add a multiplier to put into apply_ics??
+        
+        
+    def _normal_to_phys(self):
+        pass
+        
 
     def run(self):
         while (self.t < self.inp.t_finish) and self.timestep < self.inp.nt:
@@ -94,12 +126,12 @@ class Simulation:
                 print("NUMBER OF NEW PARTICLES:", len(new_particles))
                 
                 # Add all new particles at once (more efficient than per-particle loop)
-                if new_particles:
-                    # Add to ions and fluid electrons as before
-                    for particle in new_particles:
-                        self.ions.add_particle(particle)
-                    # Add all particles to fluid electrons at once
-                    self.electrons.add_particles(new_particles)   
+                # if new_particles:
+                #     # Add to ions and fluid electrons as before
+                #     for particle in new_particles:
+                #         self.ions.add_particle(particle)
+                #     # Add all particles to fluid electrons at once
+                #     self.electrons.add_particles(new_particles)   
                 
             else:
                 raise ValueError(f"Unknown time stepper: {self.inp.timeStepper}")
