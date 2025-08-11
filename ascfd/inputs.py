@@ -22,20 +22,20 @@ class Inputs:
         # Mesh
         self.nx = self.get_config_value(config, "Mesh", "nx", type_func=int)
         self.ny = self.get_config_value(config, "Mesh", "ny", type_func=int)
-        self.numghosts = self.get_config_value(config, "Mesh", "numghosts", type_func=int)
+        self.ng = self.get_config_value(config, "Mesh", "ng", type_func=int)
         self.xlim = self.get_config_value(config, "Mesh", "xlim", type_func=self.parse_bounds)
         self.ylim = self.get_config_value(config, "Mesh", "ylim", type_func=self.parse_bounds)
 
 
         ## computed mesh properties
-        self.nx_with_ghosts = self.nx + 2 * self.numghosts
-        self.ny_with_ghosts = self.ny + 2 * self.numghosts
+        self.nx_with_ghosts = self.nx + 2 * self.ng
+        self.ny_with_ghosts = self.ny + 2 * self.ng
         
         self.dx = (self.xlim[1] - self.xlim[0]) / (self.nx - 1)
         self.dy = (self.ylim[1] - self.ylim[0]) / (self.ny - 1)
         
-        self.grid_x = np.linspace(self.xlim[0] - self.dx * self.numghosts, self.xlim[1] + self.dx * self.numghosts, self.nx + 2 * self.numghosts)
-        self.grid_y = np.linspace(self.ylim[0] - self.dy * self.numghosts, self.ylim[1] + self.dy * self.numghosts, self.ny + 2 * self.numghosts)
+        self.grid_x = np.linspace(self.xlim[0] - self.dx * self.ng, self.xlim[1] + self.dx * self.ng, self.nx + 2 * self.ng)
+        self.grid_y = np.linspace(self.ylim[0] - self.dy * self.ng, self.ylim[1] + self.dy * self.ng, self.ny + 2 * self.ng)
 
         # Time
         self.nt = self.get_config_value(
@@ -71,11 +71,13 @@ class Inputs:
 
         # Particle
         self.particle_ics = self.get_config_value(config, "Particle", "particle_ics", mandatory = False, default=None)
-        self.n_particles = self.get_config_value(config, "Particle", "n_particles", mandatory = False, default = 0, type_func = int)
+        self.n_ppc = self.get_config_value(config, "Particle", "n_ppc", mandatory = False, default = 0, type_func = int)
         self.particle_flow_type = self.get_config_value(config, "Particle", "flow_type", mandatory = False, default = None)
         self.seeding_per_timestep = self.get_config_value(config, "Particle", "seeding_per_timestep", mandatory = False, default = 0, type_func = int)
         self.bounce_back_multiplier = self.get_config_value(config, "Particle", "bounce_back_multiplier", mandatory = False, default = 1.0, type_func = float)
         self.max_number_of_bounces = self.get_config_value(config, "Particle", "max_number_of_bounces", mandatory = False, default = 3, type_func = int)
+        
+        self.n_particles = self.n_ppc * self.nx_with_ghosts * self.ny_with_ghosts
         
         # Electric Field
         self.E_ics = self.get_config_value(config, "Fields", "E_ics")

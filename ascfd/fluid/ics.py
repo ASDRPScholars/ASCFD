@@ -1,10 +1,12 @@
 from ascfd.fluid.constants import FluidConstants
 from ascfd.inputs import Inputs
+from ascfd.params import SpeciesParams
 import numpy as np
 
 class FluidInitialConditions:
-    def __init__(self, grid, a_inputs: Inputs):
+    def __init__(self, grid, a_inputs: Inputs, params: SpeciesParams):
         self.c = FluidConstants(a_inputs)
+        self.params = params
         self.inp = a_inputs
         self.grid = grid
         
@@ -13,13 +15,34 @@ class FluidInitialConditions:
     def apply_ics(self):
         if self.inp.system == "euler2d":
             if self.inp.fluid_ics == "diagonal_advection":
+                print("applying diag advection")
                 f = self.diagonal_advection_2d
+                
+                new_grid = np.zeros_like(self.grid)
                 
                 for var in range(self.c.NUMQ):
                     print(var)
-                    self.grid[var] = f(self.mesh_x, self.mesh_y, var)
+                    new_grid[var] = f(self.mesh_x, self.mesh_y, var)
                     
-                # self.grid = self.diagonal_advection_2d()
+                return new_grid
+            
+            elif self.inp.fluid_ics == "poisson_validation":
+                print("applying diag advection")
+                f = self.poisson_validation_charge_density
+                
+                new_grid = np.zeros_like(self.grid)
+                
+                for var in range(self.c.NUMQ):
+                    print(var)
+                    new_grid[var] = f(self.mesh_x, self.mesh_y, var)
+                    
+                return new_grid
+
+            elif self.inp.fluid_ics == "tame_static":
+                return self.tame_static()
+            
+            elif self.inp.fluid_ics == "e_cloud_test":
+                return self.e_cloud_test()
                 
             elif self.inp.fluid_ics == "kelvin_helmholtz":
                 self.grid = self.kelvin_helmholtz_2d()
@@ -27,6 +50,7 @@ class FluidInitialConditions:
                 self.grid = self.double_mach_reflection_2d()
             elif self.inp.fluid_ics == "riemann_problem":
                 self.grid = self.riemann_2d()
+
             else:
                 raise RuntimeError("[FLUID] ICS not valid.")
            
@@ -58,13 +82,17 @@ class FluidInitialConditions:
         if a_var == 0: #RHOCOMP
             return 1.0 + 0.2 * np.sin(2 * np.pi * (a_x + a_y - t))
         elif a_var == 1: #UCOMP
-            return np.ones_like(a_x)
+            return np.ones_like(a_x) * 10
         elif a_var == 2: #VCOMP
-            return np.ones_like(a_x)
-        elif a_var == 3: #PCOMP
+            return np.ones_like(a_x) * 10
+        elif a_var == 3: #WCOMP (z-velocity)
+            return np.zeros_like(a_x)  # Start with zero azimuthal velocity
+        elif a_var == 4: #PCOMP
             return np.ones_like(a_x)
         else:
-            raise ValueError(f"Unexpected variable: {a_var}")
+            return 0
+        # else:
+        #     raise ValueError(f"Unexpected variable: {a_var}")
 
     def kelvin_helmholtz_2d(a_x, a_y, a_var):
         """
@@ -99,7 +127,7 @@ class FluidInitialConditions:
         else:
             raise ValueError(f"Unexpected variable: {a_var}")
 
-    def riemann_2d(a_x, a_y, a_var):
+    def riemann_2d(self, a_x, a_y, a_var):
         """
         2D Riemann problem for 2D Euler equations.
         """
@@ -141,7 +169,7 @@ class FluidInitialConditions:
         elif a_var == 3: #PCOMP
             return p
         else:
-            raise ValueError(f"Unexpected variable: {a_var}")
+            return 0
         
     def orszag_tang_2d(a_x, a_y, a_var):
         """
@@ -161,3 +189,104 @@ class FluidInitialConditions:
             return np.sin(4 * np.pi * a_x)
         else:
             raise ValueError(f"Unexpected variable: {a_var}")
+    
+    def poisson_validation_charge_density(self, a_x, a_y, a_var):
+        """
+        Poisson validation test: charge density = -sin(x) - cos(y)
+        This should produce electric field corresponding to sin(x) + cos(y)
+        """
+        if a_var == 0:  # Charge density component
+            return -np.sin(a_x*10) - np.cos(a_y*10)
+        else:
+            # Set all other components to zero
+            return np.zeros_like(a_x)
+    
+    # ## real tame
+    # def tame_static(self):
+    #     ic = np.zeros_like(self.grid)
+    #     rho0 = 9e-11                # kg/m³  → n≈1e20 m⁻³
+    #     u0 = 0.0                     # m/s
+    #     v0 = 0.0
+    #     T0 = 1                     # K, choose a reasonable electron/ion temperature
+    #     p0 = rho0/self.params.mass * self.c.k_B * T0  # ideal‑gas law: n kT
+    #     E0 = p0/(self.c.gamma-1) + 0.5*rho0*(u0**2+v0**2)
+        
+    #     ic[self.c.RHOCOMP] = rho0
+    #     ic[self.c.UCOMP ] = u0  
+    #     ic[self.c.VCOMP ] = v0
+    #     ic[self.c.PCOMP ] = p0
+    #     return ic
+    
+    ## wip tame
+    # def tame_static(self):
+    #     ic = np.zeros_like(self.grid)
+    #     rho0 = 9.11e-13                # kg/m³  → n≈1e20 m⁻³
+    #     u0 = 0.0                     # m/s
+    #     v0 = 0.0
+    #     T0 = 10                     # K, choose a reasonable electron/ion temperature
+    #     p0 = rho0/self.params.mass * self.c.k_B * T0  # ideal‑gas law: n kT
+    #     E0 = p0/(self.c.gamma-1) + 0.5*rho0*(u0**2+v0**2)
+        
+    #     ic[self.c.RHOCOMP] = 9.11e-13
+    #     ic[self.c.UCOMP ] = 0  
+    #     ic[self.c.VCOMP ] = 0
+    #     ic[self.c.PCOMP ] = p0
+    #     return ic
+    
+    #normalized
+    def tame_static(self):
+        ic = np.zeros_like(self.grid)
+
+        # Normalized values (order unity)
+        rho_norm = 1                  # ρ/ρ_ref = 1
+        u_norm = 0.0                    # u/v_ref = 0  
+        v_norm = 0.0                    # v/v_ref = 0
+        T_norm = 1.0                    # T/T_ref = 1
+        p_norm = rho_norm * T_norm      # p/p_ref = (ρ/ρ_ref)(T/T_ref)
+
+        ic[self.c.RHOCOMP] = rho_norm
+        ic[self.c.UCOMP] = u_norm
+        ic[self.c.VCOMP] = v_norm
+        ic[self.c.WCOMP] = 0.0  # Initialize z-velocity to zero
+        ic[self.c.PCOMP] = p_norm
+        return ic
+    
+    
+    def e_cloud_test(self):
+        ic = np.zeros_like(self.grid)
+
+        # Create meshgrid of x-values
+        nx, ny = self.inp.nx, self.inp.ny
+        ng = self.inp.ng
+        dx = self.inp.dx
+        x_start = self.inp.xlim[0]
+
+        for i in range(ng, nx + ng):
+            x = x_start + (i - ng + 0.5) * dx  # cell center x-position
+
+            for j in range(ng, ny + ng):
+                # Gaussian peak at x=0.75 with exponential tail to the right
+                center = 0.75
+                sigma = 0.05  # you can tweak this
+                
+                if x <= center:
+                    # Gaussian on the left side and at peak
+                    gaussian_factor = np.exp(-0.5 * ((x - center) / sigma)**2)
+                    rho_val = 0.1 + 9.9 * gaussian_factor  # peaks at 10.0, base at 0.1
+                    p_val = 10.0 + 990.0 * gaussian_factor  # peaks at 1000.0, base at 10.0
+                else:
+                    # Exponential tail on the right side
+                    tail_decay = 0.1  # controls how fast the tail decays (you can tweak)
+                    exp_factor = np.exp(-(x - center) / tail_decay)
+                    rho_val = 1 + 9.9 * exp_factor  # starts at 10.0 at center, decays to 0.1
+                    p_val = 10.0 + 990.0 * exp_factor  # starts at 1000.0 at center, decays to 10.0
+                
+                ic[self.c.RHOCOMP, i, j] = rho_val
+                ic[self.c.PCOMP, i, j] = p_val
+
+                ic[self.c.UCOMP, i, j] = 0.0
+                ic[self.c.VCOMP, i, j] = 0.0
+                ic[self.c.WCOMP, i, j] = 0.0  # Initialize z-velocity to zero
+
+        return ic
+    
