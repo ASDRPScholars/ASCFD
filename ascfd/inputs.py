@@ -59,7 +59,10 @@ class Inputs:
             raise RuntimeError("Initial time is >= to the final time.")
 
         # Fluid
-        self.fluid_ics = self.get_config_value(config, "Fluid", "fluid_ics")
+        # self.fluid_ics = self.get_config_value(config, "Fluid", "fluid_ics")
+        self.rho_e = self.get_config_value(config, "Fluid", "density", type_func = float)
+        self.p_e = self.get_config_value(config, "Fluid", "pressure", type_func = float)
+
         self.system = self.get_config_value(config, "Fluid", "system")
         self.gammas = self.get_config_value(config, "Fluid", "gammas", type_func=lambda s: [float(item) for item in s.strip('[]').split(',')])
         self.mW = self.get_config_value(config, "Fluid", "mW", type_func=lambda s: [float(item) for item in s.strip('[]').split(',')])
@@ -80,8 +83,18 @@ class Inputs:
         self.n_particles = self.n_ppc * self.nx_with_ghosts * self.ny_with_ghosts
         
         # Electric Field
-        self.E_ics = self.get_config_value(config, "Fields", "E_ics")
         self.B_ics = self.get_config_value(config, "Fields", "B_ics")
+        
+        # TODO
+        self.B_max = self.get_config_value(config, "Fields", "B_max", type_func = float)
+        self.V_anode = self.get_config_value(config, "Fields", "V_anode", type_func = int)
+        self.V_cathode = self.get_config_value(config, "Fields", "V_cathode", type_func = int)
+        
+        # Params
+        self.q = self.get_config_value(config, "Parameters", "charge", type_func = float)
+        self.m_e = self.get_config_value(config, "Parameters", "e_mass", type_func = float)
+        self.m_i = self.get_config_value(config, "Parameters", "i_mass", type_func = float)
+        self.m_n = self.get_config_value(config, "Parameters", "n_mass", type_func = float)
         
 
         # Output

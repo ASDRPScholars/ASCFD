@@ -17,6 +17,7 @@ class ParticleBoundaryConditions:
         
         
     def apply_inflow_lo(self):
+        return
         """Apply inflow boundary condition with proper n_ppc seeding"""
         WEIGHT = self.pc.NUMQ
         weight = self.params.density * self.inp.dx * self.inp.dy / self.inp.n_ppc

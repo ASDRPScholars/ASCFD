@@ -15,6 +15,7 @@ import sys
 import subprocess
 import scienceplots
 import cmocean
+import copy
 
 # plt.rcParams['text.usetex'] = True
 # plt.style.use(['science','ieee'])
@@ -31,23 +32,35 @@ class Simulation:
         
         # Initialize plasma normalization
         from ascfd.plasma_refs import PlasmaReferences
-        self.ref = PlasmaReferences(n0=1e18, T0=1000.0, species_mass=9.1e-31, species_charge=1.6e-19)
+        # self.ref = PlasmaReferences(n0=1e18, T0=1000.0, species_mass=9.1e-31, species_charge=1.6e-19)
         
+        self.ref = PlasmaReferences()
+        
+        self.inp = self._phys_to_normal()
+        
+        print("REF IS", self.ref)
         # Normalized species parameters (dimensionless)
         
         # !APPROX! assuming m_i / m_e is only 100
-        e_params = SpeciesParams(-1.0, 5e-6, 5/3, "e", density=1.0, temperature=100.0)  # electrons (normalized)
-        xe_i_params = SpeciesParams(1.0, 1, 5/3, "i", density=0.5, temperature=10.0)  # Xe+ ions  
+        # e_params = SpeciesParams(-1.0, 5e-6, 5/3, "e", density=1.0, temperature=100.0)  # electrons (normalized)
         
-        # TODO: 99? 100? does it make a difference?
-        xe_n_params = SpeciesParams(0.0, 1, 5/3, "n", density=5.0, temperature=10.0)  # Xe neutrals
+        # xe_i_params = SpeciesParams(1.0, 1, 5/3, "i", density=0.5, temperature=10.0)  # Xe+ ions  
+        
+        # # TODO: 99? 100? does it make a difference?
+        # xe_n_params = SpeciesParams(0.0, 1, 5/3, "n", density=5.0, temperature=10.0)  # Xe neutrals
+        
+        # e_params = SpeciesParams(-self.inp.q, self.inp.m_e, 5/3, "e", density=1.0, temperature=100.0)
+        e_params = SpeciesParams(-self.inp.q, self.inp.m_e, 5/3, "e", density=1.0, temperature=100.0)
+        
+        print("!NORM Q!", -self.inp.q)
+        print("!NORM M_E!", self.inp.m_e)
         
         self.electrons = FluidSpecies(e_params, self.inp, self.fields, self)
         
         if self.inp.particle_ics is not None:
-            self.neutrals = ParticleSpecies(xe_n_params, self.inp, self.fields, self)
-            self.ions = ParticleSpecies(xe_i_params, self.inp, self.fields, self)
-            self.pelectrons = ParticleSpecies(e_params, self.inp, self.fields, self)
+            # self.neutrals = ParticleSpecies(xe_n_params, self.inp, self.fields, self)
+            # self.ions = ParticleSpecies(xe_i_params, self.inp, self.fields, self)
+            # self.pelectrons = ParticleSpecies(e_params, self.inp, self.fields, self)
 
             self.electrons.pelectrons = self.pelectrons
             
@@ -71,44 +84,56 @@ class Simulation:
             species.dt = self.dt
             # species.dt = 0.002
 
-        self.pelectrons.dt = self.dt
+        # self.pelectrons.dt = self.dt
         
         # -1 is no output. Always output ICs if we are outputting.
         if self.inp.output_freq >= 0:
             self.output()
         
         
-    def _phys_to_normal(self):
-        normal_inp = Inputs()
+    def _phys_to_normal(self) -> Inputs:
+        normal_inp = copy.deepcopy(self.inp)
+        
         ref = self.ref
         inp = self.inp
         
         normal_inp.m_e = inp.m_e / ref.m
-        normal_inp.m_i = inp.m_i / ref.m
-        normal_inp.m_n = inp.m_n / ref.m
+        # normal_inp.m_i = inp.m_i / ref.m
+        # normal_inp.m_n = inp.m_n / ref.m
         
-        normal_inp.rho_e = ref.L ** 3 * inp.rho_e
-        normal_inp.n_n = ref.L ** 3 * inp.n_n
+        # INITIAL CONDITIONS
+        normal_inp.rho_e = (ref.L**3/ref.m) * inp.rho_e
+        # normal_inp.n_n = ref.L ** 3 * inp.n_n
+        
+        # TODO: add pressure/temperature normalization
         
         normal_inp.q = inp.q / ref.q
         
         normal_inp.xlim = (inp.xlim[1] / ref.L, inp.xlim[0])
         normal_inp.ylim = (inp.ylim[1] / ref.L, inp.ylim[0])
-        normal_inp.t_finish = (ref.L / ref.v) * inp.t_finish
+        normal_inp.t_finish = (ref.v / ref.L) * inp.t_finish
         # v should automatically be normalized from x and t normalization
         
         normal_inp.V_anode = (ref.q / (ref.m * ref.v ** 2)) * inp.V_anode 
         normal_inp.V_cathode = (ref.q / (ref.m * ref.v ** 2)) * inp.V_cathode
         normal_inp.B_max = ((ref.q * ref.L) / (ref.m * ref.v)) * inp.B_max
         
-        normal_inp.cross_sections = inp.cross_sections / (ref.L ** 2)
+        # normal_inp.cross_sections = inp.cross_sections / (ref.L ** 2)
         
         # TODO: how to do ics?? add ic values into inputs? add a multiplier to put into apply_ics??
         
-        
+        return normal_inp
+    
+    
     def _normal_to_phys(self):
-        pass
+        grid = copy.copy(self.electrons.grid)
+        ref = self.ref
         
+        grid[self.c.RHOCOMP] = grid[self.c.RHOCOMP] * (ref.m/ref.L**3)
+        np.set_printoptions(threshold=sys.maxsize)
+        print(grid[self.c.RHOCOMP])
+        return grid
+
 
     def run(self):
         while (self.t < self.inp.t_finish) and self.timestep < self.inp.nt:
@@ -216,6 +241,8 @@ class Simulation:
         
 
     def output(self):
+        
+        
         # Ensure output directories exist
         os.makedirs(self.inp.output_dir, exist_ok=True)
 
@@ -252,13 +279,15 @@ class Simulation:
         axs = axs.ravel()
 
         # Set up 1D plots
-        fig1d, axs1d = plt.subplots(1, 5, figsize=(15, 2))
+        # fig1d, axs1d = plt.subplots(1, 5, figsize=(15, 2))
 
         for q in range(self.c.NUMQ):
             extent = [self.inp.xlim[0], self.inp.xlim[1], self.inp.ylim[0], self.inp.ylim[1]]
 
             # 2D plot
-            plot_data = self.electrons.grid[q, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+            norm_data = self._normal_to_phys()
+            plot_data = norm_data[q, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+            
             # plot_data = self.electrons.grid[q]
             im = axs[q].imshow(plot_data.T, extent=extent, origin='lower', cmap='magma')
             plt.colorbar(im, ax=axs[q])
@@ -283,51 +312,51 @@ class Simulation:
         # 1D line plot (center slice)
         iy = round(self.inp.ny / 2)
         
-        plot_data_1d = self.electrons.grid[0, self.inp.ng:-self.inp.ng, iy]
-        axs1d[0].plot(plot_data_1d)
-        axs1d[0].set_ylim(top=1.2)
-        axs1d[0].set_title("Electron Density", weight='bold')
+        # plot_data_1d = self.electrons.grid[0, self.inp.ng:-self.inp.ng, iy]
+        # axs1d[0].plot(plot_data_1d)
+        # axs1d[0].set_ylim(top=1.2)
+        # axs1d[0].set_title("Electron Density", weight='bold')
         
-        energy_1d = 0.5 * self.electrons.grid[0, self.inp.ng:-self.inp.ng, iy] * (self.electrons.grid[1, self.inp.ng:-self.inp.ng, iy] ** 2 + self.electrons.grid[2, self.inp.ng:-self.inp.ng, iy] ** 2 + self.electrons.grid[3, self.inp.ng:-self.inp.ng, iy] ** 2)
-        axs1d[1].plot(energy_1d)
-        axs1d[1].set_title("Electron Energy (eV)", weight='bold')
+        # energy_1d = 0.5 * self.electrons.grid[0, self.inp.ng:-self.inp.ng, iy] * (self.electrons.grid[1, self.inp.ng:-self.inp.ng, iy] ** 2 + self.electrons.grid[2, self.inp.ng:-self.inp.ng, iy] ** 2 + self.electrons.grid[3, self.inp.ng:-self.inp.ng, iy] ** 2)
+        # axs1d[1].plot(energy_1d)
+        # axs1d[1].set_title("Electron Energy (eV)", weight='bold')
         
-        # Ionization frequency vs X position
-        if hasattr(self, 'pelectrons') and hasattr(self.pelectrons, 'ionization_positions_x'):
-            if self.pelectrons.ionization_positions_x:
-                # Convert positions to grid indices and create histogram
-                x_positions = np.array(self.pelectrons.ionization_positions_x)
-                # Convert physical positions to grid coordinates
-                x_indices = ((x_positions - self.inp.grid_x[0]) / self.inp.dx).astype(int)
-                # Create histogram bins for x grid points
-                x_bins = np.arange(self.inp.ng, self.inp.nx - self.inp.ng + 1)
-                ionization_freq, _ = np.histogram(x_indices, bins=x_bins)
+        # # Ionization frequency vs X position
+        # if hasattr(self, 'pelectrons') and hasattr(self.pelectrons, 'ionization_positions_x'):
+        #     if self.pelectrons.ionization_positions_x:
+        #         # Convert positions to grid indices and create histogram
+        #         x_positions = np.array(self.pelectrons.ionization_positions_x)
+        #         # Convert physical positions to grid coordinates
+        #         x_indices = ((x_positions - self.inp.grid_x[0]) / self.inp.dx).astype(int)
+        #         # Create histogram bins for x grid points
+        #         x_bins = np.arange(self.inp.ng, self.inp.nx - self.inp.ng + 1)
+        #         ionization_freq, _ = np.histogram(x_indices, bins=x_bins)
                 
-                # Smooth the data with a moving average
-                window_size = min(5, len(ionization_freq) // 3)  # Adaptive window size
-                if window_size >= 3:
-                    from scipy.ndimage import gaussian_filter1d
-                    ionization_freq_smooth = gaussian_filter1d(ionization_freq.astype(float), sigma=4)
-                else:
-                    ionization_freq_smooth = ionization_freq
+        #         # Smooth the data with a moving average
+        #         window_size = min(5, len(ionization_freq) // 3)  # Adaptive window size
+        #         if window_size >= 3:
+        #             from scipy.ndimage import gaussian_filter1d
+        #             ionization_freq_smooth = gaussian_filter1d(ionization_freq.astype(float), sigma=4)
+        #         else:
+        #             ionization_freq_smooth = ionization_freq
                 
-                axs1d[2].plot(x_bins[:-1], ionization_freq_smooth)
-                axs1d[2].set_title("Electron-Neutral Collision Frequency", weight='bold')
+        #         axs1d[2].plot(x_bins[:-1], ionization_freq_smooth)
+        #         axs1d[2].set_title("Electron-Neutral Collision Frequency", weight='bold')
         
-        # Ion density 1D cross-section
-        ion_density_data = self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-        ion_density_1d = ion_density_data[:, iy]
-        from scipy.ndimage import gaussian_filter1d
-        ion_density_1d_smooth = gaussian_filter1d(ion_density_1d.astype(float), sigma=4)
-        axs1d[3].plot(ion_density_1d_smooth)
-        axs1d[3].set_title("Ion Density", weight='bold')
+        # # Ion density 1D cross-section
+        # ion_density_data = self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+        # ion_density_1d = ion_density_data[:, iy]
+        # from scipy.ndimage import gaussian_filter1d
+        # ion_density_1d_smooth = gaussian_filter1d(ion_density_1d.astype(float), sigma=4)
+        # axs1d[3].plot(ion_density_1d_smooth)
+        # axs1d[3].set_title("Ion Density", weight='bold')
         
-        # Neutral density 1D cross-section  
-        neutral_density_data = self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-        neutral_density_1d = neutral_density_data[:, iy]
-        neutral_density_1d_smooth = gaussian_filter1d(neutral_density_1d.astype(float), sigma=4)
-        axs1d[4].plot(neutral_density_1d_smooth)
-        axs1d[4].set_title("Neutral Density", weight='bold')
+        # # Neutral density 1D cross-section  
+        # neutral_density_data = self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+        # neutral_density_1d = neutral_density_data[:, iy]
+        # neutral_density_1d_smooth = gaussian_filter1d(neutral_density_1d.astype(float), sigma=4)
+        # axs1d[4].plot(neutral_density_1d_smooth)
+        # axs1d[4].set_title("Neutral Density", weight='bold')
 
         #     else:
         #         axs1d[2].plot([])
@@ -340,13 +369,13 @@ class Simulation:
         #     axs1d[2].set_xlabel('x grid index')
         #     axs1d[2].set_ylabel('ionizations per timestep')
 
-        im = axs[5].imshow(self.electrons.grid[0, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng].T, extent=extent, origin='lower', cmap='magma')
-        plt.colorbar(im, ax=axs[5])
-        axs[5].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=5, color='blue', alpha=0.2, clip_on=True)
-        axs[5].set_xlim(self.inp.xlim)
-        axs[5].set_ylim(self.inp.ylim)
-        axs[5].set_title("Ion Distribution", weight='bold')
-        # print("ION DENSITY", self.ions._compute_particle_density_field(self.ions))
+        # im = axs[5].imshow(self.electrons.grid[0, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng].T, extent=extent, origin='lower', cmap='magma')
+        # plt.colorbar(im, ax=axs[5])
+        # axs[5].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=5, color='blue', alpha=0.2, clip_on=True)
+        # axs[5].set_xlim(self.inp.xlim)
+        # axs[5].set_ylim(self.inp.ylim)
+        # axs[5].set_title("Ion Distribution", weight='bold')
+        # # print("ION DENSITY", self.ions._compute_particle_density_field(self.ions))
 
         # Field overlays
         im = axs[6].imshow(self.fields.E[:, :, 0].T, extent=extent, origin='lower', cmap='coolwarm')
@@ -366,11 +395,11 @@ class Simulation:
         plt.colorbar(im, ax=axs[8])
         axs[8].set_title("Charge Density", weight='bold')
 
-        ion_density_data = self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-        ion_density_smooth = gaussian_filter(ion_density_data, sigma=4.5)
-        im = axs[9].imshow(ion_density_smooth.T, extent=extent, origin='lower', cmap=mpl.cm.Blues)
-        plt.colorbar(im, ax=axs[9])
-        axs[9].set_title("Ion Density", weight='bold')
+        # ion_density_data = self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+        # ion_density_smooth = gaussian_filter(ion_density_data, sigma=4.5)
+        # im = axs[9].imshow(ion_density_smooth.T, extent=extent, origin='lower', cmap=mpl.cm.Blues)
+        # plt.colorbar(im, ax=axs[9])
+        # axs[9].set_title("Ion Density", weight='bold')
 
         # im = axs[10].imshow(ion_density_smooth.T, extent=extent, origin='lower', cmap=mpl.cm.Blues)
         # plt.colorbar(im, ax=axs[10])
@@ -382,17 +411,17 @@ class Simulation:
         # plt.colorbar(im, ax=axs[10])
         # axs[10].set_title("Energy", weight='bold')
 
-        neutral_density = self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-        neutral_smooth = gaussian_filter(neutral_density, sigma=4.5)
-        im = axs[10].imshow(neutral_smooth.T, extent=extent, origin='lower', cmap=mpl.cm.Greys)
-        plt.colorbar(im, ax=axs[10])
-        axs[10].set_title("Neutral Density", weight='bold')
+        # neutral_density = self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+        # neutral_smooth = gaussian_filter(neutral_density, sigma=4.5)
+        # im = axs[10].imshow(neutral_smooth.T, extent=extent, origin='lower', cmap=mpl.cm.Greys)
+        # plt.colorbar(im, ax=axs[10])
+        # axs[10].set_title("Neutral Density", weight='bold')
 
-        sigma = self.electrons.pelectrons.cross_section_grid
-        sigma_smooth = gaussian_filter(sigma, sigma=3)
-        im = axs[11].imshow(sigma_smooth.T, extent=extent, origin='lower', cmap='coolwarm')
-        plt.colorbar(im, ax=axs[11])
-        axs[11].set_title("Electron Collision Cross-Sections", weight='bold')
+        # sigma = self.electrons.pelectrons.cross_section_grid
+        # sigma_smooth = gaussian_filter(sigma, sigma=3)
+        # im = axs[11].imshow(sigma_smooth.T, extent=extent, origin='lower', cmap='coolwarm')
+        # plt.colorbar(im, ax=axs[11])
+        # axs[11].set_title("Electron Collision Cross-Sections", weight='bold')
 
 
 
@@ -402,9 +431,9 @@ class Simulation:
         fig.savefig(output_plotname)
         plt.close(fig)
 
-        fig1d.tight_layout()
-        fig1d.savefig(output_lineplotname)
-        plt.close(fig1d)
+        # fig1d.tight_layout()
+        # fig1d.savefig(output_lineplotname)
+        # plt.close(fig1d)
        
 
 

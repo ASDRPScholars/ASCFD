@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from ascfd.inputs import Inputs
 from ascfd.fields.ics import FieldInitialConditions
-from ascfd.fluid.plasma_refs import PlasmaReferences
+from ascfd.plasma_refs import PlasmaReferences
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D  # needed for 3D projection only
 from sympy import sin, cos
@@ -42,10 +42,10 @@ class Fields:
         # self.eps0 = 1e-50
         
         # Initialize plasma normalization
-        self.plasma_refs = PlasmaReferences(
-            n0=1e18, T0=1000.0, 
-            species_mass=9.1e-31, species_charge=1.6e-19
-        )
+        # self.plasma_refs = PlasmaReferences(
+        #     n0=1e18, T0=1000.0, 
+        #     species_mass=9.1e-31, species_charge=1.6e-19
+        # )
         
         # Normalized permittivity: ε₀ = 1 in plasma units
         self.eps0_normalized = 1.0
@@ -71,8 +71,8 @@ class Fields:
         boundary = {
             "left": (0, "neumann_x"), # BECOMES BOTTOM
             "right": (0, "neumann_x"), # BECOMES TOP
-            "top": (3, "dirichlet"), # BECOMES LEFT
-            "bottom": (-0.5, "neumann_y") # BECOMES RIGHT
+            "top": (self.inp.V_anode, "dirichlet"), # BECOMES LEFT
+            "bottom": (self.inp.V_cathode, "dirichlet") # BECOMES RIGHT
         }
         
         solver = solvers.Poisson2DRectangle(rect=rect, interior=rhs, boundary=boundary, X=self.inp.ny, Y=self.inp.nx)

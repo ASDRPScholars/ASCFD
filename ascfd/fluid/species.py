@@ -64,29 +64,30 @@ class FluidSpecies:
                     consU[icomp, i, j] = consU[icomp, i, j] - delta
                     
         ## --LORENTZ UPDATE--
-        self._apply_lorentz_source_terms(consU)
-
-        ## --P ELECTRONS UPDATE + COLLISIONAL DAMPING--
-        new_particle_array = self.convert_to_particles()
+        # self._apply_lorentz_source_terms(consU)
         
-        # Clear existing particles and properly initialize with new ones
-        self.pelectrons.active_count = 0
-        self.pelectrons.is_active.fill(False)
-        self.pelectrons.free_slots.clear()
+        if self.pelectrons:
+            ## --P ELECTRONS UPDATE + COLLISIONAL DAMPING--
+            new_particle_array = self.convert_to_particles()
+            
+            # Clear existing particles and properly initialize with new ones
+            self.pelectrons.active_count = 0
+            self.pelectrons.is_active.fill(False)
+            self.pelectrons.free_slots.clear()
         
-        # Add particles from converted array
-        n_new_particles = new_particle_array.shape[1]
-        for i in range(n_new_particles):
-            if i < self.pelectrons.capacity:
-                self.pelectrons.particles[:, i] = new_particle_array[:, i]
-                self.pelectrons.is_active[i] = True
-                self.pelectrons.active_count += 1
-        
-        new_particles = self.pelectrons.update()
-        self.pelectrons.update_cross_section_grid()
-        sigma = self.pelectrons.cross_section_grid
-        
-        self._apply_damping_source_terms(sigma, consU)
+            # Add particles from converted array
+            n_new_particles = new_particle_array.shape[1]
+            for i in range(n_new_particles):
+                if i < self.pelectrons.capacity:
+                    self.pelectrons.particles[:, i] = new_particle_array[:, i]
+                    self.pelectrons.is_active[i] = True
+                    self.pelectrons.active_count += 1
+            
+            new_particles = self.pelectrons.update()
+            self.pelectrons.update_cross_section_grid()
+            sigma = self.pelectrons.cross_section_grid
+            
+            self._apply_damping_source_terms(sigma, consU)
 
         ##
         self.grid[:] = self.euler.cons_to_prim(consU)
@@ -100,7 +101,8 @@ class FluidSpecies:
 
         self.fields.update_E()
 
-        return new_particles
+        if self.pelectrons:
+            return new_particles
     
 
     def _apply_damping_source_terms(self, sigma, consU_new):
@@ -181,14 +183,14 @@ class FluidSpecies:
                 # This represents realistic Hall thruster physics where azimuthal velocity 
                 # eventually saturates due to collisions, geometry, etc.
 
-                # !GOODENOUGH!
-                v_sat = 0.2  # Saturation velocity scale
-                saturation_factor = 1.0 / (1.0 + (np.abs(vz) / v_sat)**2)  # Smooth saturation
-                z_mom_source = charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] * cross_product * saturation_factor * 100
+                # # !GOODENOUGH!
+                # v_sat = 0.2  # Saturation velocity scale
+                # saturation_factor = 1.0 / (1.0 + (np.abs(vz) / v_sat)**2)  # Smooth saturation
+                z_mom_source = charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] * cross_product #* 0.01#* saturation_factor #* 100
                 
                 # Debug saturation effect
-                if np.any(saturation_factor < 0.9):
-                    print(f"!SATURATION! Min factor: {np.min(saturation_factor):.3f}, Max vz: {np.max(np.abs(vz)):.3e}")
+                # if np.any(saturation_factor < 0.9):
+                #     print(f"!SATURATION! Min factor: {np.min(saturation_factor):.3f}, Max vz: {np.max(np.abs(vz)):.3e}")
                 
                 # Check z_mom_source immediately after calculation
                 if np.any(np.isnan(z_mom_source)):
@@ -200,9 +202,9 @@ class FluidSpecies:
                 z_mom_source = np.zeros_like(x_mom_source)
         
         # !GOODENOUGH!
-        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt * 10
-        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt * 10
-        consU_new[self.c.MWCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += z_mom_source * self.dt * 100
+        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt #* 10
+        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt #* 10
+        consU_new[self.c.MWCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += z_mom_source * self.dt #* 100
 
         # print("!LORENTZ DEBUG! new MUCOMP:", consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] )
         print(f"!@! Electromagnetic coupling strengths:")
@@ -238,7 +240,7 @@ class FluidSpecies:
         if B.shape[2] > 2:
             rho_interior = prim_new[self.c.RHOCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
             # z_mom_source already has *100, so remove it for work calculation
-            z_mom_source_unscaled = z_mom_source / 100  # Remove the arbitrary multiplier
+            z_mom_source_unscaled = z_mom_source #/ 100  # Remove the arbitrary multiplier
             z_force_per_volume = z_mom_source_unscaled / self.dt  # Force per unit volume (proper units)
             z_force_per_mass = z_force_per_volume / (rho_interior + 1e-12)  # Force per unit mass
             z_work = z_force_per_mass * vz  # Work per unit mass per unit time
@@ -254,7 +256,7 @@ class FluidSpecies:
         print(f"!@! Energy source range: [{np.min(energy_source):.3e}, {np.max(energy_source):.3e}]")
 
         # !GOODENOUGH!
-        consU_new[self.c.ECOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += energy_source * self.dt * 100
+        # consU_new[self.c.ECOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += energy_source * self.dt
         
     
     def get_charge_density(self):

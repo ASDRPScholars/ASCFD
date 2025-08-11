@@ -25,8 +25,8 @@ class FieldInitialConditions:
     def guillaume(self):
         ic_grid = np.zeros_like(self.B_field)
         
-        # !GOODENOUGH!
-        B_max = 0.02 # 0.237 -> 0.02 per claude
+        # -> MIT LECTURE
+        B_max = self.inp.B_max # Tesla
         x_c = 0.6
         sigma = 0.05
         
