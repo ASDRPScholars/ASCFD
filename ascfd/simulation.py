@@ -76,8 +76,8 @@ class Simulation:
         # setup initial time to be the starting time from the inputs file.
         self.t = self.inp.t0
         self.timestep = 0
-        self.dt = self.get_dt()
-        # self.dt = 0.002
+        # self.dt = self.get_dt()
+        self.dt = 1e-9
         
         # Set timestep for all species
         for species in self.all_species:
@@ -103,6 +103,7 @@ class Simulation:
         
         # INITIAL CONDITIONS
         normal_inp.rho_e = (ref.L**3/ref.m) * inp.rho_e
+        normal_inp.p_e = ((ref.dt ** 2 * ref.L) / ref.m ) * inp.p_e
         # normal_inp.n_n = ref.L ** 3 * inp.n_n
         
         # TODO: add pressure/temperature normalization
