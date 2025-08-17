@@ -7,6 +7,7 @@ from ascfd.params import SpeciesParams
 from ascfd.fluid.bcs import FluidBoundaryConditions
 from ascfd.fluid.flux import FluidFlux
 from ascfd.fields.fields import Fields
+from ascfd.plasma_refs import PlasmaReferences
 
 # from ascfd.simulation import Simulation
 
@@ -14,6 +15,7 @@ import ascfd.fluid.ics as ics
 
 import numpy as np
 import matplotlib.pyplot as plt
+import copy
 
 import sys
 
@@ -24,6 +26,8 @@ class FluidSpecies:
         self.pc = ParticleConstants()
         self.euler = FluidEuler(self.c)
         self.flux = FluidFlux(self.c, a_inputs.flux)
+        
+        self.ref = PlasmaReferences()
         
         self.fields = fields
         self.simulation = simulation
@@ -267,6 +271,20 @@ class FluidSpecies:
     def get_number_density(self):
         number_density = self.grid[self.c.RHOCOMP] / self.params.mass
         return number_density
+    
+    
+    def normal_to_phys(self):
+        grid = copy.copy(self.grid)
+        ref = self.ref
+        
+        grid[self.c.RHOCOMP] = grid[self.c.RHOCOMP] * (ref.m / ref.L**3)
+        grid[self.c.UCOMP] = grid[self.c.UCOMP] * (ref.dt / ref.L)
+        grid[self.c.VCOMP] = grid[self.c.VCOMP] * (ref.dt / ref.L)
+        grid[self.c.VCOMP] = grid[self.c.VCOMP] * (ref.dt / ref.L)
+        
+        np.set_printoptions(threshold=sys.maxsize)
+        print(grid[self.c.RHOCOMP])
+        return grid
     
     
     def convert_to_particles(self):

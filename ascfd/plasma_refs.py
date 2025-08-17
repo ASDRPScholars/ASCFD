@@ -11,6 +11,7 @@ class PlasmaReferences:
         self.q = 1.602e-19
         self.L = 0.001
         self.v = 1
+        self.dt = None
     
     # def __init__(self, n0=1e18, T0=1000.0, species_mass=9.1e-31, species_charge=1.6e-19):
     #     # Physical parameters

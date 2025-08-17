@@ -125,14 +125,15 @@ class Simulation:
         return normal_inp
     
     
-    def _normal_to_phys(self):
-        grid = copy.copy(self.electrons.grid)
-        ref = self.ref
+    # def _normal_to_phys(self):
+    #     grid = copy.copy(self.electrons.grid)
+    #     ref = self.ref
         
-        grid[self.c.RHOCOMP] = grid[self.c.RHOCOMP] * (ref.m/ref.L**3)
-        np.set_printoptions(threshold=sys.maxsize)
-        print(grid[self.c.RHOCOMP])
-        return grid
+    #     grid[self.c.RHOCOMP] = grid[self.c.RHOCOMP] * (ref.m/ref.L**3)
+    #     grid[self.c.RHOCOMP] = grid[self.c.RHOCOMP] * (ref.m/ref.L**3)
+    #     np.set_printoptions(threshold=sys.maxsize)
+    #     print(grid[self.c.RHOCOMP])
+    #     return grid
 
 
     def run(self):
@@ -280,12 +281,13 @@ class Simulation:
 
         # Set up 1D plots
         # fig1d, axs1d = plt.subplots(1, 5, figsize=(15, 2))
+        
+        norm_data = self.electrons.normal_to_phys()
 
         for q in range(self.c.NUMQ):
             extent = [self.inp.xlim[0], self.inp.xlim[1], self.inp.ylim[0], self.inp.ylim[1]]
 
             # 2D plot
-            norm_data = self._normal_to_phys()
             plot_data = norm_data[q, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
             
             # plot_data = self.electrons.grid[q]
