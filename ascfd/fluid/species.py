@@ -280,7 +280,7 @@ class FluidSpecies:
         grid[self.c.RHOCOMP] = grid[self.c.RHOCOMP] * (ref.m / ref.L**3)
         grid[self.c.MUCOMP] = grid[self.c.MUCOMP] * (ref.L / ref.dt)
         grid[self.c.MVCOMP] = grid[self.c.MVCOMP] * (ref.L / ref.dt)
-        grid[self.c.ECOMP] = grid[self.c.ECOMP] * ((ref.m * ref.L ** 2) / ref.dt ** 2)
+        grid[self.c.ECOMP] = grid[self.c.ECOMP] * (ref.m / (ref.dt**2 * ref.L))
         
         # np.set_printoptions(threshold=sys.maxsize)
         # print(grid[self.c.RHOCOMP])
