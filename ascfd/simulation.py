@@ -284,6 +284,7 @@ class Simulation:
         # fig1d, axs1d = plt.subplots(1, 5, figsize=(15, 2))
         
         norm_data = self.electrons.normal_to_phys()
+        norm_E, norm_B, norm_potential = self.fields.normal_to_phys()
 
         for q in range(self.c.NUMQ):
             extent = [self.inp.xlim[0], self.inp.xlim[1], self.inp.ylim[0], self.inp.ylim[1]]
@@ -381,13 +382,13 @@ class Simulation:
         # # print("ION DENSITY", self.ions._compute_particle_density_field(self.ions))
 
         # Field overlays
-        im = axs[6].imshow(self.fields.E[:, :, 0].T, extent=extent, origin='lower', cmap='coolwarm')
+        im = axs[6].imshow(norm_E[:, :, 0].T, extent=extent, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[6])
         axs[6].set_title("Electric Field X", weight='bold')
 
-        print("!&! E SHAPE", np.shape(self.fields.E))
+        # print("!&! E SHAPE", np.shape(self.fields.E))
 
-        im = axs[7].imshow(self.fields.potential.T, extent=extent, origin='lower', cmap='coolwarm')
+        im = axs[7].imshow(norm_potential.T, extent=extent, origin='lower', cmap='coolwarm')
         plt.colorbar(im, ax=axs[7])
         axs[7].set_title("Electric Potential", weight='bold')
 

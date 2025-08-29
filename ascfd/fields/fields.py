@@ -7,6 +7,7 @@ from mpl_toolkits.mplot3d import Axes3D  # needed for 3D projection only
 from sympy import sin, cos
 from sympy.abc import x, y
 import sympy as sp
+import copy
 
 import sys
 
@@ -25,6 +26,8 @@ class Fields:
         
         self.B = self.ics.apply_B_ics()
         self.ics.apply_E_ics()
+        
+        self.ref = PlasmaReferences()
         
         plt.figure()
         im = plt.imshow(self.B[:, :, 1])
@@ -55,6 +58,18 @@ class Fields:
         self._compute_electric_field()
         self.limit_electric_field()  # Prevent runaway field growth
         
+    def normal_to_phys(self):
+        E = copy.copy(self.E)
+        B = copy.copy(self.B)
+        potential = copy.copy(self.potential)
+        ref = self.ref
+        
+        E = self.E * (ref.m * ref.v**2 / (ref.q * ref.L))
+        B = self.B * (ref.m * ref.v / (ref.q * ref.L))
+        potential = self.potential * (ref.m * ref.v**2 / ref.q)
+        
+        return E, B, potential
+        
                 
     def add_charge_density(self, species_charge_density):
         self.charge_density[:] += species_charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
@@ -71,8 +86,8 @@ class Fields:
         boundary = {
             "left": (0, "neumann_x"), # BECOMES BOTTOM
             "right": (0, "neumann_x"), # BECOMES TOP
-            "top": (self.inp.V_anode, "dirichlet"), # BECOMES LEFT
-            "bottom": (self.inp.V_cathode, "dirichlet") # BECOMES RIGHT
+            "top": (self.inp.V_anode, "neumann_y"), # BECOMES LEFT
+            "bottom": (2000, "dirichlet") # BECOMES RIGHT
         }
         
         solver = solvers.Poisson2DRectangle(rect=rect, interior=rhs, boundary=boundary, X=self.inp.ny, Y=self.inp.nx)
