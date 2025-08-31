@@ -114,7 +114,12 @@ class Inputs:
         )
 
         # Add containers for plotting data
-        self.data_2d = self.get_config_value(config, "Output", "2d_data", type_func=ast.literal_eval)
+        self.data_2d = self.get_config_value(
+            config,
+            "Output",
+            "2d_data",
+            type_func=lambda x: [item.strip() for item in x.split(",")]
+        )
         # self.data_1d = [] 
 
 
