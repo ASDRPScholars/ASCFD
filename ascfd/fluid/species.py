@@ -152,8 +152,10 @@ class FluidSpecies:
         # y_mom_source = charge_density[self.inp.ng:-self.inp.ng:, self.inp.ng:-self.inp.ng] * lorentz_force[:, :, 0]
         
         # Apply Lorentz force: F = ρq(E + v×B) to x, y, and z momentum
-        x_mom_source = charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] * E[:, :, 0]
-        y_mom_source = charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] * E[:, :, 1]
+        
+        #TODO: WHY IS THIS FLIPPED
+        x_mom_source = -charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] * E[:, :, 0]
+        y_mom_source = -charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] * E[:, :, 1]
 
         np.set_printoptions(threshold=sys.maxsize)
         # print("!LORENTZ DEBUG! charge_density arr is", charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng])

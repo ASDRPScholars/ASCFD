@@ -104,8 +104,9 @@ class Fields:
         
         dphi_dy, dphi_dx = np.gradient(phi, dy, dx)  # Mind the order: (rows, cols) → (y, x)
 
-        self.E[:, :, 1] = -dphi_dx  # Ey
-        self.E[:, :, 0] = -dphi_dy  # Ex
+        #TODO: GET RID OF MULTIPLIER
+        self.E[:, :, 1] = -dphi_dx/1000  # Ey
+        self.E[:, :, 0] = -dphi_dy/1000  # Ex
 
     
     def check_E_field(self):
