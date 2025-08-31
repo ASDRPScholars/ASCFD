@@ -68,7 +68,7 @@ class FluidSpecies:
                     consU[icomp, i, j] = consU[icomp, i, j] - delta
                     
         ## --LORENTZ UPDATE--
-        # self._apply_lorentz_source_terms(consU)
+        self._apply_lorentz_source_terms(consU)
         
         if self.pelectrons:
             ## --P ELECTRONS UPDATE + COLLISIONAL DAMPING--
@@ -91,7 +91,7 @@ class FluidSpecies:
             self.pelectrons.update_cross_section_grid()
             sigma = self.pelectrons.cross_section_grid
             
-            self._apply_damping_source_terms(sigma, consU)
+            # self._apply_damping_source_terms(sigma, consU)
 
         ##
         self.grid[:] = self.euler.cons_to_prim(consU)
