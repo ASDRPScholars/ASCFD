@@ -244,7 +244,6 @@ class Simulation:
 
     def output(self):
         
-        
         # Ensure output directories exist
         os.makedirs(self.inp.output_dir, exist_ok=True)
 
@@ -392,121 +391,6 @@ class Simulation:
         #     axs1d[2].set_title("ionization frequency vs X (no particles)", weight='bold')
         #     axs1d[2].set_xlabel('x grid index')
         #     axs1d[2].set_ylabel('ionizations per timestep')
-
-        # im = axs[5].imshow(self.electrons.grid[0, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng].T, extent=extent, origin='lower', cmap='magma')
-        # plt.colorbar(im, ax=axs[5])
-        # axs[5].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=5, color='blue', alpha=0.2, clip_on=True)
-        # axs[5].set_xlim(self.inp.xlim)
-        # axs[5].set_ylim(self.inp.ylim)
-        # axs[5].set_title("Ion Distribution", weight='bold')
-        # # print("ION DENSITY", self.ions._compute_particle_density_field(self.ions))
-
-        # Field overlays
-        im = axs[6].imshow(norm_E[:, :, 0].T, extent=extent, origin='lower', cmap='coolwarm')
-        plt.colorbar(im, ax=axs[6])
-        axs[6].set_title("Electric Field X", weight='bold')
-
-        # print("!&! E SHAPE", np.shape(self.fields.E))
-
-        im = axs[7].imshow(norm_potential.T, extent=extent, origin='lower', cmap='coolwarm')
-        plt.colorbar(im, ax=axs[7])
-        axs[7].set_title("Electric Potential", weight='bold')
-
-        from scipy.ndimage import gaussian_filter
-        charge_density_data = self.fields.charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-        charge_density_smooth = gaussian_filter(charge_density_data, sigma=4.5)
-        im = axs[8].imshow(charge_density_smooth.T, extent=extent, origin='lower', cmap='coolwarm')
-        plt.colorbar(im, ax=axs[8])
-        axs[8].set_title("Charge Density", weight='bold')
-
-        # ion_density_data = self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-        # ion_density_smooth = gaussian_filter(ion_density_data, sigma=4.5)
-        # im = axs[9].imshow(ion_density_smooth.T, extent=extent, origin='lower', cmap=mpl.cm.Blues)
-        # plt.colorbar(im, ax=axs[9])
-        # axs[9].set_title("Ion Density", weight='bold')
-
-        # im = axs[10].imshow(ion_density_smooth.T, extent=extent, origin='lower', cmap=mpl.cm.Blues)
-        # plt.colorbar(im, ax=axs[10])
-        # axs[10].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=5, color='blue', alpha=0.2, clip_on=True)
-        # axs[10].set_title("Ion Density", weight='bold')
-
-        # energy_data = self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-        # im = axs[10].imshow(energy_data.T, extent=extent, origin='lower', cmap='magma')
-        # plt.colorbar(im, ax=axs[10])
-        # axs[10].set_title("Energy", weight='bold')
-
-        # neutral_density = self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-        # neutral_smooth = gaussian_filter(neutral_density, sigma=4.5)
-        # im = axs[10].imshow(neutral_smooth.T, extent=extent, origin='lower', cmap=mpl.cm.Greys)
-        # plt.colorbar(im, ax=axs[10])
-        # axs[10].set_title("Neutral Density", weight='bold')
-
-        # sigma = self.electrons.pelectrons.cross_section_grid
-        # sigma_smooth = gaussian_filter(sigma, sigma=3)
-        # im = axs[11].imshow(sigma_smooth.T, extent=extent, origin='lower', cmap='coolwarm')
-        # plt.colorbar(im, ax=axs[11])
-        # axs[11].set_title("Electron Collision Cross-Sections", weight='bold')
-
-
-
-        # Save both figures
-        fig.suptitle(f"Time: {self.t:.4f}, Timestep: {self.timestep}")
-        fig.tight_layout()
-        fig.savefig(output_plotname)
-        plt.close(fig)
-
-        # fig1d.tight_layout()
-        # fig1d.savefig(output_lineplotname)
-        # plt.close(fig1d)
-       
-
-
-        # if self.c.NUMQ == 3:
-        #     fig, axs = plt.subplots(3, 1, figsize=(10, 15))
-        # elif self.c.NUMQ == 4:
-        #     fig, axs = plt.subplots(2,2, figsize=(10, 15))
-        # else:
-        #     print("self.c.NUMQ: ", self.c.NUMQ)
-        #     raise RuntimeError("System not implemented for movie.")
-        
-        # axs = axs.ravel()  # Flatten the array to index by i
-
-
-
-
-        # def update_plot(file):
-        #     data = np.loadtxt(file, delimiter=',', skiprows=2)
-        #     x = data[:, 0]
-
-        #     #data is indexed by
-        #     # data[:,i] where i = 0 for x, i = 1 for icomp1, i=2 for icomp2
-
-        #     with open(file, 'r') as f:
-        #         lines = f.readlines()
-        #         time_line = lines[0]
-        #         time = float(time_line.split(':')[1].strip())
-
-        #     timestep = int(file.split('_')[-1].split('.')[0])
-
-
-        #     for i in range(self.c.NUMQ):
-        #         axs[i].clear()
-                
-
-        #         axs[i].scatter(x, data[:,i+1], c="black")
-        #         axs[i].set_ylabel(self.c.variable_names[i])
-
-
-        #     axs[0].set_title(f"Time: {time:.4f}, Timestep: {timestep}")
-        
-        # # Create an animation by updating the plot for each output file
-        # ani = animation.FuncAnimation(fig, update_plot, frames=output_files, repeat=False)
-
-        # # Save the animation as a movie file using ffmpeg
-        # movie_filename = os.path.join(self.inp.output_dir, "simulation_movie.mp4")
-        # ani.save(movie_filename, writer='ffmpeg', fps=10)
-
-        # print(f"Movie saved as {movie_filename}")
 
 
     def generate_movie(self):
