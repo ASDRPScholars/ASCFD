@@ -109,33 +109,33 @@ class FluidSpecies:
             return new_particles
     
 
-    def _apply_damping_source_terms(self, sigma, consU_new):
-        from scipy.ndimage import gaussian_filter
-        # OK ALL IT IS: a * sigma(e) * n_n * rho_e * V_e
+    # def _apply_damping_source_terms(self, sigma, consU_new):
+    #     from scipy.ndimage import gaussian_filter
+    #     # OK ALL IT IS: a * sigma(e) * n_n * rho_e * V_e
         
-        # --COLLISION DAMPING--
-        n_n = self.simulation.neutrals._compute_particle_density_field(self.simulation.neutrals)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] + 0.01
-        n_n_smooth = gaussian_filter(n_n, sigma=3.0)
-        rho_e = self.grid[self.c.RHOCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-        V_x = self._get_V()[:, :, 0]
+    #     # --COLLISION DAMPING--
+    #     n_n = self.simulation.neutrals._compute_particle_density_field(self.simulation.neutrals)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] + 0.01
+    #     n_n_smooth = gaussian_filter(n_n, sigma=3.0)
+    #     rho_e = self.grid[self.c.RHOCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+    #     V_x = self._get_V()[:, :, 0]
 
-        sigma_smooth = gaussian_filter(sigma, sigma=3.0)
+    #     sigma_smooth = gaussian_filter(sigma, sigma=3.0)
 
-        # print("!DEBUG DAMPING! n-n is", n_n)
-        # print("!DEBUG DAMPING! sigma is", sigma)
+    #     # print("!DEBUG DAMPING! n-n is", n_n)
+    #     # print("!DEBUG DAMPING! sigma is", sigma)
 
-        # np.set_printoptions(threshold=sys.maxsize)
-        # print("SIGMA", sigma)
-        # print("n_n", n_n)
-        # print("rho_e", rho_e)
-        # print("V_x", V_x)
+    #     # np.set_printoptions(threshold=sys.maxsize)
+    #     # print("SIGMA", sigma)
+    #     # print("n_n", n_n)
+    #     # print("rho_e", rho_e)
+    #     # print("V_x", V_x)
 
-        damping_source = sigma_smooth * n_n_smooth * rho_e * V_x
+    #     damping_source = sigma_smooth * n_n_smooth * rho_e * V_x
 
-        # print("!*! MIN MAX OF damping_source IS", np.min(damping_source), np.max(damping_source))
+    #     # print("!*! MIN MAX OF damping_source IS", np.min(damping_source), np.max(damping_source))
 
-        # !GOODENOUGH!
-        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] -= damping_source * self.dt * 100
+    #     # !GOODENOUGH!
+    #     consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] -= damping_source * self.dt * 100
 
     
     def _apply_lorentz_source_terms(self, consU_new):
