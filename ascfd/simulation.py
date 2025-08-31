@@ -6,6 +6,7 @@ from ascfd.fluid.species import FluidSpecies
 from ascfd.particle.species import ParticleSpecies
 from ascfd.inputs import Inputs
 from ascfd.fields.fields import Fields
+from ascfd.plasma_refs import PlasmaReferences
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -25,21 +26,15 @@ plt.rcParams['font.serif'] = ['Computer Modern Roman']
 
 class Simulation:
     def __init__(self, a_inputs: Inputs):
+        self.ref = PlasmaReferences()
         self.inp = a_inputs
+        self.inp = self._phys_to_normal()
+        
+        print("INITIED X LIM", self.inp.xlim[1])
+        
         self.c = FluidConstants(a_inputs)
         self.pc = ParticleConstants()
         self.fields = Fields(self.inp)
-        
-        # Initialize plasma normalization
-        from ascfd.plasma_refs import PlasmaReferences
-        # self.ref = PlasmaReferences(n0=1e18, T0=1000.0, species_mass=9.1e-31, species_charge=1.6e-19)
-        
-        self.ref = PlasmaReferences()
-        
-        self.inp = self._phys_to_normal()
-        
-        print("REF IS", self.ref)
-        # Normalized species parameters (dimensionless)
         
         # !APPROX! assuming m_i / m_e is only 100
         # e_params = SpeciesParams(-1.0, 5e-6, 5/3, "e", density=1.0, temperature=100.0)  # electrons (normalized)
@@ -110,8 +105,8 @@ class Simulation:
         
         normal_inp.q = inp.q / ref.q
         
-        normal_inp.xlim = (inp.xlim[1] / ref.L, inp.xlim[0])
-        normal_inp.ylim = (inp.ylim[1] / ref.L, inp.ylim[0])
+        normal_inp.xlim = (inp.xlim[0] / ref.L, inp.xlim[1] / ref.L)
+        normal_inp.ylim = (inp.ylim[0] / ref.L, inp.ylim[1] / ref.L)
         normal_inp.t_finish = (ref.v / ref.L) * inp.t_finish
         # v should automatically be normalized from x and t normalization
         
@@ -126,15 +121,17 @@ class Simulation:
         return normal_inp
     
     
+    # TODO: scale back to real dimensions without messing up other grid bounds?
     # def _normal_to_phys(self):
-    #     grid = copy.copy(self.electrons.grid)
+    #     phys_inp = copy.deepcopy(self.inp)
+        
+    #     inp = self.inp
     #     ref = self.ref
         
-    #     grid[self.c.RHOCOMP] = grid[self.c.RHOCOMP] * (ref.m/ref.L**3)
-    #     grid[self.c.RHOCOMP] = grid[self.c.RHOCOMP] * (ref.m/ref.L**3)
-    #     np.set_printoptions(threshold=sys.maxsize)
-    #     print(grid[self.c.RHOCOMP])
-    #     return grid
+    #     phys_inp.xlim = (inp.xlim[0] * ref.L, inp.xlim[1] * ref.L)
+    #     phys_inp.ylim = (inp.ylim[0] * ref.L, inp.ylim[1] * ref.L)
+        
+    #     return phys_inp
 
 
     def run(self):
@@ -326,11 +323,13 @@ class Simulation:
         for idx, var in enumerate(plot_vars_2d):
             if var in plot_map:
                 plot_map[var](idx)
+                axs[idx].set_xlim(self.inp.xlim[0], self.inp.xlim[1])
+                axs[idx].set_ylim(self.inp.ylim[0], self.inp.ylim[1])
+                
+                print("X LIM", self.inp.xlim[1])
+                print("y LIM", self.inp.ylim[1])
             else:
                 print(f"Warning: Unknown plot variable '{var}'")
-            
-        axs[idx].set_xlim(self.inp.xlim)
-        axs[idx].set_ylim(self.inp.ylim)
 
         # 1D line plot (center slice)
         iy = round(self.inp.ny / 2)
@@ -392,6 +391,11 @@ class Simulation:
         #     axs1d[2].set_xlabel('x grid index')
         #     axs1d[2].set_ylabel('ionizations per timestep')
 
+        fig.suptitle(f"Time: {self.t:.4f}, Timestep: {self.timestep}")
+        fig.tight_layout()
+        fig.savefig(output_plotname)
+        plt.close(fig)
+        
 
     def generate_movie(self):
         frames_directory = os.path.join(self.inp.output_dir, "frames")
