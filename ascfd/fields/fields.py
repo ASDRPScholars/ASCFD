@@ -86,8 +86,8 @@ class Fields:
         boundary = {
             "left": (0, "neumann_x"), # BECOMES BOTTOM
             "right": (0, "neumann_x"), # BECOMES TOP
-            "top": (self.inp.V_cathode, "dirichlet"), # BECOMES LEFT
-            "bottom": (self.inp.V_anode, "dirichlet") # BECOMES RIGHT
+            "top": (self.inp.V_anode, "dirichlet"), # BECOMES LEFT
+            "bottom": (self.inp.V_cathode, "dirichlet") # BECOMES RIGHT
         }
         
         solver = solvers.Poisson2DRectangle(rect=rect, interior=rhs, boundary=boundary, X=self.inp.ny, Y=self.inp.nx)
