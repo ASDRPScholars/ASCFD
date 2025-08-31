@@ -288,70 +288,50 @@ class Simulation:
         
         print("PLOT VARS ARE", plot_vars_2d)
         
+        def plot_2d_data(ax, data, extent, title, cmap='magma', scatter_data=None):
+            """
+            Helper function to plot 2D data on a given axis.
+            """
+            im = ax.imshow(data.T, extent=extent, origin='lower', cmap=cmap)
+            plt.colorbar(im, ax=ax)
+            ax.set_title(title, weight='bold')
+
+            if scatter_data is not None:
+                x, y = scatter_data
+                ax.scatter(x, y, s=5, color='blue', alpha=0.2, clip_on=True)
+
+        # Precompute extent
         extent = [self.inp.xlim[0], self.inp.xlim[1], self.inp.ylim[0], self.inp.ylim[1]]
+        
+        from scipy.ndimage import gaussian_filter
+
+        # Define plotting logic in a dictionary (like a switch-case)
+        plot_map = {
+            "rho_e": lambda idx: plot_2d_data(axs[idx], norm_data[0,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Electron Density"),
+            "u_e": lambda idx: plot_2d_data(axs[idx], norm_data[1,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Electron Axial Velocity"),
+            "v_e": lambda idx: plot_2d_data(axs[idx], norm_data[2,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Electron Radial Velocity"),
+            "p_e": lambda idx: plot_2d_data(axs[idx], norm_data[3,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Electron Pressure"),
+            "Ex": lambda idx: plot_2d_data(axs[idx], norm_E[:,:,0], extent, "Electric Field X", cmap='coolwarm'),
+            "Ey": lambda idx: plot_2d_data(axs[idx], norm_E[:,:,1], extent, "Electric Field Y", cmap='coolwarm'),
+            "By": lambda idx: plot_2d_data(axs[idx], norm_B[:,:,1], extent, "Magnetic Field Y", cmap='magma'),
+            "potential": lambda idx: plot_2d_data(axs[idx], norm_potential, extent, "Electric Potential", cmap='coolwarm'),
+            "charge_density": lambda idx: plot_2d_data(axs[idx], gaussian_filter(self.fields.charge_density[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], sigma=4.5), extent, "Charge Density", cmap='coolwarm'),
+            "ion_density": lambda idx: plot_2d_data(axs[idx], gaussian_filter(self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], sigma=4.5), extent, "Ion Density", cmap=mpl.cm.Blues),
+            "ion_density_scatter": lambda idx: plot_2d_data(axs[idx], self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Ion Density (Scatter)", cmap=mpl.cm.Blues, scatter_data=(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP])),
+            "energy": lambda idx: plot_2d_data(axs[idx], self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Energy"),
+            "neutral_density": lambda idx: plot_2d_data(axs[idx], gaussian_filter(self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], sigma=4.5), extent, "Neutral Density", cmap=mpl.cm.Greys),
+            "cross_section": lambda idx: plot_2d_data(axs[idx], gaussian_filter(self.electrons.pelectrons.cross_section_grid, sigma=3), extent, "Electron Collision Cross-Sections", cmap='coolwarm'),
+        }
+
+        # Loop over variables and call the corresponding plotting function
         for idx, var in enumerate(plot_vars_2d):
-            if var == "Ex":
-                data = norm_E[:, :, 0]
-                im = axs[idx].imshow(data.T, extent=extent, origin='lower', cmap='coolwarm')
-                plt.colorbar(im, ax=axs[idx])
-                axs[idx].set_title("Electric Field X", weight='bold')
-            elif var == "Ey":
-                data = norm_E[:, :, 1]
-                im = axs[idx].imshow(data.T, extent=extent, origin='lower', cmap='coolwarm')
-                plt.colorbar(im, ax=axs[idx])
-                axs[idx].set_title("Electric Field Y", weight='bold')
-            elif var == "rho_e":
-                data = norm_data[0, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-                im = axs[idx].imshow(data.T, extent=extent, origin='lower', cmap='magma')
-                plt.colorbar(im, ax=axs[idx])
-                axs[idx].set_title("Electron Density", weight='bold')
-            elif var == "potential":
-                data = norm_potential
-                im = axs[idx].imshow(data.T, extent=extent, origin='lower', cmap='coolwarm')
-                plt.colorbar(im, ax=axs[idx])
-                axs[idx].set_title("Electric Potential", weight='bold')
-            elif var == "charge_density":
-                from scipy.ndimage import gaussian_filter
-                data = self.fields.charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-                data_smooth = gaussian_filter(data, sigma=4.5)
-                im = axs[idx].imshow(data_smooth.T, extent=extent, origin='lower', cmap='coolwarm')
-                plt.colorbar(im, ax=axs[idx])
-                axs[idx].set_title("Charge Density", weight='bold')
-            elif var == "ion_density":
-                from scipy.ndimage import gaussian_filter
-                data = self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-                data_smooth = gaussian_filter(data, sigma=4.5)
-                im = axs[idx].imshow(data_smooth.T, extent=extent, origin='lower', cmap=mpl.cm.Blues)
-                plt.colorbar(im, ax=axs[idx])
-                axs[idx].set_title("Ion Density", weight='bold')
-            elif var == "ion_density_scatter":
-                data = self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-                im = axs[idx].imshow(data.T, extent=extent, origin='lower', cmap=mpl.cm.Blues)
-                plt.colorbar(im, ax=axs[idx])
-                axs[idx].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=5, color='blue', alpha=0.2, clip_on=True)
-                axs[idx].set_title("Ion Density (Scatter)", weight='bold')
-            elif var == "energy":
-                energy_data = self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-                im = axs[idx].imshow(energy_data.T, extent=extent, origin='lower', cmap='magma')
-                plt.colorbar(im, ax=axs[idx])
-                axs[idx].set_title("Energy", weight='bold')
-            elif var == "neutral_density":
-                from scipy.ndimage import gaussian_filter
-                neutral_density = self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-                neutral_smooth = gaussian_filter(neutral_density, sigma=4.5)
-                im = axs[idx].imshow(neutral_smooth.T, extent=extent, origin='lower', cmap=mpl.cm.Greys)
-                plt.colorbar(im, ax=axs[idx])
-                axs[idx].set_title("Neutral Density", weight='bold')
-            elif var == "cross_section":
-                from scipy.ndimage import gaussian_filter
-                sigma = self.electrons.pelectrons.cross_section_grid
-                sigma_smooth = gaussian_filter(sigma, sigma=3)
-                im = axs[idx].imshow(sigma_smooth.T, extent=extent, origin='lower', cmap='coolwarm')
-                plt.colorbar(im, ax=axs[idx])
-                axs[idx].set_title("Electron Collision Cross-Sections", weight='bold')
+            if var in plot_map:
+                plot_map[var](idx)
+            else:
+                print(f"Warning: Unknown plot variable '{var}'")
             
-            axs[idx].set_xlim(self.inp.xlim)
-            axs[idx].set_ylim(self.inp.ylim)
+        axs[idx].set_xlim(self.inp.xlim)
+        axs[idx].set_ylim(self.inp.ylim)
 
         # 1D line plot (center slice)
         iy = round(self.inp.ny / 2)
