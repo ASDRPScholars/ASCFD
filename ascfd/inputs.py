@@ -113,6 +113,10 @@ class Inputs:
             default=True,
         )
 
+        # Add containers for plotting data
+        self.data_2d = self.get_config_value(config, "Output", "2d_data", type_func=ast.literal_eval)
+        # self.data_1d = [] 
+
 
     def get_config_value(self, config, section, option, type_func=str, mandatory=True, default=None):
         try:

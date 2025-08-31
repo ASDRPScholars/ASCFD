@@ -280,38 +280,78 @@ class Simulation:
             fig, axs = plt.subplots(2, 4, figsize=(36, 18))
         axs = axs.ravel()
 
-        # Set up 1D plots
-        # fig1d, axs1d = plt.subplots(1, 5, figsize=(15, 2))
-        
+        # Remove duplicate plotting: only use plot_vars_2d loop
         norm_data = self.electrons.normal_to_phys()
         norm_E, norm_B, norm_potential = self.fields.normal_to_phys()
 
-        for q in range(self.c.NUMQ):
-            extent = [self.inp.xlim[0], self.inp.xlim[1], self.inp.ylim[0], self.inp.ylim[1]]
-
-            # 2D plot
-            plot_data = norm_data[q, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+        plot_vars_2d = self.inp.data_2d
+        
+        print("PLOT VARS ARE", plot_vars_2d)
+        
+        extent = [self.inp.xlim[0], self.inp.xlim[1], self.inp.ylim[0], self.inp.ylim[1]]
+        for idx, var in enumerate(plot_vars_2d):
+            if var == "Ex":
+                data = norm_E[:, :, 0]
+                im = axs[idx].imshow(data.T, extent=extent, origin='lower', cmap='coolwarm')
+                plt.colorbar(im, ax=axs[idx])
+                axs[idx].set_title("Electric Field X", weight='bold')
+            elif var == "Ey":
+                data = norm_E[:, :, 1]
+                im = axs[idx].imshow(data.T, extent=extent, origin='lower', cmap='coolwarm')
+                plt.colorbar(im, ax=axs[idx])
+                axs[idx].set_title("Electric Field Y", weight='bold')
+            elif var == "rho_e":
+                data = norm_data[0, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+                im = axs[idx].imshow(data.T, extent=extent, origin='lower', cmap='magma')
+                plt.colorbar(im, ax=axs[idx])
+                axs[idx].set_title("Electron Density", weight='bold')
+            elif var == "potential":
+                data = norm_potential
+                im = axs[idx].imshow(data.T, extent=extent, origin='lower', cmap='coolwarm')
+                plt.colorbar(im, ax=axs[idx])
+                axs[idx].set_title("Electric Potential", weight='bold')
+            elif var == "charge_density":
+                from scipy.ndimage import gaussian_filter
+                data = self.fields.charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+                data_smooth = gaussian_filter(data, sigma=4.5)
+                im = axs[idx].imshow(data_smooth.T, extent=extent, origin='lower', cmap='coolwarm')
+                plt.colorbar(im, ax=axs[idx])
+                axs[idx].set_title("Charge Density", weight='bold')
+            elif var == "ion_density":
+                from scipy.ndimage import gaussian_filter
+                data = self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+                data_smooth = gaussian_filter(data, sigma=4.5)
+                im = axs[idx].imshow(data_smooth.T, extent=extent, origin='lower', cmap=mpl.cm.Blues)
+                plt.colorbar(im, ax=axs[idx])
+                axs[idx].set_title("Ion Density", weight='bold')
+            elif var == "ion_density_scatter":
+                data = self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+                im = axs[idx].imshow(data.T, extent=extent, origin='lower', cmap=mpl.cm.Blues)
+                plt.colorbar(im, ax=axs[idx])
+                axs[idx].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=5, color='blue', alpha=0.2, clip_on=True)
+                axs[idx].set_title("Ion Density (Scatter)", weight='bold')
+            elif var == "energy":
+                energy_data = self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+                im = axs[idx].imshow(energy_data.T, extent=extent, origin='lower', cmap='magma')
+                plt.colorbar(im, ax=axs[idx])
+                axs[idx].set_title("Energy", weight='bold')
+            elif var == "neutral_density":
+                from scipy.ndimage import gaussian_filter
+                neutral_density = self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+                neutral_smooth = gaussian_filter(neutral_density, sigma=4.5)
+                im = axs[idx].imshow(neutral_smooth.T, extent=extent, origin='lower', cmap=mpl.cm.Greys)
+                plt.colorbar(im, ax=axs[idx])
+                axs[idx].set_title("Neutral Density", weight='bold')
+            elif var == "cross_section":
+                from scipy.ndimage import gaussian_filter
+                sigma = self.electrons.pelectrons.cross_section_grid
+                sigma_smooth = gaussian_filter(sigma, sigma=3)
+                im = axs[idx].imshow(sigma_smooth.T, extent=extent, origin='lower', cmap='coolwarm')
+                plt.colorbar(im, ax=axs[idx])
+                axs[idx].set_title("Electron Collision Cross-Sections", weight='bold')
             
-            # plot_data = self.electrons.grid[q]
-            im = axs[q].imshow(plot_data.T, extent=extent, origin='lower', cmap='magma')
-            plt.colorbar(im, ax=axs[q])
-
-            print("!&! PLOT SHAPE", self.c.variable_names[q], np.shape(plot_data))
-
-            # if self.inp.particle_ics is not None:
-                # np.set_printoptions(threshold=sys.maxsize)
-                # print("!!SIMULATION!! p electrons x:", self.pelectrons.particles[self.pc.XCOMP])
-                # print("!!SIMULATION!! p electrons y:", self.pelectrons.particles[self.pc.YCOMP])
-                # print("!!SIMULATION!! p electrons u:", self.pelectrons.particles[self.pc.UCOMP])
-                # print("!!SIMULATION!! p electrons v:", self.pelectrons.particles[self.pc.VCOMP])
-                # print("!!SIMULATION!! p electrons w:", self.pelectrons.particles[self.pc.WCOMP])
-
-                # axs[q].scatter(self.neutrals.particles[self.pc.XCOMP], self.neutrals.particles[self.pc.YCOMP], s=5, color='gray', alpha=0.2)
-                # axs[q].scatter(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP], s=5, color='blue', alpha=0.2)
-
-            axs[q].set_xlim(self.inp.xlim)
-            axs[q].set_ylim(self.inp.ylim)
-            axs[q].set_title(self.c.variable_names[q], weight='bold')
+            axs[idx].set_xlim(self.inp.xlim)
+            axs[idx].set_ylim(self.inp.ylim)
 
         # 1D line plot (center slice)
         iy = round(self.inp.ny / 2)
