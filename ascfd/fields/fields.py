@@ -56,7 +56,7 @@ class Fields:
     def update_E(self):
         self.solve_poisson()
         self._compute_electric_field()
-        self.limit_electric_field()  # Prevent runaway field growth
+
         
     def normal_to_phys(self):
         E = copy.copy(self.E)
@@ -86,8 +86,8 @@ class Fields:
         boundary = {
             "left": (0, "neumann_x"), # BECOMES BOTTOM
             "right": (0, "neumann_x"), # BECOMES TOP
-            "top": (self.inp.V_anode, "neumann_y"), # BECOMES LEFT
-            "bottom": (2000, "dirichlet") # BECOMES RIGHT
+            "top": (self.inp.V_cathode, "dirichlet"), # BECOMES LEFT
+            "bottom": (self.inp.V_anode, "dirichlet") # BECOMES RIGHT
         }
         
         solver = solvers.Poisson2DRectangle(rect=rect, interior=rhs, boundary=boundary, X=self.inp.ny, Y=self.inp.nx)
@@ -106,24 +106,7 @@ class Fields:
 
         self.E[:, :, 1] = -dphi_dx  # Ey
         self.E[:, :, 0] = -dphi_dy  # Ex
-    
-    
-    def limit_electric_field(self, E_max_normalized=10.0):
-        """Limit electric field to prevent runaway growth"""
-        E_magnitude = np.sqrt(self.E[:,:,0]**2 + self.E[:,:,1]**2)
-        
-        # Find locations where |E| > E_max
-        large_field_mask = E_magnitude > E_max_normalized
-        
-        if np.any(large_field_mask):
-            # Normalize large fields to E_max while preserving direction
-            normalization_factor = E_max_normalized / E_magnitude
-            normalization_factor = np.where(large_field_mask, normalization_factor, 1.0)
-            
-            self.E[:,:,0] *= normalization_factor
-            self.E[:,:,1] *= normalization_factor
-            
-            print(f"Warning: Limited {np.sum(large_field_mask)} cells with |E| > {E_max_normalized}")
+
     
     def check_E_field(self):
         pass
