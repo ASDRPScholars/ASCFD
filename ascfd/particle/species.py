@@ -528,7 +528,7 @@ class ParticleSpecies:
         
         if self.params.type == "e":
             # !GOODENOUGH!
-            v_rel = np.sqrt(vx**2 + vy**2 + (vz*100000)**2)
+            v_rel = np.sqrt(vx**2 + vy**2 + vz**2)
         else:
             v_rel = np.sqrt(vx**2 + vy**2 + vz**2)
 
