@@ -277,7 +277,7 @@ class Simulation:
         axs = axs.ravel()
 
         # Remove duplicate plotting: only use plot_vars_2d loop
-        norm_data = self.electrons.normal_to_phys()
+        norm_data = self.electrons.normal_to_phys()[:,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng]
         norm_E, norm_B, norm_potential = self.fields.normal_to_phys()
 
         plot_vars_2d = self.inp.data_2d
@@ -303,15 +303,21 @@ class Simulation:
 
         # Define plotting logic in a dictionary (like a switch-case)
         plot_map = {
-            "rho_e": lambda idx: plot_2d_data(axs[idx], norm_data[0,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Electron Density"),
-            "u_e": lambda idx: plot_2d_data(axs[idx], norm_data[1,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Electron Axial Velocity"),
-            "v_e": lambda idx: plot_2d_data(axs[idx], norm_data[2,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Electron Radial Velocity"),
-            "w_e": lambda idx: plot_2d_data(axs[idx], norm_data[3,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Electron Azimuthal Velocity"),
-            "p_e": lambda idx: plot_2d_data(axs[idx], norm_data[4,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Electron Pressure"),
+            "rho_e": lambda idx: plot_2d_data(axs[idx], norm_data[0], extent, "Electron Density"),
+            "u_e": lambda idx: plot_2d_data(axs[idx], norm_data[1], extent, "Electron Axial Velocity"),
+            "v_e": lambda idx: plot_2d_data(axs[idx], norm_data[2], extent, "Electron Radial Velocity"),
+            "w_e": lambda idx: plot_2d_data(axs[idx], norm_data[3], extent, "Electron Azimuthal Velocity"),
+            "mu_e": lambda idx: plot_2d_data(axs[idx], norm_data[0] * norm_data[1], extent, "Electron Axial Momentum"),
+            "mv_e": lambda idx: plot_2d_data(axs[idx], norm_data[0] * norm_data[2], extent, "Electron Radial Momentum"),
+            "mw_e": lambda idx: plot_2d_data(axs[idx], norm_data[0] * norm_data[3], extent, "Electron Azimuthal Momentum"),
+            "p_e": lambda idx: plot_2d_data(axs[idx], norm_data[4], extent, "Electron Pressure"),
+            
             "Ex": lambda idx: plot_2d_data(axs[idx], norm_E[:,:,0], extent, "Electric Field X", cmap='coolwarm'),
             "Ey": lambda idx: plot_2d_data(axs[idx], norm_E[:,:,1], extent, "Electric Field Y", cmap='coolwarm'),
             "By": lambda idx: plot_2d_data(axs[idx], norm_B[:,:,1], extent, "Magnetic Field Y", cmap='magma'),
+            
             "potential": lambda idx: plot_2d_data(axs[idx], norm_potential, extent, "Electric Potential", cmap='coolwarm'),
+            
             "charge_density": lambda idx: plot_2d_data(axs[idx], gaussian_filter(self.fields.charge_density[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], sigma=4.5), extent, "Charge Density", cmap='coolwarm'),
             "ion_density": lambda idx: plot_2d_data(axs[idx], gaussian_filter(self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], sigma=4.5), extent, "Ion Density", cmap=mpl.cm.Blues),
             "ion_density_scatter": lambda idx: plot_2d_data(axs[idx], self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Ion Density (Scatter)", cmap=mpl.cm.Blues, scatter_data=(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP])),

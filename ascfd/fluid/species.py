@@ -180,35 +180,14 @@ class FluidSpecies:
             vy = prim_current[self.c.VCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
             vz = prim_current[self.c.WCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
             if B.shape[2] > 2:
-                Bz = B[:, :, 2]
                 cross_product = vx * B[:, :, 1] - vy * B[:, :, 0]
-                
-                # Physical saturation: momentum source decreases as vz increases
-                # This represents realistic Hall thruster physics where azimuthal velocity 
-                # eventually saturates due to collisions, geometry, etc.
-
-                # # !GOODENOUGH!
-                # v_sat = 0.2  # Saturation velocity scale
-                # saturation_factor = 1.0 / (1.0 + (np.abs(vz) / v_sat)**2)  # Smooth saturation
-                z_mom_source = charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] * cross_product #* 0.01#* saturation_factor #* 100
-                
-                # Debug saturation effect
-                # if np.any(saturation_factor < 0.9):
-                #     print(f"!SATURATION! Min factor: {np.min(saturation_factor):.3f}, Max vz: {np.max(np.abs(vz)):.3e}")
-                
-                # Check z_mom_source immediately after calculation
-                if np.any(np.isnan(z_mom_source)):
-                    print(f"!ERROR! NaN in z_mom_source calculation!")
-                    print(f"charge_density: min={np.min(charge_density):.3e}, max={np.max(charge_density):.3e}, nan_count={np.sum(np.isnan(charge_density))}")
-                    print(f"vx: min={np.min(vx):.3e}, max={np.max(vx):.3e}, nan_count={np.sum(np.isnan(vx))}")
-                    print(f"vy: min={np.min(vy):.3e}, max={np.max(vy):.3e}, nan_count={np.sum(np.isnan(vy))}")
+                z_mom_source = charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] * cross_product                
             else:
                 z_mom_source = np.zeros_like(x_mom_source)
         
-        # !GOODENOUGH!
-        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt #* 10
-        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt #* 10
-        consU_new[self.c.MWCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += z_mom_source * self.dt #* 100
+        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt
+        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt
+        consU_new[self.c.MWCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += z_mom_source * self.dt
 
         # print("!LORENTZ DEBUG! new MUCOMP:", consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] )
         print(f"!@! Electromagnetic coupling strengths:")
