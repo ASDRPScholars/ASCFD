@@ -357,6 +357,7 @@ class ParticleSpecies:
         
         if self.params.type == "n":
             self.bcs.apply_bcs()
+            print("!N! APPLIED BCS")
             
         if self.params.type in ["i", "n"]:
             # Vectorized particle update for better performance
@@ -371,6 +372,7 @@ class ParticleSpecies:
                 Ex_values, Ey_values = self._interpolate_electric_field_batch(x_positions, y_positions)
                 
                 # Vectorized acceleration calculation using pre-computed ratio
+                # TODO: !GOODENOUGH! 
                 ax_values = Ex_values * self.dt * 50000
                 ay_values = Ey_values * self.dt * 50000
 
@@ -438,6 +440,8 @@ class ParticleSpecies:
             # Batch add new particles from collisions for better performance
             if new_particles:
                 self.add_particles(new_particles)
+                
+                print("!!ADD PARTICLE!! FOR", self.params.type, len(new_particles))
 
         # particle per cell enforcement
         if self.params.type != "e":
@@ -486,8 +490,9 @@ class ParticleSpecies:
         active_indices = self._get_active_indices()
         if len(active_indices) < 100:  # Only print for small numbers to avoid spam
             print(f"Processing {len(active_indices)} active particles")
-        
+
         for n in active_indices:
+            
             events = self._attempt_collisions(n, neutral_density_field)
             
             for event in events:
@@ -529,6 +534,7 @@ class ParticleSpecies:
         if self.params.type == "e":
             # !GOODENOUGH!
             v_rel = np.sqrt(vx**2 + vy**2 + vz**2)
+            # TODO: do we need to add actual relative velocity for ion-neutral?
         else:
             v_rel = np.sqrt(vx**2 + vy**2 + vz**2)
 

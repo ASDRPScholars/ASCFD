@@ -30,39 +30,23 @@ class Simulation:
         self.inp = a_inputs
         self.inp = self._phys_to_normal()
         
-        print("INITIED X LIM", self.inp.xlim[1])
-        
         self.c = FluidConstants(a_inputs)
         self.pc = ParticleConstants()
         self.fields = Fields(self.inp)
         
-        # !APPROX! assuming m_i / m_e is only 100
-        # e_params = SpeciesParams(-1.0, 5e-6, 5/3, "e", density=1.0, temperature=100.0)  # electrons (normalized)
-        
-        # xe_i_params = SpeciesParams(1.0, 1, 5/3, "i", density=0.5, temperature=10.0)  # Xe+ ions  
-        
-        # # TODO: 99? 100? does it make a difference?
-        # xe_n_params = SpeciesParams(0.0, 1, 5/3, "n", density=5.0, temperature=10.0)  # Xe neutrals
-        
-        # e_params = SpeciesParams(-self.inp.q, self.inp.m_e, 5/3, "e", density=1.0, temperature=100.0)
+        # TODO: move density + temperature to PARTICLE ics, don't keep in multispecies params
+        xe_i_params = SpeciesParams(self.inp.q, self.inp.m_i, 5/3, "i", density=0.5, temperature=10.0)  # Xe+ ions  
+        xe_n_params = SpeciesParams(self.inp.q, self.inp.m_n, 5/3, "n", density=5.0, temperature=10.0)  # Xe neutrals
         e_params = SpeciesParams(-self.inp.q, self.inp.m_e, 5/3, "e", density=1.0, temperature=100.0)
-        
-        print("!NORM Q!", -self.inp.q)
-        print("!NORM M_E!", self.inp.m_e)
         
         self.electrons = FluidSpecies(e_params, self.inp, self.fields, self)
         
         if self.inp.particle_ics is not None:
-            # self.neutrals = ParticleSpecies(xe_n_params, self.inp, self.fields, self)
-            # self.ions = ParticleSpecies(xe_i_params, self.inp, self.fields, self)
-            # self.pelectrons = ParticleSpecies(e_params, self.inp, self.fields, self)
+            self.neutrals = ParticleSpecies(xe_n_params, self.inp, self.fields, self)
+            self.ions = ParticleSpecies(xe_i_params, self.inp, self.fields, self)
+            self.pelectrons = ParticleSpecies(e_params, self.inp, self.fields, self)
 
             self.electrons.pelectrons = self.pelectrons
-            
-            # simulation reference so species can access each other
-            # self.neutrals.set_simulation(self)
-            # self.ions.set_simulation(self)
-            # self.pelectrons.set_simulation(self)
             
             self.all_species = [self.electrons, self.neutrals, self.ions]
         else:
@@ -150,12 +134,12 @@ class Simulation:
                 print("NUMBER OF NEW PARTICLES:", len(new_particles))
                 
                 # Add all new particles at once (more efficient than per-particle loop)
-                # if new_particles:
-                #     # Add to ions and fluid electrons as before
-                #     for particle in new_particles:
-                #         self.ions.add_particle(particle)
-                #     # Add all particles to fluid electrons at once
-                #     self.electrons.add_particles(new_particles)   
+                if new_particles:
+                    # Add to ions and fluid electrons as before
+                    for particle in new_particles:
+                        self.ions.add_particle(particle)
+                    # Add all particles to fluid electrons at once
+                    self.electrons.add_particles(new_particles)   
                 
             else:
                 raise ValueError(f"Unknown time stepper: {self.inp.timeStepper}")
@@ -238,6 +222,18 @@ class Simulation:
         
         return dt
         
+    def plot_2d_data(self, ax, data, extent, title, cmap='magma', scatter_data=None):
+            """
+            Helper function to plot 2D data on a given axis.
+            """
+        
+            im = ax.imshow(data.T, extent=extent, origin='lower', cmap=cmap)
+            plt.colorbar(im, ax=ax)
+            ax.set_title(title, weight='bold')
+
+            if scatter_data is not None:
+                x, y = scatter_data
+                ax.scatter(x, y, s=5, color='blue', alpha=0.2, clip_on=True)
 
     def output(self):
         
@@ -278,60 +274,56 @@ class Simulation:
 
         # Remove duplicate plotting: only use plot_vars_2d loop
         norm_data = self.electrons.normal_to_phys()[:,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng]
+        i_scatter_data = (self.ions.particles[self.pc.XCOMP] * self.ref.L, self.ions.particles[self.pc.YCOMP] * self.ref.L)
+        n_scatter_data = (self.neutrals.particles[self.pc.XCOMP] * self.ref.L, self.ions.particles[self.pc.YCOMP] * self.ref.L)
         norm_E, norm_B, norm_potential = self.fields.normal_to_phys()
 
         plot_vars_2d = self.inp.data_2d
         
         print("PLOT VARS ARE", plot_vars_2d)
-        
-        def plot_2d_data(ax, data, extent, title, cmap='magma', scatter_data=None):
-            """
-            Helper function to plot 2D data on a given axis.
-            """
-            im = ax.imshow(data.T, extent=extent, origin='lower', cmap=cmap)
-            plt.colorbar(im, ax=ax)
-            ax.set_title(title, weight='bold')
-
-            if scatter_data is not None:
-                x, y = scatter_data
-                ax.scatter(x, y, s=5, color='blue', alpha=0.2, clip_on=True)
 
         # Precompute extent
-        extent = [self.inp.xlim[0], self.inp.xlim[1], self.inp.ylim[0], self.inp.ylim[1]]
+        extent = [self.inp.xlim[0] * self.ref.L, self.inp.xlim[1] * self.ref.L, self.inp.ylim[0] * self.ref.L, self.inp.ylim[1] * self.ref.L]
+        print("!EXTENT!", extent)
         
         from scipy.ndimage import gaussian_filter
+        
+        print("L IS", self.ref.L)
 
         # Define plotting logic in a dictionary (like a switch-case)
         plot_map = {
-            "rho_e": lambda idx: plot_2d_data(axs[idx], norm_data[0], extent, "Electron Density"),
-            "u_e": lambda idx: plot_2d_data(axs[idx], norm_data[1], extent, "Electron Axial Velocity"),
-            "v_e": lambda idx: plot_2d_data(axs[idx], norm_data[2], extent, "Electron Radial Velocity"),
-            "w_e": lambda idx: plot_2d_data(axs[idx], norm_data[3], extent, "Electron Azimuthal Velocity"),
-            "mu_e": lambda idx: plot_2d_data(axs[idx], norm_data[0] * norm_data[1], extent, "Electron Axial Momentum"),
-            "mv_e": lambda idx: plot_2d_data(axs[idx], norm_data[0] * norm_data[2], extent, "Electron Radial Momentum"),
-            "mw_e": lambda idx: plot_2d_data(axs[idx], norm_data[0] * norm_data[3], extent, "Electron Azimuthal Momentum"),
-            "p_e": lambda idx: plot_2d_data(axs[idx], norm_data[4], extent, "Electron Pressure"),
+            "rho_e": lambda idx: self.plot_2d_data(axs[idx], norm_data[0], extent, "Electron Density"),
+            "u_e": lambda idx: self.plot_2d_data(axs[idx], norm_data[1], extent, "Electron Axial Velocity"),
+            "v_e": lambda idx: self.plot_2d_data(axs[idx], norm_data[2], extent, "Electron Radial Velocity"),
+            "w_e": lambda idx: self.plot_2d_data(axs[idx], norm_data[3], extent, "Electron Azimuthal Velocity"),
+            "mu_e": lambda idx: self.plot_2d_data(axs[idx], norm_data[0] * norm_data[1], extent, "Electron Axial Momentum"),
+            "mv_e": lambda idx: self.plot_2d_data(axs[idx], norm_data[0] * norm_data[2], extent, "Electron Radial Momentum"),
+            "mw_e": lambda idx: self.plot_2d_data(axs[idx], norm_data[0] * norm_data[3], extent, "Electron Azimuthal Momentum"),
+            "p_e": lambda idx: self.plot_2d_data(axs[idx], norm_data[4], extent, "Electron Pressure"),
             
-            "Ex": lambda idx: plot_2d_data(axs[idx], norm_E[:,:,0], extent, "Electric Field X", cmap='coolwarm'),
-            "Ey": lambda idx: plot_2d_data(axs[idx], norm_E[:,:,1], extent, "Electric Field Y", cmap='coolwarm'),
-            "By": lambda idx: plot_2d_data(axs[idx], norm_B[:,:,1], extent, "Magnetic Field Y", cmap='magma'),
+            "Ex": lambda idx: self.plot_2d_data(axs[idx], norm_E[:,:,0], extent, "Electric Field X", cmap='coolwarm'),
+            "Ey": lambda idx: self.plot_2d_data(axs[idx], norm_E[:,:,1], extent, "Electric Field Y", cmap='coolwarm'),
+            "By": lambda idx: self.plot_2d_data(axs[idx], norm_B[:,:,1], extent, "Magnetic Field Y", cmap='magma'),
             
-            "potential": lambda idx: plot_2d_data(axs[idx], norm_potential, extent, "Electric Potential", cmap='coolwarm'),
+            "phi": lambda idx: self.plot_2d_data(axs[idx], norm_potential, extent, "Electric Potential", cmap='coolwarm'),
             
-            "charge_density": lambda idx: plot_2d_data(axs[idx], gaussian_filter(self.fields.charge_density[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], sigma=4.5), extent, "Charge Density", cmap='coolwarm'),
-            "ion_density": lambda idx: plot_2d_data(axs[idx], gaussian_filter(self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], sigma=4.5), extent, "Ion Density", cmap=mpl.cm.Blues),
-            "ion_density_scatter": lambda idx: plot_2d_data(axs[idx], self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Ion Density (Scatter)", cmap=mpl.cm.Blues, scatter_data=(self.ions.particles[self.pc.XCOMP], self.ions.particles[self.pc.YCOMP])),
-            "energy": lambda idx: plot_2d_data(axs[idx], self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Energy"),
-            "neutral_density": lambda idx: plot_2d_data(axs[idx], gaussian_filter(self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], sigma=4.5), extent, "Neutral Density", cmap=mpl.cm.Greys),
-            "cross_section": lambda idx: plot_2d_data(axs[idx], gaussian_filter(self.electrons.pelectrons.cross_section_grid, sigma=3), extent, "Electron Collision Cross-Sections", cmap='coolwarm'),
+            "i": lambda idx: self.plot_2d_data(axs[idx], self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Ion Density (Scatter)", cmap=mpl.cm.Blues, scatter_data=(self.ions.particles[self.pc.XCOMP] * self.ref.L, self.ions.particles[self.pc.YCOMP] * self.ref.L)),
+            "n": lambda idx: self.plot_2d_data(axs[idx], self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Neutral Density (Scatter)", cmap=mpl.cm.Greys, scatter_data=(self.neutrals.particles[self.pc.XCOMP] * self.ref.L, self.neutrals.particles[self.pc.YCOMP] * self.ref.L)),
+            "rho_i": lambda idx: self.plot_2d_data(axs[idx], gaussian_filter(self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], sigma=4.5), extent, "Ion Density", cmap=mpl.cm.Blues),
+            "rho_n": lambda idx: self.plot_2d_data(axs[idx], gaussian_filter(self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], sigma=4.5), extent, "Neutral Density", cmap=mpl.cm.Greys),
+            "rho_q": lambda idx: self.plot_2d_data(axs[idx], gaussian_filter(self.fields.charge_density[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], sigma=4.5), extent, "Charge Density", cmap='coolwarm'),
+            "energy": lambda idx: self.plot_2d_data(axs[idx], self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Energy"),
+            "sigma": lambda idx: self.plot_2d_data(axs[idx], gaussian_filter(self.electrons.pelectrons.cross_section_grid, sigma=3), extent, "Electron Collision Cross-Sections", cmap='coolwarm'),
         }
+        
+        print("ALL NEUTRALS X", self.neutrals.particles[self.pc.XCOMP] * self.ref.L)
 
         # Loop over variables and call the corresponding plotting function
         for idx, var in enumerate(plot_vars_2d):
             if var in plot_map:
                 plot_map[var](idx)
-                axs[idx].set_xlim(self.inp.xlim[0], self.inp.xlim[1])
-                axs[idx].set_ylim(self.inp.ylim[0], self.inp.ylim[1])
+                axs[idx].set_xlim(self.inp.xlim[0] * self.ref.L, self.inp.xlim[1] * self.ref.L)
+                axs[idx].set_ylim(self.inp.ylim[0] * self.ref.L, self.inp.ylim[1] * self.ref.L)
                 
                 print("X LIM", self.inp.xlim[1])
                 print("y LIM", self.inp.ylim[1])
