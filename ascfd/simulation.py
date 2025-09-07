@@ -56,7 +56,8 @@ class Simulation:
         self.t = self.inp.t0
         self.timestep = 0
         # self.dt = self.get_dt()
-        self.dt = 1e-9
+        dt_physical = 1e-9
+        self.dt = dt_physical * (self.ref.v / self.ref.L)
         
         # Set timestep for all species
         for species in self.all_species:
@@ -71,6 +72,7 @@ class Simulation:
         
         
     def _phys_to_normal(self) -> Inputs:
+        print("CALLED PHYS TO NORMAL")
         normal_inp = copy.deepcopy(self.inp)
         
         ref = self.ref
@@ -91,6 +93,18 @@ class Simulation:
         
         normal_inp.xlim = (inp.xlim[0] / ref.L, inp.xlim[1] / ref.L)
         normal_inp.ylim = (inp.ylim[0] / ref.L, inp.ylim[1] / ref.L)
+        
+        # dx and dy should be calculated automatically from normalized xlim/ylim and nx/ny
+        # Don't manually set them - they're properties that depend on xlim and nx
+        print("ORIGINAL DX IS", inp.dx)
+        print("NORMALIZED DX WILL BE", (normal_inp.xlim[1] - normal_inp.xlim[0]) / inp.nx)
+        
+        normal_inp.dx = normal_inp.xlim[1] - normal_inp.xlim[0] / inp.nx
+        normal_inp.dy = normal_inp.ylim[1] - normal_inp.ylim[0] / inp.ny
+        
+        print("normal_inp.dx", normal_inp.dx)
+        
+        print("normal_inp.xlim", normal_inp.xlim)
         normal_inp.t_finish = (ref.v / ref.L) * inp.t_finish
         # v should automatically be normalized from x and t normalization
         
@@ -275,7 +289,7 @@ class Simulation:
         # Remove duplicate plotting: only use plot_vars_2d loop
         norm_data = self.electrons.normal_to_phys()[:,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng]
         i_scatter_data = (self.ions.particles[self.pc.XCOMP] * self.ref.L, self.ions.particles[self.pc.YCOMP] * self.ref.L)
-        n_scatter_data = (self.neutrals.particles[self.pc.XCOMP] * self.ref.L, self.ions.particles[self.pc.YCOMP] * self.ref.L)
+        n_scatter_data = (self.neutrals.particles[self.pc.XCOMP] * self.ref.L, self.neutrals.particles[self.pc.YCOMP] * self.ref.L)
         norm_E, norm_B, norm_potential = self.fields.normal_to_phys()
 
         plot_vars_2d = self.inp.data_2d
@@ -316,7 +330,8 @@ class Simulation:
             "sigma": lambda idx: self.plot_2d_data(axs[idx], gaussian_filter(self.electrons.pelectrons.cross_section_grid, sigma=3), extent, "Electron Collision Cross-Sections", cmap='coolwarm'),
         }
         
-        print("ALL NEUTRALS X", self.neutrals.particles[self.pc.XCOMP] * self.ref.L)
+        print("ALL NEUTRALS X", self.neutrals.particles[self.pc.XCOMP])
+        print("SELF.REF.L", self.ref.L)
 
         # Loop over variables and call the corresponding plotting function
         for idx, var in enumerate(plot_vars_2d):
