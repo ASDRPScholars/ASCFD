@@ -12,8 +12,9 @@ class ParticleBoundaryConditions:
         
         
     def apply_bcs(self):
-        self.apply_inflow_lo()
-        self.remove_particles()
+        pass
+        # self.apply_inflow_lo()
+        # self.remove_particles()
         
         
     def apply_inflow_lo(self):
@@ -44,20 +45,20 @@ class ParticleBoundaryConditions:
                 vz = v_th * np.sqrt(-1 * np.log(R3)) * np.cos(2 * np.pi * R4)
                 
                 particle_data[self.pc.XCOMP] = x_rand
+                
+                print("!N! NEW X IS", x_rand, "STORED AS", particle_data[self.pc.XCOMP])
                 particle_data[self.pc.YCOMP] = y_rand
-                particle_data[self.pc.UCOMP] = 1 #vx + 20
-                particle_data[self.pc.VCOMP] = 1 # (vy)
+                particle_data[self.pc.UCOMP] = 0 #vx + 20
+                particle_data[self.pc.VCOMP] = 0 # (vy)
                 particle_data[WEIGHT] = weight
                 
                 if self.pc.WCOMP < self.pc.NUMQ:
-                    print("!N! ADDED", particle_data)
                     particle_data[self.pc.WCOMP] = vz
                     
-                new_particles.append(particle_data)
+                # Use efficient particle addition instead of np.hstack
+                print("!N! ABOUT TO ADD PARTICLE WITH U=", particle_data[self.pc.UCOMP])
                 self.particle_species.add_particle(particle_data)
-                    
-        # Use efficient particle addition instead of np.hstack
-        # self.particle_species.add_particles(particle_data)
+                print("!N! AFTER ADD_PARTICLE, ALL STORED U:", self.particle_species.particles[self.pc.UCOMP, :10])
 
         print("!!ADD PARTICLE!! FOR", self.params.type, len(new_particles))
     
