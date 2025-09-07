@@ -375,8 +375,8 @@ class ParticleSpecies:
                 
                 # Vectorized acceleration calculation using pre-computed ratio
                 # TODO: !GOODENOUGH! 
-                ax_values = Ex_values * self.dt * 50000
-                ay_values = Ey_values * self.dt * 50000
+                ax_values = self.params.charge * Ex_values * self.dt * 50000
+                ay_values = self.params.charge * Ey_values * self.dt * 50000
 
                 # print("ax is", ax_values)
                 # print("because Ex is", Ex_values)
@@ -421,8 +421,8 @@ class ParticleSpecies:
                                                                        self.particles[self.pc.UCOMP, good_indices])
                         print("!!U!! DT IS", self.dt)
                         print("!!U!! VELOCITY IS", self.particles[self.pc.UCOMP, good_indices][:5])
-                        # self.particles[self.pc.YCOMP, good_indices] += (self.dt * 
-                        #                                                self.particles[self.pc.VCOMP, good_indices])
+                        self.particles[self.pc.YCOMP, good_indices] += (self.dt * 
+                                                                       self.particles[self.pc.VCOMP, good_indices])
                         print(f"!U! AFTER POSITION UPDATE: x_positions = {self.particles[self.pc.XCOMP, good_indices][:5]}")
                         print(f"!U! FULL ARRAY AFTER: x_positions = {self.particles[self.pc.XCOMP, :10]}")
                         
