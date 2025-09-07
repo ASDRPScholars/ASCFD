@@ -21,7 +21,6 @@ class CollisionEvent:
         self.particle2_idx = particle2_idx
         self.products = products or []  # new particles created
         self.energy_change = energy_change
-        
 
 class ParticleSpecies:
     def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields, simulation):
@@ -195,7 +194,7 @@ class ParticleSpecies:
                     not np.isinf(species.particles[self.pc.YCOMP, i])):
                     active_indices.append(i)
                 elif species.is_active[i]:  # Active but invalid data - cleanup
-                    print(f"WARNING: Density computation deactivating {species.params.type} particle {i} with invalid position")
+                    print(f"WARNING: Density computation deactivating {species.params.type} particle {i} with invalid position: x={species.particles[self.pc.XCOMP, i]}, y={species.particles[self.pc.YCOMP, i]}")
                     species.is_active[i] = False
                     species.free_slots.append(i)
                     species.particles[:, i] = 0.0  # Clear corrupted data
@@ -315,14 +314,14 @@ class ParticleSpecies:
             self.is_active[slot] = True
             # Invalidate cache when adding particles
             self._cache_valid = False
-            print(self.params.type, "!%! added particle to slot", slot)
+            print(self.params.type, "!%! added particle to slot", slot, "with x=", self.particles[self.pc.XCOMP, slot], "y=", self.particles[self.pc.YCOMP, slot])
         else:
             print(f"Warning: Invalid particle data format for species {self.params.type}")
     
     def add_particles(self, particle_list):
         """Efficiently add multiple particles"""
-        if not particle_list:
-            return
+        # if not particle_list:
+        #     return
             
         expected_components = self.particles.shape[0]
         added_count = 0
@@ -348,6 +347,8 @@ class ParticleSpecies:
 
     def update(self):
         
+        print(f"!START! BEGINNING UPDATE: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
+        
         self.num_collisions.fill(0)
         self.ionization_positions_x.clear()
         # Invalidate active particle cache at start of update
@@ -358,6 +359,7 @@ class ParticleSpecies:
         if self.params.type == "n":
             self.bcs.apply_bcs()
             print("!N! APPLIED BCS")
+            print(f"!BCS! AFTER BCS: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
             
         if self.params.type in ["i", "n"]:
             # Vectorized particle update for better performance
@@ -376,8 +378,8 @@ class ParticleSpecies:
                 ax_values = Ex_values * self.dt * 50000
                 ay_values = Ey_values * self.dt * 50000
 
-                print("ax is", ax_values)
-                print("because Ex is", Ex_values)
+                # print("ax is", ax_values)
+                # print("because Ex is", Ex_values)
                 
                 # Check for invalid fields/accelerations
                 invalid_mask = (np.isnan(Ex_values) | np.isnan(Ey_values) | 
@@ -411,30 +413,56 @@ class ParticleSpecies:
                     good_indices = valid_indices[good_vel_mask]
                     
                     if len(good_indices) > 0:
-                        self.particles[self.pc.XCOMP, good_indices] += (self.dt * 
-                                                                       self.particles[self.pc.UCOMP, good_indices])
-                        self.particles[self.pc.YCOMP, good_indices] += (self.dt * 
-                                                                       self.particles[self.pc.VCOMP, good_indices])
+                        print(f"!U! GOOD_INDICES = {good_indices[:5]}")
+                        print(f"!U! ARRAY SHAPE = {self.particles.shape}")
+                        print(f"!U! BEFORE POSITION UPDATE: x_positions = {self.particles[self.pc.XCOMP, good_indices][:5]}")
+                        print(f"!U! FULL ARRAY BEFORE: x_positions = {self.particles[self.pc.XCOMP, :10]}")
+                        # self.particles[self.pc.XCOMP, good_indices] += (self.dt * 
+                        #                                                self.particles[self.pc.UCOMP, good_indices])
+                        print("!!U!! DT IS", self.dt)
+                        print("!!U!! VELOCITY IS", self.particles[self.pc.UCOMP, good_indices][:5])
+                        # self.particles[self.pc.YCOMP, good_indices] += (self.dt * 
+                        #                                                self.particles[self.pc.VCOMP, good_indices])
+                        print(f"!U! AFTER POSITION UPDATE: x_positions = {self.particles[self.pc.XCOMP, good_indices][:5]}")
+                        print(f"!U! FULL ARRAY AFTER: x_positions = {self.particles[self.pc.XCOMP, :10]}")
                         
                         # Check for particles that moved outside domain
+                        print(f"!B! BEFORE BOUNDARY CHECK: x_positions = {self.particles[self.pc.XCOMP, good_indices[:5]]}")
                         for idx in good_indices:
-                            if (self._get_grid_coordinates(self.particles[self.pc.XCOMP, idx], 
-                                                         self.particles[self.pc.YCOMP, idx]) is None):
+                            x_pos = self.particles[self.pc.XCOMP, idx]
+                            y_pos = self.particles[self.pc.YCOMP, idx]
+                            print(f"!GRID! Domain bounds: x=[{self.inp.grid_x[0]:.6f}, {self.inp.grid_x[-1]:.6f}], y=[{self.inp.grid_y[0]:.6f}, {self.inp.grid_y[-1]:.6f}]")
+                            print(f"!GRID! dx={self.inp.dx:.6f}, dy={self.inp.dy:.6f}, ng={self.inp.ng}")
+                            grid_coords = self._get_grid_coordinates(x_pos, y_pos)
+                            if grid_coords is None:
+                                print(f"!REMOVE! Particle {idx} at ({x_pos:.6f}, {y_pos:.6f}) flagged for removal - outside domain")
                                 particles_to_remove.append(idx)
+                            else:
+                                print(f"!KEEP! Particle {idx} at ({x_pos:.6f}, {y_pos:.6f}) -> grid {grid_coords} - keeping")
+                            break  # Only debug first particle to avoid spam
+                        print(f"!B! AFTER BOUNDARY CHECK: x_positions = {self.particles[self.pc.XCOMP, good_indices[:5]]}")
             
 
         if particles_to_remove:
             active_before = np.sum(self.is_active)
             print("!%! BEFORE REMOVE THERE ARE:", active_before)
-            self._remove_particles(particles_to_remove)
+            active_indices_before_remove = self._get_active_indices()
+            print("!%! BEFORE REMOVE X POSITIONS:", self.particles[self.pc.XCOMP, active_indices_before_remove[:5]] if active_indices_before_remove else "NO ACTIVE PARTICLES")
+            # self._remove_particles(particles_to_remove)
+            # print("!%! REMOVING THESE PARTICLES:")
+            # for idx in particles_to_remove:
+            #     print(f"({self.particles[self.pc.XCOMP, idx]}, {self.particles[self.pc.YCOMP, idx]})")
             active_after = np.sum(self.is_active)
-            print("!%! AFTER REMOVE THERE ARE:", active_after)
+            print(f"!%! AFTER REMOVE {self.params.type} THERE ARE:", active_after)
+            active_indices_after_remove = self._get_active_indices()
+            print("!%! AFTER REMOVE X POSITIONS:", self.particles[self.pc.XCOMP, active_indices_after_remove[:5]] if active_indices_after_remove else "NO ACTIVE PARTICLES")
     
         new_particles = []
         
         if self.params.type in ["e", "i"] and self.collision_data is not None:
-            # print("!#@! PROCESS COLLISIONS FOR", self.params.type)
+            print(f"!C! BEFORE COLLISION PROCESSING: x_positions = {self.particles[self.pc.XCOMP, :10]}")
             new_particles = self.process_collisions()
+            print(f"!C! AFTER COLLISION PROCESSING: x_positions = {self.particles[self.pc.XCOMP, :10]}")
             # print("FROM PARTICLE.UPDATE() - new_particles is", new_particles)
             
             # Batch add new particles from collisions for better performance
@@ -445,7 +473,9 @@ class ParticleSpecies:
 
         # particle per cell enforcement
         if self.params.type != "e":
-            self.enforce_ppc()
+            print(f"!PPC_BEFORE! BEFORE PPC: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
+            # self.enforce_ppc()
+            print(f"!PPC_AFTER! AFTER PPC: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
 
         if hasattr(self, 'get_charge_density'):
             charge_density = self.get_charge_density()
@@ -458,7 +488,9 @@ class ParticleSpecies:
         # Perform periodic spatial sorting for cache locality (do this at end of update)
         self.sort_counter += 1
         if self.sort_counter >= self.sort_frequency:
+            print(f"!SORT_BEFORE! BEFORE SPATIAL SORT: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
             self._sort_particles_spatially()
+            print(f"!SORT_AFTER! AFTER SPATIAL SORT: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
             self.sort_counter = 0
 
         print("--##-- COLLISION EVENTS FOR", self.params.type)
@@ -467,6 +499,8 @@ class ParticleSpecies:
         print("elastic", self.collision_count[2])
 
         self.collision_count.fill(0)
+
+        print(f"!END! END UPDATE: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
 
         return new_particles
 
@@ -881,10 +915,15 @@ class ParticleSpecies:
         if np.isnan(x) or np.isnan(y) or np.isinf(x) or np.isinf(y):
             return None
             
-        ix = int((x - self.inp.grid_x[0]) / self.inp.dx)
-        iy = int((y - self.inp.grid_y[0]) / self.inp.dy)
+        
+        ix = int((x) / self.inp.dx)
+        iy = int((y) / self.inp.dy)
+        
+        # if ix and iy:
+        #     return ix, iy
+    
         # Proper boundary checking to prevent edge accumulation
-        if self.inp.ng <= ix < self.inp.nx + self.inp.ng and self.inp.ng < iy < self.inp.ny + self.inp.ng - 2:
+        if self.inp.ng <= ix <= self.inp.nx + self.inp.ng and self.inp.ng <= iy <= self.inp.ny + self.inp.ng - 2:
             return ix, iy
         return None
 
