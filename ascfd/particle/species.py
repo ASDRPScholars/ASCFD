@@ -448,7 +448,8 @@ class ParticleSpecies:
             print("!%! BEFORE REMOVE THERE ARE:", active_before)
             active_indices_before_remove = self._get_active_indices()
             print("!%! BEFORE REMOVE X POSITIONS:", self.particles[self.pc.XCOMP, active_indices_before_remove[:5]] if active_indices_before_remove else "NO ACTIVE PARTICLES")
-            self._remove_particles(particles_to_remove)
+            # TODO:
+            # self._remove_particles(particles_to_remove)
             # print("!%! REMOVING THESE PARTICLES:")
             # for idx in particles_to_remove:
             #     print(f"({self.particles[self.pc.XCOMP, idx]}, {self.particles[self.pc.YCOMP, idx]})")
