@@ -105,7 +105,7 @@ class Simulation:
         print("normal_inp.dx", normal_inp.dx)
         
         print("normal_inp.xlim", normal_inp.xlim)
-        normal_inp.t_finish = (ref.v / ref.L) * inp.t_finish
+        normal_inp.t_finish = inp.t_finish * (ref.v / ref.L)
         # v should automatically be normalized from x and t normalization
         
         normal_inp.V_anode = (ref.q / (ref.m * ref.v ** 2)) * inp.V_anode 

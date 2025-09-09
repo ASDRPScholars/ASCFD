@@ -87,6 +87,7 @@ class ParticleInitialConditions:
         R1, R2 = np.random.rand(2)
         R3, R4 = np.random.rand(2)
 
+        # TODO: WHY MULTIPLIER WHERES THE MISSING LINK
         vx = v_th * np.sqrt(-1 * np.log(R1)) * np.cos(2 * np.pi * R2) / self.ref.v
         vy = v_th * np.sqrt(-1 * np.log(R1)) * np.sin(2 * np.pi * R2) / self.ref.v
         vz = v_th * np.sqrt(-1 * np.log(R3)) * np.cos(2 * np.pi * R4) / self.ref.v  

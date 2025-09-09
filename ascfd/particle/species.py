@@ -179,25 +179,28 @@ class ParticleSpecies:
         
         density_field = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
         
-        # Use optimized active particle retrieval
-        if hasattr(species, '_get_active_indices'):
-            active_indices = species._get_active_indices()
-        else:
-            # Fallback for species without optimization
-            safe_capacity = min(species.capacity, species.particles.shape[1], len(species.is_active))
-            active_indices = []
-            for i in range(safe_capacity):
-                if (species.is_active[i] and 
-                    not np.isnan(species.particles[self.pc.XCOMP, i]) and 
-                    not np.isnan(species.particles[self.pc.YCOMP, i]) and
-                    not np.isinf(species.particles[self.pc.XCOMP, i]) and 
-                    not np.isinf(species.particles[self.pc.YCOMP, i])):
-                    active_indices.append(i)
-                elif species.is_active[i]:  # Active but invalid data - cleanup
-                    print(f"WARNING: Density computation deactivating {species.params.type} particle {i} with invalid position: x={species.particles[self.pc.XCOMP, i]}, y={species.particles[self.pc.YCOMP, i]}")
-                    species.is_active[i] = False
-                    species.free_slots.append(i)
-                    species.particles[:, i] = 0.0  # Clear corrupted data
+        # TODO: can we just get rid of this
+        # # Use optimized active particle retrieval
+        # if hasattr(species, '_get_active_indices'):
+        #     active_indices = species._get_active_indices()
+        # else:
+        #     # Fallback for species without optimization
+        #     safe_capacity = min(species.capacity, species.particles.shape[1], len(species.is_active))
+        #     active_indices = []
+        #     for i in range(safe_capacity):
+        #         if (species.is_active[i] and 
+        #             not np.isnan(species.particles[self.pc.XCOMP, i]) and 
+        #             not np.isnan(species.particles[self.pc.YCOMP, i]) and
+        #             not np.isinf(species.particles[self.pc.XCOMP, i]) and 
+        #             not np.isinf(species.particles[self.pc.YCOMP, i])):
+        #             active_indices.append(i)
+        #         elif species.is_active[i]:  # Active but invalid data - cleanup
+        #             print(f"WARNING: Density computation deactivating {species.params.type} particle {i} with invalid position: x={species.particles[self.pc.XCOMP, i]}, y={species.particles[self.pc.YCOMP, i]}")
+        #             species.is_active[i] = False
+        #             species.free_slots.append(i)
+        #             species.particles[:, i] = 0.0  # Clear corrupted data
+        
+        active_indices = species._get_active_indices()
         
         if len(active_indices) > 0:
             # Vectorized density computation
@@ -417,11 +420,15 @@ class ParticleSpecies:
                         print(f"!U! ARRAY SHAPE = {self.particles.shape}")
                         print(f"!U! BEFORE POSITION UPDATE: x_positions = {self.particles[self.pc.XCOMP, good_indices][:5]}")
                         print(f"!U! FULL ARRAY BEFORE: x_positions = {self.particles[self.pc.XCOMP, :10]}")
-                        self.particles[self.pc.XCOMP, good_indices] += (self.dt * 
+                        
+                        #TODO: FIGURE OUT WHERE THE MISSING LINK IS IN NORMALIZATION
+                        self.particles[self.pc.XCOMP, good_indices] += (self.dt * 50000 * 
                                                                        self.particles[self.pc.UCOMP, good_indices])
                         print("!!U!! DT IS", self.dt)
                         print("!!U!! VELOCITY IS", self.particles[self.pc.UCOMP, good_indices][:5])
-                        self.particles[self.pc.YCOMP, good_indices] += (self.dt * 
+                        
+                        # TODO: ADD MULTIPLIER HERE AND SUDDENLY NEUTRAL DENSITY WORKS? (grid bound issue for sure... it's not seeing small grid bounds?) - also if you turn it off then u can see REAL particle axial advection (but sparse)
+                        self.particles[self.pc.YCOMP, good_indices] += (self.dt * 50000 *
                                                                        self.particles[self.pc.VCOMP, good_indices])
                         print(f"!U! AFTER POSITION UPDATE: x_positions = {self.particles[self.pc.XCOMP, good_indices][:5]}")
                         print(f"!U! FULL ARRAY AFTER: x_positions = {self.particles[self.pc.XCOMP, :10]}")
@@ -448,8 +455,7 @@ class ParticleSpecies:
             print("!%! BEFORE REMOVE THERE ARE:", active_before)
             active_indices_before_remove = self._get_active_indices()
             print("!%! BEFORE REMOVE X POSITIONS:", self.particles[self.pc.XCOMP, active_indices_before_remove[:5]] if active_indices_before_remove else "NO ACTIVE PARTICLES")
-            # TODO:
-            # self._remove_particles(particles_to_remove)
+            self._remove_particles(particles_to_remove)
             # print("!%! REMOVING THESE PARTICLES:")
             # for idx in particles_to_remove:
             #     print(f"({self.particles[self.pc.XCOMP, idx]}, {self.particles[self.pc.YCOMP, idx]})")
@@ -462,7 +468,8 @@ class ParticleSpecies:
         
         if self.params.type in ["e", "i"] and self.collision_data is not None:
             print(f"!C! BEFORE COLLISION PROCESSING: x_positions = {self.particles[self.pc.XCOMP, :10]}")
-            new_particles = self.process_collisions()
+            # TODO: READD COLLISIONS
+            # new_particles = self.process_collisions()
             print(f"!C! AFTER COLLISION PROCESSING: x_positions = {self.particles[self.pc.XCOMP, :10]}")
             # print("FROM PARTICLE.UPDATE() - new_particles is", new_particles)
             

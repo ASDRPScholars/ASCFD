@@ -1,5 +1,6 @@
 from ascfd.particle.constants import ParticleConstants
 from ascfd.inputs import Inputs
+from ascfd.plasma_refs import PlasmaReferences
 
 import numpy as np
 
@@ -7,6 +8,7 @@ class ParticleBoundaryConditions:
     def __init__(self, particle_species, a_inputs: Inputs, params):
         self.particle_species = particle_species
         self.inp = a_inputs
+        self.ref = PlasmaReferences()
         self.pc = ParticleConstants()
         self.params = params
         
@@ -47,8 +49,10 @@ class ParticleBoundaryConditions:
                 
                 print("!N! NEW X IS", x_rand, "STORED AS", particle_data[self.pc.XCOMP])
                 particle_data[self.pc.YCOMP] = y_rand
-                particle_data[self.pc.UCOMP] = 0 #vx + 20
-                particle_data[self.pc.VCOMP] = 0 # (vy)
+                
+                # TODO: WHY MULTIPLIER WHERES THE MISSING LINK
+                particle_data[self.pc.UCOMP] = 270 / self.ref.v
+                particle_data[self.pc.VCOMP] = 0 # vy + drift
                 particle_data[WEIGHT] = weight
                 
                 if self.pc.WCOMP < self.pc.NUMQ:
