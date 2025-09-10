@@ -15,8 +15,8 @@ class PlasmaReferences:
         
         # TODO: SHOULD WE KEEP THIS @ MORE STABLE 1?
         # TODO: IS THIS THE RIGHT RANGE TO BE NORMALIZING IN?? DO WE PICK ANOTHER ref.dt?? DO WE NORMALIZE DT AT ALL??
-        self.v = 2.18e6 # 1.0
-        self.dt = 1e-9
+        self.v = 1e6 # 1.0
+        self.dt = 1e-9 # 0.001
     
     # def __init__(self, n0=1e18, T0=1000.0, species_mass=9.1e-31, species_charge=1.6e-19):
     #     # Physical parameters
