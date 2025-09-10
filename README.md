@@ -25,9 +25,12 @@ Hall thrusters (HTs) are the most widely used electric propulsion systems in dev
 ![2d plot others](https://github.com/user-attachments/assets/cb8b0381-7e57-4580-8be5-f4581bcc550c)
 Shown at timestep 175.
 
+## Poster
+![summer 2025 poster](https://github.com/user-attachments/assets/4c49b5f4-1b29-4efd-bf33-272b6edb1760)
+ASDRP 2025 Summer Research Expo.
+
 ## Paper
 MIT URTC 2025: [Challenges in Non QN HT Sim.pdf](https://github.com/user-attachments/files/21701242/Challenges.in.Non.QN.HT.Sim.FINAL.FINAL.5.pdf)
-
 
 ---
 ![cse](https://github.com/user-attachments/assets/d91a05a4-8a67-4879-8e39-fde85355afc9#gh-dark-mode-only)
