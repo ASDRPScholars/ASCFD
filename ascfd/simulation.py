@@ -93,8 +93,8 @@ class Simulation:
         normal_inp.xlim = (inp.xlim[0] / ref.L, inp.xlim[1] / ref.L)
         normal_inp.ylim = (inp.ylim[0] / ref.L, inp.ylim[1] / ref.L)
         
-        normal_inp.dx = normal_inp.xlim[1] - normal_inp.xlim[0] / inp.nx
-        normal_inp.dy = normal_inp.ylim[1] - normal_inp.ylim[0] / inp.ny
+        normal_inp.dx = (normal_inp.xlim[1] - normal_inp.xlim[0]) / inp.nx
+        normal_inp.dy = (normal_inp.ylim[1] - normal_inp.ylim[0]) / inp.ny
         
         print("normal_inp.dx", normal_inp.dx)
         
