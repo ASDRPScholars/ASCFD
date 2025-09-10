@@ -56,15 +56,14 @@ class Simulation:
         self.t = self.inp.t0
         self.timestep = 0
         # self.dt = self.get_dt()
-        dt_physical = 1e-9
-        self.dt = dt_physical * (self.ref.v / self.ref.L)
+        self.dt_physical = 1e-9
+        self.dt_norm = self.dt_physical / self.ref.dt
         
         # Set timestep for all species
         for species in self.all_species:
-            species.dt = self.dt
-            # species.dt = 0.002
+            species.dt = self.dt_norm
 
-        # self.pelectrons.dt = self.dt
+        # self.pelectrons.dt = self.dt_norm
         
         # -1 is no output. Always output ICs if we are outputting.
         if self.inp.output_freq >= 0:
@@ -94,18 +93,13 @@ class Simulation:
         normal_inp.xlim = (inp.xlim[0] / ref.L, inp.xlim[1] / ref.L)
         normal_inp.ylim = (inp.ylim[0] / ref.L, inp.ylim[1] / ref.L)
         
-        # dx and dy should be calculated automatically from normalized xlim/ylim and nx/ny
-        # Don't manually set them - they're properties that depend on xlim and nx
-        print("ORIGINAL DX IS", inp.dx)
-        print("NORMALIZED DX WILL BE", (normal_inp.xlim[1] - normal_inp.xlim[0]) / inp.nx)
-        
         normal_inp.dx = normal_inp.xlim[1] - normal_inp.xlim[0] / inp.nx
         normal_inp.dy = normal_inp.ylim[1] - normal_inp.ylim[0] / inp.ny
         
         print("normal_inp.dx", normal_inp.dx)
         
         print("normal_inp.xlim", normal_inp.xlim)
-        normal_inp.t_finish = inp.t_finish * (ref.v / ref.L)
+        normal_inp.t_finish = inp.t_finish / self.ref.dt
         # v should automatically be normalized from x and t normalization
         
         normal_inp.V_anode = (ref.q / (ref.m * ref.v ** 2)) * inp.V_anode 
@@ -158,7 +152,7 @@ class Simulation:
             else:
                 raise ValueError(f"Unknown time stepper: {self.inp.timeStepper}")
             
-            self.t += self.dt
+            self.t += self.dt_physical
             self.timestep += 1
             
             if self.inp.output_freq > 0 and self.timestep % self.inp.output_freq == 0:
