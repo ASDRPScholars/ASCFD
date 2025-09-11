@@ -50,7 +50,3 @@ traitlets==5.14.3
 wcwidth==0.2.13
 
 # git+https://github.com/bchao1/poissonpy.git
-
-
-# Just import numpy, matplotlib and have ffmpeg on your system - Michael
-# Other listed dependencies come when you install those two
