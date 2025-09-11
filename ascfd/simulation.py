@@ -56,7 +56,7 @@ class Simulation:
         self.t = self.inp.t0
         self.timestep = 0
         # self.dt = self.get_dt()
-        self.dt_physical = 1e-9
+        self.dt_physical = 1e-12
         self.dt_norm = self.dt_physical / self.ref.dt
         
         # Set timestep for all species

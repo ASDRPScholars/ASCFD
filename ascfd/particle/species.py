@@ -422,13 +422,13 @@ class ParticleSpecies:
                         print(f"!U! FULL ARRAY BEFORE: x_positions = {self.particles[self.pc.XCOMP, :10]}")
                         
                         #TODO: FIGURE OUT WHERE THE MISSING LINK IS IN NORMALIZATION
-                        self.particles[self.pc.XCOMP, good_indices] += (self.dt * 50000 * 
+                        self.particles[self.pc.XCOMP, good_indices] += (self.dt * 
                                                                        self.particles[self.pc.UCOMP, good_indices])
                         print("!!U!! DT IS", self.dt)
                         print("!!U!! VELOCITY IS", self.particles[self.pc.UCOMP, good_indices][:5])
                         
                         # TODO: ADD MULTIPLIER HERE AND SUDDENLY NEUTRAL DENSITY WORKS? (grid bound issue for sure... it's not seeing small grid bounds?) - also if you turn it off then u can see REAL particle axial advection (but sparse)
-                        self.particles[self.pc.YCOMP, good_indices] += (self.dt * 50000 *
+                        self.particles[self.pc.YCOMP, good_indices] += (self.dt * 
                                                                        self.particles[self.pc.VCOMP, good_indices])
                         print(f"!U! AFTER POSITION UPDATE: x_positions = {self.particles[self.pc.XCOMP, good_indices][:5]}")
                         print(f"!U! FULL ARRAY AFTER: x_positions = {self.particles[self.pc.XCOMP, :10]}")
@@ -455,7 +455,7 @@ class ParticleSpecies:
             print("!%! BEFORE REMOVE THERE ARE:", active_before)
             active_indices_before_remove = self._get_active_indices()
             print("!%! BEFORE REMOVE X POSITIONS:", self.particles[self.pc.XCOMP, active_indices_before_remove[:5]] if active_indices_before_remove else "NO ACTIVE PARTICLES")
-            self._remove_particles(particles_to_remove)
+            # self._remove_particles(particles_to_remove)
             # print("!%! REMOVING THESE PARTICLES:")
             # for idx in particles_to_remove:
             #     print(f"({self.particles[self.pc.XCOMP, idx]}, {self.particles[self.pc.YCOMP, idx]})")

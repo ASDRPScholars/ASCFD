@@ -44,12 +44,6 @@ class Fields:
         self.eps0 = 8.854e-12  # TODO: CHECK — Permittivity of free space
         # self.eps0 = 1e-50
         
-        # Initialize plasma normalization
-        # self.plasma_refs = PlasmaReferences(
-        #     n0=1e18, T0=1000.0, 
-        #     species_mass=9.1e-31, species_charge=1.6e-19
-        # )
-        
         # Normalized permittivity: ε₀ = 1 in plasma units
         self.eps0_normalized = 1.0
                 
@@ -105,8 +99,8 @@ class Fields:
         dphi_dy, dphi_dx = np.gradient(phi, dy, dx)  # Mind the order: (rows, cols) → (y, x)
 
         #TODO: GET RID OF MULTIPLIER
-        self.E[:, :, 1] = -dphi_dx/1000  # Ey
-        self.E[:, :, 0] = -dphi_dy/1000  # Ex
+        self.E[:, :, 1] = -dphi_dx#/1000  # Ey
+        self.E[:, :, 0] = -dphi_dy#/1000  # Ex
 
     
     def check_E_field(self):
