@@ -9,15 +9,15 @@ class PlasmaReferences:
     def __init__(self):
         # TODO: IS IT BETTER TO NORMALIZE ACCORDING TO BULK VALUES?
         
-        self.m = 2.18e-25
-        self.q = 1.602e-19
-        self.L = 0.001
+        self.m = 1
+        self.q = 1
+        self.L = 1
         
         # TODO: SHOULD WE KEEP THIS @ MORE STABLE 1?
         # TODO: IS THIS THE RIGHT RANGE TO BE NORMALIZING IN?? DO WE PICK ANOTHER ref.dt?? DO WE NORMALIZE DT AT ALL??
         # self.v = 1e6 
         # self.dt = 1e-9
-        self.v = 0.1
+        self.v = 1
         self.dt = 1
     
     # def __init__(self, n0=1e18, T0=1000.0, species_mass=9.1e-31, species_charge=1.6e-19):
