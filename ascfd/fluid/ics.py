@@ -257,11 +257,11 @@ class FluidInitialConditions:
     def tame_static(self):
         ic = np.zeros_like(self.grid)
 
-        ic[self.c.RHOCOMP] = self.inp.rho_e
+        ic[self.c.RHOCOMP] = self.inp.rho_e / 100
         ic[self.c.UCOMP] = 0
         ic[self.c.VCOMP] = 0
         ic[self.c.WCOMP] = 0.0  # Initialize z-velocity to zero
-        ic[self.c.PCOMP] = self.inp.p_e
+        ic[self.c.PCOMP] = self.inp.p_e / 100
         
         print("!NORM! rho_e", self.inp.rho_e)
         print("!NORM! p_e", self.inp.p_e)

@@ -51,7 +51,7 @@ class ParticleBoundaryConditions:
                 particle_data[self.pc.YCOMP] = y_rand
                 
                 # TODO: WHY MULTIPLIER WHERES THE MISSING LINK
-                particle_data[self.pc.UCOMP] = 270 / self.ref.v
+                particle_data[self.pc.UCOMP] = 150 / self.ref.v
                 particle_data[self.pc.VCOMP] = 0 # vy + drift
                 particle_data[WEIGHT] = weight
                 
