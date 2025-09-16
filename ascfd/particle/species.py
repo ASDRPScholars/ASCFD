@@ -405,7 +405,7 @@ class ParticleSpecies:
                     self.particles[self.pc.VCOMP, valid_indices] += ay_values[valid_mask]
                     
                     # Check for near-zero velocities
-                    low_vel_mask = ((self.particles[self.pc.UCOMP, valid_indices] <= 1e-1) |
+                    low_vel_mask = ((self.particles[self.pc.UCOMP, valid_indices] <= 1e-1) &
                                    (self.particles[self.pc.VCOMP, valid_indices] <= 1e-1))
                     if np.any(low_vel_mask):
                         low_vel_indices = valid_indices[low_vel_mask]
@@ -429,8 +429,6 @@ class ParticleSpecies:
                         for idx in good_indices:
                             x_pos = self.particles[self.pc.XCOMP, idx]
                             y_pos = self.particles[self.pc.YCOMP, idx]
-                            print(f"!GRID! Domain bounds: x=[{self.inp.grid_x[0]:.6f}, {self.inp.grid_x[-1]:.6f}], y=[{self.inp.grid_y[0]:.6f}, {self.inp.grid_y[-1]:.6f}]")
-                            print(f"!GRID! dx={self.inp.dx:.6f}, dy={self.inp.dy:.6f}, ng={self.inp.ng}")
                             grid_coords = self._get_grid_coordinates(x_pos, y_pos)
                             if grid_coords is None:
                                 print(f"!REMOVE! Particle {idx} at ({x_pos:.6f}, {y_pos:.6f}) flagged for removal - outside domain")
@@ -446,7 +444,7 @@ class ParticleSpecies:
             print("!%! BEFORE REMOVE THERE ARE:", active_before)
             active_indices_before_remove = self._get_active_indices()
             print("!%! BEFORE REMOVE X POSITIONS:", self.particles[self.pc.XCOMP, active_indices_before_remove[:5]] if active_indices_before_remove else "NO ACTIVE PARTICLES")
-            # self._remove_particles(particles_to_remove)
+            self._remove_particles(particles_to_remove)
             # print("!%! REMOVING THESE PARTICLES:")
             # for idx in particles_to_remove:
             #     print(f"({self.particles[self.pc.XCOMP, idx]}, {self.particles[self.pc.YCOMP, idx]})")
