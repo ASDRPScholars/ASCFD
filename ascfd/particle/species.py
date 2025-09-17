@@ -346,7 +346,7 @@ class ParticleSpecies:
             self._cache_valid = False
 
     def estimate_initial_weight(self):
-        return (self.params.density * self.inp.dx * self.inp.dy) / self.inp.n_ppc
+        return (self.inp.n_n * self.inp.dx * self.inp.dy) / self.inp.n_ppc
 
     def update(self):
         
@@ -458,7 +458,7 @@ class ParticleSpecies:
         if self.params.type in ["e", "i"] and self.collision_data is not None:
             print(f"!C! BEFORE COLLISION PROCESSING: x_positions = {self.particles[self.pc.XCOMP, :10]}")
             # TODO: READD COLLISIONS
-            # new_particles = self.process_collisions()
+            new_particles = self.process_collisions()
             print(f"!C! AFTER COLLISION PROCESSING: x_positions = {self.particles[self.pc.XCOMP, :10]}")
             # print("FROM PARTICLE.UPDATE() - new_particles is", new_particles)
             
@@ -520,7 +520,7 @@ class ParticleSpecies:
         # Use optimized active particle retrieval
         active_indices = self._get_active_indices()
         if len(active_indices) < 100:  # Only print for small numbers to avoid spam
-            print(f"Processing {len(active_indices)} active particles")
+            print(f"!ACTIVE! Processing {len(active_indices)} active particles")
 
         for n in active_indices:
             
@@ -586,8 +586,8 @@ class ParticleSpecies:
         
         if self.params.type == "e":
             collision_types = self.collision_data.electron_collisions
-        elif self.params.type == "i":
-            collision_types = self.collision_data.ion_collisions
+        # elif self.params.type == "i":
+        #     collision_types = self.collision_data.ion_collisions
         else:
             return []
 
@@ -597,7 +597,7 @@ class ParticleSpecies:
                 continue
                 
             # !GOODENOUGH!
-            sigma = collision_data["cross_section_func"](energy_ev) * 1e18
+            sigma = collision_data["cross_section_func"](energy_ev)
                         
             if sigma <= 0:
                 #print("NEGATIVE SIGMA FOR", collision_type)
@@ -609,8 +609,9 @@ class ParticleSpecies:
                 self.sigma_temp_storage[i][j-1].append(sigma)
 
             # nu = n * sigma * v
+            # TODO: crazy v is making P = 1.0 everytime it reaches here lol
             nu_collision = neutral_density * sigma * v_rel
-            P_collision = 1.0 - np.exp(-nu_collision * self.dt)
+            P_collision = 1.0 - np.exp(-nu_collision * self.inp.dt)
             
             # print("PROBABILITY IS", P_collision)
             # print("NEUTRAL DENSITY IS", neutral_density)
@@ -823,12 +824,12 @@ class ParticleSpecies:
     def _get_active_indices(self):
         """Get cached active particle indices to avoid recomputation"""
         if not self._cache_valid:
-            safe_capacity = min(self.capacity, self.particles.shape[1], len(self.is_active))
+            safe_capacity = min(self.capacity, self.particles.shape[1]) #TODO: , len(self.is_active))
             active_indices = []
             for i in range(safe_capacity):
                 if (self.is_active[i] and 
                     not np.isnan(self.particles[self.pc.XCOMP, i]) and 
-                    not np.isnan(self.particles[self.pc.YCOMP, i]) and
+                    # TODO: not np.isnan(self.particles[self.pc.YCOMP, i]) and
                     not np.isinf(self.particles[self.pc.XCOMP, i]) and 
                     not np.isinf(self.particles[self.pc.YCOMP, i])):
                     active_indices.append(i)

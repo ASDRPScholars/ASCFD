@@ -23,22 +23,25 @@ class ParticleBoundaryConditions:
     def apply_inflow_lo(self):
         """Apply inflow boundary condition with proper n_ppc seeding"""
         WEIGHT = self.pc.NUMQ
-        # weight = self.params.density * self.inp.dx * self.inp.dy / self.inp.n_ppc
         
-        weight = 1000000
+        weight = self.inp.n_n * self.inp.v_n * self.inp.ylim[1] * self.inp.dt / self.inp.n_ppc
+        # weight = 1000000
         
         kB = 1
         v_th = np.sqrt(2 * kB * self.params.temperature / self.params.mass)
         
         new_particles = []
         
+        n_inject = self.inp.n_flow_rate * self.inp.dt / self.inp.m_n
+        n_p_inject = n_inject / weight
+        
         # Create n_ppc particles per boundary cell to match target density
         for j in range(self.inp.ny):
-            for p in range(self.inp.n_ppc):  # Critical fix: create n_ppc particles per cell
+            for p in range(int(n_p_inject)):  # Critical fix: create n_ppc particles per cell
                 particle_data = np.zeros(self.pc.NUMQ + 1)
                 
                 x_rand = np.random.uniform(0, self.inp.xlim[1] / 10)
-                y_rand = np.random.uniform(0, self.inp.dy)
+                y_rand = np.random.uniform(0, self.inp.ylim[1])
                             
                 R1, R2 = np.random.rand(2)
                 R3, R4 = np.random.rand(2)

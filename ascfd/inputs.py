@@ -57,7 +57,17 @@ class Inputs:
 
         if self.t0 >= self.t_finish:
             raise RuntimeError("Initial time is >= to the final time.")
+        
+        self.dt = self.get_config_value(config, "Time", "dt", type_func=float)
 
+
+        # Params
+        self.q = self.get_config_value(config, "Parameters", "charge", type_func = float)
+        self.m_e = self.get_config_value(config, "Parameters", "e_mass", type_func = float)
+        self.m_i = self.get_config_value(config, "Parameters", "i_mass", type_func = float)
+        self.m_n = self.get_config_value(config, "Parameters", "n_mass", type_func = float)
+        
+        
         # Fluid
         # self.fluid_ics = self.get_config_value(config, "Fluid", "fluid_ics")
         self.rho_e = self.get_config_value(config, "Fluid", "density", type_func = float)
@@ -80,6 +90,11 @@ class Inputs:
         self.bounce_back_multiplier = self.get_config_value(config, "Particle", "bounce_back_multiplier", mandatory = False, default = 1.0, type_func = float)
         self.max_number_of_bounces = self.get_config_value(config, "Particle", "max_number_of_bounces", mandatory = False, default = 3, type_func = int)
         
+        self.n_flow_rate = self.get_config_value(config, "Particle", "n_flow_rate", mandatory = False, default = 5e-6, type_func = float)
+        self.v_n = self.get_config_value(config, "Particle", "v_n", mandatory = False, default = 150, type_func = float)
+        
+        self.n_n = self.n_flow_rate / (self.m_n * self.ylim[1] * self.v_n)
+        
         self.n_particles = self.n_ppc * self.nx_with_ghosts * self.ny_with_ghosts
         
         # Electric Field
@@ -89,13 +104,6 @@ class Inputs:
         self.B_max = self.get_config_value(config, "Fields", "B_max", type_func = float)
         self.V_anode = self.get_config_value(config, "Fields", "V_anode", type_func = int)
         self.V_cathode = self.get_config_value(config, "Fields", "V_cathode", type_func = int)
-        
-        # Params
-        self.q = self.get_config_value(config, "Parameters", "charge", type_func = float)
-        self.m_e = self.get_config_value(config, "Parameters", "e_mass", type_func = float)
-        self.m_i = self.get_config_value(config, "Parameters", "i_mass", type_func = float)
-        self.m_n = self.get_config_value(config, "Parameters", "n_mass", type_func = float)
-        
 
         # Output
         self.output_freq = self.get_config_value(
