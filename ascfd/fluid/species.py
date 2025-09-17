@@ -277,8 +277,8 @@ class FluidSpecies:
         # Particle array: [x, y, vx, vy, vz, weight] = 6 components
         ic_particles = np.zeros((self.pc.NUMQ + 1, n_particles))
         
-        # kB = 1.380649e-23
-        kB = 1
+        kB = 1.380649e-23
+        # kB = 1
         v_th = np.sqrt(2 * kB * self.params.temperature / self.params.mass)
         
         p_idx = 0 
