@@ -27,6 +27,7 @@ class ParticleBoundaryConditions:
         weight = self.inp.n_n * self.inp.v_n * self.inp.ylim[1] * self.inp.dt / self.inp.n_ppc
         # weight = 1000000
         
+        #TODO: kB = 1.380649e-23
         kB = 1
         v_th = np.sqrt(2 * kB * self.params.temperature / self.params.mass)
         
