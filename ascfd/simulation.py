@@ -56,7 +56,7 @@ class Simulation:
         self.t = self.inp.t0
         self.timestep = 0
         # self.dt = self.get_dt()
-        self.dt_physical = 1e-12
+        self.dt_physical = 1e-10
         self.dt_norm = self.dt_physical / self.ref.dt
         
         # Set timestep for all species
@@ -325,8 +325,8 @@ class Simulation:
             "sigma": lambda idx: self.plot_2d_data(axs[idx], gaussian_filter(self.electrons.pelectrons.cross_section_grid, sigma=3), extent, "Electron Collision Cross-Sections", cmap='coolwarm'),
         }
         
-        print("ALL NEUTRALS X", self.neutrals.particles[self.pc.XCOMP])
-        print("SELF.REF.L", self.ref.L)
+        # print("ALL NEUTRALS X", self.neutrals.particles[self.pc.XCOMP])
+        # print("SELF.REF.L", self.ref.L)
 
         # Loop over variables and call the corresponding plotting function
         for idx, var in enumerate(plot_vars_2d):

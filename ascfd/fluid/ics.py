@@ -263,8 +263,8 @@ class FluidInitialConditions:
         ic[self.c.WCOMP] = 0.0  # Initialize z-velocity to zero
         ic[self.c.PCOMP] = self.inp.p_e / 100
         
-        print("!NORM! rho_e", self.inp.rho_e)
-        print("!NORM! p_e", self.inp.p_e)
+        # print("!NORM! rho_e", self.inp.rho_e)
+        # print("!NORM! p_e", self.inp.p_e)
         
         return ic
 

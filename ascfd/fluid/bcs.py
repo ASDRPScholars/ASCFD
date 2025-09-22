@@ -127,7 +127,7 @@ class FluidBoundaryConditions:
 
     
     def neumann_hi(self, grid, dim: int) -> None:
-        print("!BCS! CALLED NEUMANN HI")
+        # print("!BCS! CALLED NEUMANN HI")
          # neumann boundary condition at the high boundary
         for var in range(self.c.NUMQ): # all variables in the grid
             if dim == 0:  # high boundary in x-direction

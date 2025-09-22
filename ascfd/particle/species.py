@@ -466,13 +466,14 @@ class ParticleSpecies:
             if new_particles:
                 self.add_particles(new_particles)
                 
-                print("!!ADD PARTICLE!! FOR", self.params.type, len(new_particles))
+                # print("!!ADD PARTICLE!! FOR", self.params.type, len(new_particles))
 
         # particle per cell enforcement
         if self.params.type != "e":
-            print(f"!PPC_BEFORE! BEFORE PPC: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
+            pass
+            # print(f"!PPC_BEFORE! BEFORE PPC: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
             # self.enforce_ppc()
-            print(f"!PPC_AFTER! AFTER PPC: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
+            # print(f"!PPC_AFTER! AFTER PPC: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
 
         if hasattr(self, 'get_charge_density'):
             charge_density = self.get_charge_density()
@@ -559,7 +560,7 @@ class ParticleSpecies:
 
         grid_coords = self._get_grid_coordinates(x, y)
         if grid_coords is None:
-            #print("[ATTEMPT_COLLISIONS] grid_coords is None")
+            print("[ATTEMPT_COLLISIONS] grid_coords is None")
             return []
         
         if self.params.type == "e":
@@ -570,30 +571,31 @@ class ParticleSpecies:
             v_rel = np.sqrt(vx**2 + vy**2 + vz**2)
 
         if v_rel < 1e-10:
-            #print("[ATTEMPT_COLLISIONS] v_rel < 1e-10")
+            print("[ATTEMPT_COLLISIONS] v_rel < 1e-10")
             print("v_rel is", v_rel)
             return []
 
-        # !NORM! energy_ev = 0.5 * self.params.mass * v_rel**2 / self.collision_data.E_CHARGE
-        energy_ev = 0.5 * self.params.mass * v_rel**2
+        # !NORM! 
+        energy_ev = 0.5 * self.params.mass * v_rel**2 / abs(self.params.charge)
+        # energy_ev = 0.5 * self.params.mass * v_rel**2
 
         neutral_density = self._interpolate_density(x, y, neutral_density_field)
         if neutral_density <= 0:
-            #print("[ATTEMPT_COLLISIONS] neutral_density <= 0")
+            print("[ATTEMPT_COLLISIONS] neutral_density <= 0")
             return []
 
         events = []
         
         if self.params.type == "e":
             collision_types = self.collision_data.electron_collisions
-        # elif self.params.type == "i":
-        #     collision_types = self.collision_data.ion_collisions
+        elif self.params.type == "i":
+            collision_types = self.collision_data.ion_collisions
         else:
             return []
 
         for collision_type, collision_data in collision_types.items():
             if energy_ev < collision_data["threshold"]:
-                #print("NOT ENOUGH ENERGY FOR", collision_type)
+                print("[ATTEMPT_COLLISIONS] NOT ENOUGH ENERGY FOR", collision_type, energy_ev)
                 continue
                 
             # !GOODENOUGH!
@@ -604,19 +606,23 @@ class ParticleSpecies:
                 continue
 
             # Deposit sigma onto grid for cross section tracking
-            i, j = self._get_grid_coordinates(x, y)
-            if 0 <= i < self.inp.nx and 0 <= j < self.inp.ny:
-                self.sigma_temp_storage[i][j-1].append(sigma)
 
             # nu = n * sigma * v
-            # TODO: crazy v is making P = 1.0 everytime it reaches here lol
-            nu_collision = neutral_density * sigma * v_rel
+            # TODO: DO WE NEED TO MULTIPLY THIS BY WEIGHT OR SOMETHING?? PROBABILITY IS IN 1e-6 RANGE WITHOUT (WHICH IS CORRECT, BUT LOW)
+            nu_collision = neutral_density * sigma * v_rel # * 1e5
             P_collision = 1.0 - np.exp(-nu_collision * self.inp.dt)
             
-            # print("PROBABILITY IS", P_collision)
-            # print("NEUTRAL DENSITY IS", neutral_density)
-            # print("SIGMA IS", sigma)
-            # print("ELECTRON SPEED IS", v_rel)
+            i, j = self._get_grid_coordinates(x, y)
+            if 0 <= i < self.inp.nx and 0 <= j < self.inp.ny:
+                self.sigma_temp_storage[i][j-1].append(P_collision)
+                
+            print("--[ATTEMPT_COLLISIONS]-- for", collision_type)
+            print("PROBABILITY IS", P_collision)
+            print("NEUTRAL DENSITY IS", neutral_density)
+            print("SIGMA IS", sigma)
+            print("ELECTRON SPEED IS", v_rel)
+            print("ELECTRON ENERGY IS", energy_ev)
+            # print("WEIGHT IS", weight)
 
             # monte carlo
             if np.random.rand() < P_collision:

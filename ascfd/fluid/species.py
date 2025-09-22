@@ -70,6 +70,8 @@ class FluidSpecies:
         ## --LORENTZ UPDATE--
         self._apply_lorentz_source_terms(consU)
         
+        self.grid[:] = self.euler.cons_to_prim(consU)
+        
         if self.pelectrons:
             ## --P ELECTRONS UPDATE + COLLISIONAL DAMPING--
             new_particle_array = self.convert_to_particles()
@@ -94,7 +96,6 @@ class FluidSpecies:
             # self._apply_damping_source_terms(sigma, consU)
 
         ##
-        self.grid[:] = self.euler.cons_to_prim(consU)
         self.bcs.apply_bcs()
         
         ## --ELECTRIC FIELD UPDATE--
@@ -137,6 +138,15 @@ class FluidSpecies:
     #     # !GOODENOUGH!
     #     consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] -= damping_source * self.dt * 100
 
+
+    def _apply_collisional_source_terms(self, consU_new):
+        '''Add axial classical + anomalous collisional diffusion according to Marks (2023) Eq. 2.25'''
+        
+        m_e = self.params.mass
+        n_e = self.get_number_density()
+        u_e_perp = consU_new[self.c.VCOMP]
+        nu_
+        
     
     def _apply_lorentz_source_terms(self, consU_new):
 
