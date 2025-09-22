@@ -116,14 +116,14 @@ class FluidEuler:
             flux_x[self.c.RHOCOMP] = rho * u # mass flux
             flux_x[self.c.MUCOMP] = rho * u**2 + p # momentum flux in x 
             flux_x[self.c.MVCOMP] = rho * u * v # momentum flux in y 
-            flux_x[self.c.MWCOMP] = rho * u * w # z-momentum flux (passively advected)
+            flux_x[self.c.MWCOMP] = 0 #TODO: rho * u * w # z-momentum flux (passively advected)
             flux_x[self.c.ECOMP] = (E + p) * u # energy flux
             
             # flux in y-direction
             flux_y[self.c.RHOCOMP] = rho * v # mass flux
             flux_y[self.c.MUCOMP] = rho * u * v - self.c.g # momentum flux in x 
             flux_y[self.c.MVCOMP] = rho * v**2 + p # momentum flux in y 
-            flux_y[self.c.MWCOMP] = rho * v * w # z-momentum flux (passively advected)
+            flux_y[self.c.MWCOMP] = 0 #TODO: rho * v * w # z-momentum flux (passively advected)
             flux_y[self.c.ECOMP] = (E + p) * v # energy flux
 
         elif self.c.system == "mhd2d":
