@@ -149,12 +149,18 @@ class FluidSpecies:
         
     
     def _apply_lorentz_source_terms(self, consU_new):
+        
+        primU = self.euler.cons_to_prim(consU_new)
 
         E = self.fields.E
         B = self.fields.B
         # V = self._get_V()
         
         charge_density = self.params.charge * self.grid[self.c.RHOCOMP] / self.params.mass
+        
+        cyclotron_freq = self.inp.q * B[:, :, 1] / self.inp.m_e
+        
+        v_theta = E[:, :, 0] * B[:, :, 1] # / (B[:, :, 1] ** 2) from MIT notes
         
         ## --MOMENTUM UPDATE--
         # lorentz_force = (E + np.cross(V, B))
@@ -197,7 +203,8 @@ class FluidSpecies:
         
         consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt
         consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt
-        consU_new[self.c.MWCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += z_mom_source * self.dt
+        # consU_new[self.c.MWCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += z_mom_source * self.dt
+        consU_new[self.c.MWCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] = v_theta * primU[self.c.RHOCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
 
         # print("!LORENTZ DEBUG! new MUCOMP:", consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] )
         print(f"!@! Electromagnetic coupling strengths:")

@@ -56,7 +56,7 @@ class Simulation:
         self.t = self.inp.t0
         self.timestep = 0
         # self.dt = self.get_dt()
-        self.dt_physical = 1e-12
+        self.dt_physical = 1e-11
         self.dt_norm = self.dt_physical / self.ref.dt
         
         # Set timestep for all species
@@ -275,7 +275,7 @@ class Simulation:
 
         # Set up 2D field plots
         if self.inp.system == "euler2d":
-            fig, axs = plt.subplots(3, 4, figsize=(20, 7))
+            fig, axs = plt.subplots(3, 4, figsize=(24, 7))
         elif self.inp.system == "mhd2d":
             fig, axs = plt.subplots(2, 4, figsize=(36, 18))
         axs = axs.ravel()
@@ -322,7 +322,8 @@ class Simulation:
             "rho_n": lambda idx: self.plot_2d_data(axs[idx], gaussian_filter(self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], sigma=4.5), extent, "Neutral Number Density", cmap=mpl.cm.Greys),
             "rho_q": lambda idx: self.plot_2d_data(axs[idx], gaussian_filter(self.fields.charge_density[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], sigma=4.5), extent, "Charge Density", cmap='coolwarm'),
             "energy": lambda idx: self.plot_2d_data(axs[idx], self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Energy"),
-            "sigma": lambda idx: self.plot_2d_data(axs[idx], gaussian_filter(self.electrons.pelectrons.cross_section_grid, sigma=3), extent, "Electron Collision Cross-Sections", cmap='coolwarm'),
+            #TODO: temp change for plotting nu instead of sigma
+            "sigma": lambda idx: self.plot_2d_data(axs[idx], gaussian_filter(self.electrons.pelectrons.cross_section_grid, sigma=3), extent, "Electron Collision Frequency", cmap='coolwarm'),
         }
         
         # print("ALL NEUTRALS X", self.neutrals.particles[self.pc.XCOMP])
