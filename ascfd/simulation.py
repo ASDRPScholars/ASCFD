@@ -22,7 +22,7 @@ import copy
 # plt.style.use(['science','ieee'])
 # plt.rcParams['text.usetex'] = True  # Ensure this stays set
 # plt.rcParams['font.family'] = 'serif'
-plt.rcParams['font.serif'] = ['Computer Modern Roman']
+# plt.rcParams['font.serif'] = ['Computer Modern Roman']
 
 class Simulation:
     def __init__(self, a_inputs: Inputs):
