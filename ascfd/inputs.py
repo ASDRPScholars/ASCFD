@@ -57,9 +57,22 @@ class Inputs:
 
         if self.t0 >= self.t_finish:
             raise RuntimeError("Initial time is >= to the final time.")
+        
+        self.dt = self.get_config_value(config, "Time", "dt", type_func=float)
 
+
+        # Params
+        self.q = self.get_config_value(config, "Parameters", "charge", type_func = float)
+        self.m_e = self.get_config_value(config, "Parameters", "e_mass", type_func = float)
+        self.m_i = self.get_config_value(config, "Parameters", "i_mass", type_func = float)
+        self.m_n = self.get_config_value(config, "Parameters", "n_mass", type_func = float)
+        
+        
         # Fluid
-        self.fluid_ics = self.get_config_value(config, "Fluid", "fluid_ics")
+        # self.fluid_ics = self.get_config_value(config, "Fluid", "fluid_ics")
+        self.rho_e = self.get_config_value(config, "Fluid", "density", type_func = float)
+        self.p_e = self.get_config_value(config, "Fluid", "pressure", type_func = float)
+
         self.system = self.get_config_value(config, "Fluid", "system")
         self.gammas = self.get_config_value(config, "Fluid", "gammas", type_func=lambda s: [float(item) for item in s.strip('[]').split(',')])
         self.mW = self.get_config_value(config, "Fluid", "mW", type_func=lambda s: [float(item) for item in s.strip('[]').split(',')])
@@ -77,12 +90,20 @@ class Inputs:
         self.bounce_back_multiplier = self.get_config_value(config, "Particle", "bounce_back_multiplier", mandatory = False, default = 1.0, type_func = float)
         self.max_number_of_bounces = self.get_config_value(config, "Particle", "max_number_of_bounces", mandatory = False, default = 3, type_func = int)
         
+        self.n_flow_rate = self.get_config_value(config, "Particle", "n_flow_rate", mandatory = False, default = 5e-6, type_func = float)
+        self.v_n = self.get_config_value(config, "Particle", "v_n", mandatory = False, default = 150, type_func = float)
+        
+        self.n_n = self.n_flow_rate / (self.m_n * self.ylim[1] * self.v_n)
+        
         self.n_particles = self.n_ppc * self.nx_with_ghosts * self.ny_with_ghosts
         
         # Electric Field
-        self.E_ics = self.get_config_value(config, "Fields", "E_ics")
         self.B_ics = self.get_config_value(config, "Fields", "B_ics")
         
+        # TODO
+        self.B_max = self.get_config_value(config, "Fields", "B_max", type_func = float)
+        self.V_anode = self.get_config_value(config, "Fields", "V_anode", type_func = int)
+        self.V_cathode = self.get_config_value(config, "Fields", "V_cathode", type_func = int)
 
         # Output
         self.output_freq = self.get_config_value(
@@ -99,6 +120,15 @@ class Inputs:
             mandatory=False,
             default=True,
         )
+
+        # Add containers for plotting data
+        self.data_2d = self.get_config_value(
+            config,
+            "Output",
+            "2d_data",
+            type_func=lambda x: [item.strip() for item in x.split(",")]
+        )
+        # self.data_1d = [] 
 
 
     def get_config_value(self, config, section, option, type_func=str, mandatory=True, default=None):

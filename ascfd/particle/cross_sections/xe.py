@@ -114,38 +114,29 @@ class XenonCollisionData:
         self.electron_collisions = self._init_electron_collisions()
         self.ion_collisions = self._init_ion_collisions()
     
+    # TODO: add back exc_3 and exc_4?
     def _init_electron_collisions(self):
         """Initialize electron collision dictionary"""
         return {
-            "elastic": {
-                "threshold": 0.0,
-                "cross_section_func": self._elastic_cross_section,
-                "energy_loss": 0.0
-            },
-            "excitation_1": {
-                "threshold": self.exc1_threshold,
-                "cross_section_func": self._excitation_cross_section_1,
-                "energy_loss": self.exc1_threshold
+            "ionization": {
+                "threshold": self.ionization_threshold,
+                "cross_section_func": self._ionization_cross_section,
+                "energy_loss": self.ionization_threshold
             },
             "excitation_2": {
                 "threshold": self.exc2_threshold,
                 "cross_section_func": self._excitation_cross_section_2,
                 "energy_loss": self.exc2_threshold
             },
-            "excitation_3": {
-                "threshold": self.exc3_threshold,
-                "cross_section_func": self._excitation_cross_section_3,
-                "energy_loss": self.exc3_threshold
+            "excitation_1": {
+                "threshold": self.exc1_threshold,
+                "cross_section_func": self._excitation_cross_section_1,
+                "energy_loss": self.exc1_threshold
             },
-            "excitation_4": {
-                "threshold": self.exc4_threshold,
-                "cross_section_func": self._excitation_cross_section_4,
-                "energy_loss": self.exc4_threshold
-            },
-            "ionization": {
-                "threshold": self.ionization_threshold,
-                "cross_section_func": self._ionization_cross_section,
-                "energy_loss": self.ionization_threshold
+            "elastic": {
+                "threshold": 0.0,
+                "cross_section_func": self._elastic_cross_section,
+                "energy_loss": 0.0
             }
         }
     

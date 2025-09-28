@@ -14,45 +14,48 @@ class FluidInitialConditions:
         
     def apply_ics(self):
         if self.inp.system == "euler2d":
-            if self.inp.fluid_ics == "diagonal_advection":
-                print("applying diag advection")
-                f = self.diagonal_advection_2d
-                
-                new_grid = np.zeros_like(self.grid)
-                
-                for var in range(self.c.NUMQ):
-                    print(var)
-                    new_grid[var] = f(self.mesh_x, self.mesh_y, var)
+            if hasattr(self.inp, "fluid_ics"):
+                if self.inp.fluid_ics == "diagonal_advection":
+                    print("applying diag advection")
+                    f = self.diagonal_advection_2d
                     
-                return new_grid
-            
-            elif self.inp.fluid_ics == "poisson_validation":
-                print("applying diag advection")
-                f = self.poisson_validation_charge_density
-                
-                new_grid = np.zeros_like(self.grid)
-                
-                for var in range(self.c.NUMQ):
-                    print(var)
-                    new_grid[var] = f(self.mesh_x, self.mesh_y, var)
+                    new_grid = np.zeros_like(self.grid)
                     
-                return new_grid
-
-            elif self.inp.fluid_ics == "tame_static":
-                return self.tame_static()
-            
-            elif self.inp.fluid_ics == "e_cloud_test":
-                return self.e_cloud_test()
+                    for var in range(self.c.NUMQ):
+                        print(var)
+                        new_grid[var] = f(self.mesh_x, self.mesh_y, var)
+                        
+                    return new_grid
                 
-            elif self.inp.fluid_ics == "kelvin_helmholtz":
-                self.grid = self.kelvin_helmholtz_2d()
-            elif self.inp.fluid_ics == "double_mach_reflection":
-                self.grid = self.double_mach_reflection_2d()
-            elif self.inp.fluid_ics == "riemann_problem":
-                self.grid = self.riemann_2d()
+                elif self.inp.fluid_ics == "poisson_validation":
+                    print("applying diag advection")
+                    f = self.poisson_validation_charge_density
+                    
+                    new_grid = np.zeros_like(self.grid)
+                    
+                    for var in range(self.c.NUMQ):
+                        print(var)
+                        new_grid[var] = f(self.mesh_x, self.mesh_y, var)
+                        
+                    return new_grid
 
+                elif self.inp.fluid_ics == "tame_static":
+                    return self.tame_static()
+                
+                elif self.inp.fluid_ics == "e_cloud_test":
+                    return self.e_cloud_test()
+                    
+                elif self.inp.fluid_ics == "kelvin_helmholtz":
+                    self.grid = self.kelvin_helmholtz_2d()
+                elif self.inp.fluid_ics == "double_mach_reflection":
+                    self.grid = self.double_mach_reflection_2d()
+                elif self.inp.fluid_ics == "riemann_problem":
+                    self.grid = self.riemann_2d()
+
+                else:
+                    raise RuntimeError("[FLUID] ICS not valid.")
             else:
-                raise RuntimeError("[FLUID] ICS not valid.")
+                return self.tame_static()
            
         elif self.inp.system == "mhd2d":
             if self.inp.fluid_ics == "orszag_tang":
@@ -234,22 +237,37 @@ class FluidInitialConditions:
     #     return ic
     
     #normalized
+    # def tame_static(self):
+    #     ic = np.zeros_like(self.grid)
+
+    #     # Normalized values (order unity)
+    #     rho_norm = 5e-6                  # ρ/ρ_ref = 1
+    #     u_norm = 0.0                    # u/v_ref = 0  
+    #     v_norm = 0.0                    # v/v_ref = 0
+    #     T_norm = 1.0                    # T/T_ref = 1
+    #     p_norm = rho_norm * T_norm      # p/p_ref = (ρ/ρ_ref)(T/T_ref)
+
+    #     ic[self.c.RHOCOMP] = rho_norm
+    #     ic[self.c.UCOMP] = u_norm
+    #     ic[self.c.VCOMP] = v_norm
+    #     ic[self.c.WCOMP] = 0.0  # Initialize z-velocity to zero
+    #     ic[self.c.PCOMP] = p_norm
+    #     return ic
+    
     def tame_static(self):
         ic = np.zeros_like(self.grid)
 
-        # Normalized values (order unity)
-        rho_norm = 1                  # ρ/ρ_ref = 1
-        u_norm = 0.0                    # u/v_ref = 0  
-        v_norm = 0.0                    # v/v_ref = 0
-        T_norm = 1.0                    # T/T_ref = 1
-        p_norm = rho_norm * T_norm      # p/p_ref = (ρ/ρ_ref)(T/T_ref)
-
-        ic[self.c.RHOCOMP] = rho_norm
-        ic[self.c.UCOMP] = u_norm
-        ic[self.c.VCOMP] = v_norm
+        ic[self.c.RHOCOMP] = self.inp.rho_e / 100
+        ic[self.c.UCOMP] = 0
+        ic[self.c.VCOMP] = 0
         ic[self.c.WCOMP] = 0.0  # Initialize z-velocity to zero
-        ic[self.c.PCOMP] = p_norm
+        ic[self.c.PCOMP] = self.inp.p_e / 100
+        
+        # print("!NORM! rho_e", self.inp.rho_e)
+        # print("!NORM! p_e", self.inp.p_e)
+        
         return ic
+
     
     
     def e_cloud_test(self):

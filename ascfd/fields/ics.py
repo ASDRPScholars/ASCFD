@@ -25,10 +25,10 @@ class FieldInitialConditions:
     def guillaume(self):
         ic_grid = np.zeros_like(self.B_field)
         
-        # !GOODENOUGH!
-        B_max = 0.02 # 0.237 -> 0.02 per claude
-        x_c = 0.6
-        sigma = 0.05
+        # -> MIT LECTURE
+        B_max = self.inp.B_max # Tesla
+        x_c = 0.6 * self.inp.xlim[1]
+        sigma = 0.05 * self.inp.xlim[1]
         
         x = np.linspace(self.inp.xlim[0], self.inp.xlim[1], self.inp.nx)
         
@@ -50,6 +50,8 @@ class FieldInitialConditions:
         ic_grid[:, :, 1] = gaussian_1d[:, np.newaxis]
         
         print(f"ic_grid max after assignment: {ic_grid.max()}")
+        
+        print("B INIT MAX", ic_grid.max())
         
         return ic_grid
     

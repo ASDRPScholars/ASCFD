@@ -1,12 +1,13 @@
 import matplotlib.pyplot as plt
 from ascfd.inputs import Inputs
 from ascfd.fields.ics import FieldInitialConditions
-from ascfd.fluid.plasma_refs import PlasmaReferences
+from ascfd.plasma_refs import PlasmaReferences
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D  # needed for 3D projection only
 from sympy import sin, cos
 from sympy.abc import x, y
 import sympy as sp
+import copy
 
 import sys
 
@@ -26,6 +27,8 @@ class Fields:
         self.B = self.ics.apply_B_ics()
         self.ics.apply_E_ics()
         
+        self.ref = PlasmaReferences()
+        
         plt.figure()
         im = plt.imshow(self.B[:, :, 1])
         plt.title("apply_B_ics() magnetic field")
@@ -41,19 +44,25 @@ class Fields:
         self.eps0 = 8.854e-12  # TODO: CHECK — Permittivity of free space
         # self.eps0 = 1e-50
         
-        # Initialize plasma normalization
-        self.plasma_refs = PlasmaReferences(
-            n0=1e18, T0=1000.0, 
-            species_mass=9.1e-31, species_charge=1.6e-19
-        )
-        
         # Normalized permittivity: ε₀ = 1 in plasma units
         self.eps0_normalized = 1.0
                 
     def update_E(self):
         self.solve_poisson()
         self._compute_electric_field()
-        self.limit_electric_field()  # Prevent runaway field growth
+
+        
+    def normal_to_phys(self):
+        E = copy.copy(self.E)
+        B = copy.copy(self.B)
+        potential = copy.copy(self.potential)
+        ref = self.ref
+        
+        E = self.E * (ref.m * ref.v**2 / (ref.q * ref.L))
+        B = self.B * (ref.m * ref.v / (ref.q * ref.L))
+        potential = self.potential * (ref.m * ref.v**2 / ref.q)
+        
+        return E, B, potential
         
                 
     def add_charge_density(self, species_charge_density):
@@ -71,8 +80,8 @@ class Fields:
         boundary = {
             "left": (0, "neumann_x"), # BECOMES BOTTOM
             "right": (0, "neumann_x"), # BECOMES TOP
-            "top": (3, "dirichlet"), # BECOMES LEFT
-            "bottom": (-0.5, "neumann_y") # BECOMES RIGHT
+            "top": (self.inp.V_anode, "dirichlet"), # BECOMES LEFT
+            "bottom": (self.inp.V_cathode, "dirichlet") # BECOMES RIGHT
         }
         
         solver = solvers.Poisson2DRectangle(rect=rect, interior=rhs, boundary=boundary, X=self.inp.ny, Y=self.inp.nx)
@@ -89,26 +98,10 @@ class Fields:
         
         dphi_dy, dphi_dx = np.gradient(phi, dy, dx)  # Mind the order: (rows, cols) → (y, x)
 
-        self.E[:, :, 1] = -dphi_dx  # Ey
-        self.E[:, :, 0] = -dphi_dy  # Ex
-    
-    
-    def limit_electric_field(self, E_max_normalized=10.0):
-        """Limit electric field to prevent runaway growth"""
-        E_magnitude = np.sqrt(self.E[:,:,0]**2 + self.E[:,:,1]**2)
-        
-        # Find locations where |E| > E_max
-        large_field_mask = E_magnitude > E_max_normalized
-        
-        if np.any(large_field_mask):
-            # Normalize large fields to E_max while preserving direction
-            normalization_factor = E_max_normalized / E_magnitude
-            normalization_factor = np.where(large_field_mask, normalization_factor, 1.0)
-            
-            self.E[:,:,0] *= normalization_factor
-            self.E[:,:,1] *= normalization_factor
-            
-            print(f"Warning: Limited {np.sum(large_field_mask)} cells with |E| > {E_max_normalized}")
+        #TODO: GET RID OF MULTIPLIER
+        self.E[:, :, 1] = -dphi_dx#/1000  # Ey
+        self.E[:, :, 0] = -dphi_dy#/1000  # Ex
+
     
     def check_E_field(self):
         pass

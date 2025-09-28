@@ -7,6 +7,7 @@ from ascfd.params import SpeciesParams
 from ascfd.fluid.bcs import FluidBoundaryConditions
 from ascfd.fluid.flux import FluidFlux
 from ascfd.fields.fields import Fields
+from ascfd.plasma_refs import PlasmaReferences
 
 # from ascfd.simulation import Simulation
 
@@ -14,6 +15,7 @@ import ascfd.fluid.ics as ics
 
 import numpy as np
 import matplotlib.pyplot as plt
+import copy
 
 import sys
 
@@ -24,6 +26,8 @@ class FluidSpecies:
         self.pc = ParticleConstants()
         self.euler = FluidEuler(self.c)
         self.flux = FluidFlux(self.c, a_inputs.flux)
+        
+        self.ref = PlasmaReferences()
         
         self.fields = fields
         self.simulation = simulation
@@ -65,31 +69,33 @@ class FluidSpecies:
                     
         ## --LORENTZ UPDATE--
         self._apply_lorentz_source_terms(consU)
-
-        ## --P ELECTRONS UPDATE + COLLISIONAL DAMPING--
-        new_particle_array = self.convert_to_particles()
         
-        # Clear existing particles and properly initialize with new ones
-        self.pelectrons.active_count = 0
-        self.pelectrons.is_active.fill(False)
-        self.pelectrons.free_slots.clear()
+        self.grid[:] = self.euler.cons_to_prim(consU)
         
-        # Add particles from converted array
-        n_new_particles = new_particle_array.shape[1]
-        for i in range(n_new_particles):
-            if i < self.pelectrons.capacity:
-                self.pelectrons.particles[:, i] = new_particle_array[:, i]
-                self.pelectrons.is_active[i] = True
-                self.pelectrons.active_count += 1
+        if self.pelectrons:
+            ## --P ELECTRONS UPDATE + COLLISIONAL DAMPING--
+            new_particle_array = self.convert_to_particles()
+            
+            # Clear existing particles and properly initialize with new ones
+            self.pelectrons.active_count = 0
+            self.pelectrons.is_active.fill(False)
+            self.pelectrons.free_slots.clear()
         
-        new_particles = self.pelectrons.update()
-        self.pelectrons.update_cross_section_grid()
-        sigma = self.pelectrons.cross_section_grid
-        
-        self._apply_damping_source_terms(sigma, consU)
+            # Add particles from converted array
+            n_new_particles = new_particle_array.shape[1]
+            for i in range(n_new_particles):
+                if i < self.pelectrons.capacity:
+                    self.pelectrons.particles[:, i] = new_particle_array[:, i]
+                    self.pelectrons.is_active[i] = True
+                    self.pelectrons.active_count += 1
+            
+            new_particles = self.pelectrons.update()
+            self.pelectrons.update_cross_section_grid()
+            sigma = self.pelectrons.cross_section_grid
+            
+            # self._apply_damping_source_terms(sigma, consU)
 
         ##
-        self.grid[:] = self.euler.cons_to_prim(consU)
         self.bcs.apply_bcs()
         
         ## --ELECTRIC FIELD UPDATE--
@@ -100,45 +106,61 @@ class FluidSpecies:
 
         self.fields.update_E()
 
-        return new_particles
+        if self.pelectrons:
+            return new_particles
     
 
-    def _apply_damping_source_terms(self, sigma, consU_new):
-        from scipy.ndimage import gaussian_filter
-        # OK ALL IT IS: a * sigma(e) * n_n * rho_e * V_e
+    # def _apply_damping_source_terms(self, sigma, consU_new):
+    #     from scipy.ndimage import gaussian_filter
+    #     # OK ALL IT IS: a * sigma(e) * n_n * rho_e * V_e
         
-        # --COLLISION DAMPING--
-        n_n = self.simulation.neutrals._compute_particle_density_field(self.simulation.neutrals)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] + 0.01
-        n_n_smooth = gaussian_filter(n_n, sigma=3.0)
-        rho_e = self.grid[self.c.RHOCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-        V_x = self._get_V()[:, :, 0]
+    #     # --COLLISION DAMPING--
+    #     n_n = self.simulation.neutrals._compute_particle_density_field(self.simulation.neutrals)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] + 0.01
+    #     n_n_smooth = gaussian_filter(n_n, sigma=3.0)
+    #     rho_e = self.grid[self.c.RHOCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+    #     V_x = self._get_V()[:, :, 0]
 
-        sigma_smooth = gaussian_filter(sigma, sigma=3.0)
+    #     sigma_smooth = gaussian_filter(sigma, sigma=3.0)
 
-        # print("!DEBUG DAMPING! n-n is", n_n)
-        # print("!DEBUG DAMPING! sigma is", sigma)
+    #     # print("!DEBUG DAMPING! n-n is", n_n)
+    #     # print("!DEBUG DAMPING! sigma is", sigma)
 
-        # np.set_printoptions(threshold=sys.maxsize)
-        # print("SIGMA", sigma)
-        # print("n_n", n_n)
-        # print("rho_e", rho_e)
-        # print("V_x", V_x)
+    #     # np.set_printoptions(threshold=sys.maxsize)
+    #     # print("SIGMA", sigma)
+    #     # print("n_n", n_n)
+    #     # print("rho_e", rho_e)
+    #     # print("V_x", V_x)
 
-        damping_source = sigma_smooth * n_n_smooth * rho_e * V_x
+    #     damping_source = sigma_smooth * n_n_smooth * rho_e * V_x
 
-        # print("!*! MIN MAX OF damping_source IS", np.min(damping_source), np.max(damping_source))
+    #     # print("!*! MIN MAX OF damping_source IS", np.min(damping_source), np.max(damping_source))
 
-        # !GOODENOUGH!
-        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] -= damping_source * self.dt * 100
+    #     # !GOODENOUGH!
+    #     consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] -= damping_source * self.dt * 100
 
+
+    def _apply_collisional_source_terms(self, consU_new):
+        '''Add axial classical + anomalous collisional diffusion according to Marks (2023) Eq. 2.25'''
+        
+        m_e = self.params.mass
+        n_e = self.get_number_density()
+        u_e_perp = consU_new[self.c.VCOMP]
+        nu_
+        
     
     def _apply_lorentz_source_terms(self, consU_new):
+        
+        primU = self.euler.cons_to_prim(consU_new)
 
         E = self.fields.E
         B = self.fields.B
         # V = self._get_V()
         
         charge_density = self.params.charge * self.grid[self.c.RHOCOMP] / self.params.mass
+        
+        cyclotron_freq = self.inp.q * B[:, :, 1] / self.inp.m_e
+        
+        v_theta = E[:, :, 0] * B[:, :, 1] # / (B[:, :, 1] ** 2) from MIT notes
         
         ## --MOMENTUM UPDATE--
         # lorentz_force = (E + np.cross(V, B))
@@ -174,35 +196,15 @@ class FluidSpecies:
             vy = prim_current[self.c.VCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
             vz = prim_current[self.c.WCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
             if B.shape[2] > 2:
-                Bz = B[:, :, 2]
                 cross_product = vx * B[:, :, 1] - vy * B[:, :, 0]
-                
-                # Physical saturation: momentum source decreases as vz increases
-                # This represents realistic Hall thruster physics where azimuthal velocity 
-                # eventually saturates due to collisions, geometry, etc.
-
-                # !GOODENOUGH!
-                v_sat = 0.2  # Saturation velocity scale
-                saturation_factor = 1.0 / (1.0 + (np.abs(vz) / v_sat)**2)  # Smooth saturation
-                z_mom_source = charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] * cross_product * saturation_factor * 100
-                
-                # Debug saturation effect
-                if np.any(saturation_factor < 0.9):
-                    print(f"!SATURATION! Min factor: {np.min(saturation_factor):.3f}, Max vz: {np.max(np.abs(vz)):.3e}")
-                
-                # Check z_mom_source immediately after calculation
-                if np.any(np.isnan(z_mom_source)):
-                    print(f"!ERROR! NaN in z_mom_source calculation!")
-                    print(f"charge_density: min={np.min(charge_density):.3e}, max={np.max(charge_density):.3e}, nan_count={np.sum(np.isnan(charge_density))}")
-                    print(f"vx: min={np.min(vx):.3e}, max={np.max(vx):.3e}, nan_count={np.sum(np.isnan(vx))}")
-                    print(f"vy: min={np.min(vy):.3e}, max={np.max(vy):.3e}, nan_count={np.sum(np.isnan(vy))}")
+                z_mom_source = charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] * cross_product                
             else:
                 z_mom_source = np.zeros_like(x_mom_source)
         
-        # !GOODENOUGH!
-        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt * 10
-        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt * 10
-        consU_new[self.c.MWCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += z_mom_source * self.dt * 100
+        consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += x_mom_source * self.dt
+        consU_new[self.c.MVCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += y_mom_source * self.dt
+        # consU_new[self.c.MWCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += z_mom_source * self.dt
+        consU_new[self.c.MWCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] = v_theta * primU[self.c.RHOCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
 
         # print("!LORENTZ DEBUG! new MUCOMP:", consU_new[self.c.MUCOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] )
         print(f"!@! Electromagnetic coupling strengths:")
@@ -238,7 +240,7 @@ class FluidSpecies:
         if B.shape[2] > 2:
             rho_interior = prim_new[self.c.RHOCOMP][self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
             # z_mom_source already has *100, so remove it for work calculation
-            z_mom_source_unscaled = z_mom_source / 100  # Remove the arbitrary multiplier
+            z_mom_source_unscaled = z_mom_source #/ 100  # Remove the arbitrary multiplier
             z_force_per_volume = z_mom_source_unscaled / self.dt  # Force per unit volume (proper units)
             z_force_per_mass = z_force_per_volume / (rho_interior + 1e-12)  # Force per unit mass
             z_work = z_force_per_mass * vz  # Work per unit mass per unit time
@@ -254,7 +256,7 @@ class FluidSpecies:
         print(f"!@! Energy source range: [{np.min(energy_source):.3e}, {np.max(energy_source):.3e}]")
 
         # !GOODENOUGH!
-        consU_new[self.c.ECOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += energy_source * self.dt * 100
+        # consU_new[self.c.ECOMP, self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng] += energy_source * self.dt
         
     
     def get_charge_density(self):
@@ -265,6 +267,20 @@ class FluidSpecies:
     def get_number_density(self):
         number_density = self.grid[self.c.RHOCOMP] / self.params.mass
         return number_density
+
+    
+    def normal_to_phys(self):
+        grid = copy.copy(self.grid)
+        ref = self.ref
+        
+        grid[self.c.RHOCOMP] = grid[self.c.RHOCOMP] * (ref.m / ref.L**3)
+        grid[self.c.MUCOMP] = grid[self.c.MUCOMP] * (ref.L / ref.dt)
+        grid[self.c.MVCOMP] = grid[self.c.MVCOMP] * (ref.L / ref.dt)
+        grid[self.c.ECOMP] = grid[self.c.ECOMP] * (ref.m / (ref.dt**2 * ref.L))
+        
+        # np.set_printoptions(threshold=sys.maxsize)
+        # print(grid[self.c.RHOCOMP])
+        return grid
     
     
     def convert_to_particles(self):
@@ -278,8 +294,8 @@ class FluidSpecies:
         # Particle array: [x, y, vx, vy, vz, weight] = 6 components
         ic_particles = np.zeros((self.pc.NUMQ + 1, n_particles))
         
-        # kB = 1.380649e-23
-        kB = 1
+        kB = 1.380649e-23
+        # kB = 1
         v_th = np.sqrt(2 * kB * self.params.temperature / self.params.mass)
         
         p_idx = 0 

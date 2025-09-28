@@ -1,5 +1,6 @@
 from ascfd.inputs import Inputs
 from ascfd.fluid.constants import FluidConstants
+from ascfd.plasma_refs import PlasmaReferences
 from typing import Callable
 import numpy as np
 
@@ -19,6 +20,8 @@ class FluidBoundaryConditions:
         self.grid = grid
         self.inp = a_inputs
         self.c = FluidConstants(a_inputs)
+        
+        self.ref = PlasmaReferences()
 
         # boundary condition function mappings
         self.f_lo = [self.null_bcs, self.null_bcs]
@@ -124,7 +127,7 @@ class FluidBoundaryConditions:
 
     
     def neumann_hi(self, grid, dim: int) -> None:
-        print("!BCS! CALLED NEUMANN HI")
+        # print("!BCS! CALLED NEUMANN HI")
          # neumann boundary condition at the high boundary
         for var in range(self.c.NUMQ): # all variables in the grid
             if dim == 0:  # high boundary in x-direction
@@ -313,6 +316,8 @@ class FluidBoundaryConditions:
 
 
     def tame_inflow_hi(self, grid, dim: int) -> None:
+        
+        ref = self.ref
 
         if dim == 0:  # hi boundary in x-direction
             # center_y = 0.5  # vertical midpoint
@@ -333,8 +338,8 @@ class FluidBoundaryConditions:
 
             for i in range(self.inp.nx + self.inp.ng, self.inp.nx + 2*self.inp.ng):  # ghost cells in high x-range
                 for j in range(self.inp.ny_with_ghosts):
-                    grid[self.c.RHOCOMP, i, j] = 1
-                    grid[self.c.PCOMP, i, j]   = 1
+                    grid[self.c.RHOCOMP, i, j] = self.inp.rho_e * (ref.L**3 / ref.m)
+                    grid[self.c.PCOMP, i, j]   = self.inp.p_e * ((ref.dt ** 2 * ref.L) / ref.m )
                     grid[self.c.UCOMP, i, j]   = -1
                     grid[self.c.VCOMP, i, j]   = 0
                     

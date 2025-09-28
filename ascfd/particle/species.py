@@ -21,7 +21,6 @@ class CollisionEvent:
         self.particle2_idx = particle2_idx
         self.products = products or []  # new particles created
         self.energy_change = energy_change
-        
 
 class ParticleSpecies:
     def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields, simulation):
@@ -180,25 +179,28 @@ class ParticleSpecies:
         
         density_field = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
         
-        # Use optimized active particle retrieval
-        if hasattr(species, '_get_active_indices'):
-            active_indices = species._get_active_indices()
-        else:
-            # Fallback for species without optimization
-            safe_capacity = min(species.capacity, species.particles.shape[1], len(species.is_active))
-            active_indices = []
-            for i in range(safe_capacity):
-                if (species.is_active[i] and 
-                    not np.isnan(species.particles[self.pc.XCOMP, i]) and 
-                    not np.isnan(species.particles[self.pc.YCOMP, i]) and
-                    not np.isinf(species.particles[self.pc.XCOMP, i]) and 
-                    not np.isinf(species.particles[self.pc.YCOMP, i])):
-                    active_indices.append(i)
-                elif species.is_active[i]:  # Active but invalid data - cleanup
-                    print(f"WARNING: Density computation deactivating {species.params.type} particle {i} with invalid position")
-                    species.is_active[i] = False
-                    species.free_slots.append(i)
-                    species.particles[:, i] = 0.0  # Clear corrupted data
+        # TODO: can we just get rid of this
+        # # Use optimized active particle retrieval
+        # if hasattr(species, '_get_active_indices'):
+        #     active_indices = species._get_active_indices()
+        # else:
+        #     # Fallback for species without optimization
+        #     safe_capacity = min(species.capacity, species.particles.shape[1], len(species.is_active))
+        #     active_indices = []
+        #     for i in range(safe_capacity):
+        #         if (species.is_active[i] and 
+        #             not np.isnan(species.particles[self.pc.XCOMP, i]) and 
+        #             not np.isnan(species.particles[self.pc.YCOMP, i]) and
+        #             not np.isinf(species.particles[self.pc.XCOMP, i]) and 
+        #             not np.isinf(species.particles[self.pc.YCOMP, i])):
+        #             active_indices.append(i)
+        #         elif species.is_active[i]:  # Active but invalid data - cleanup
+        #             print(f"WARNING: Density computation deactivating {species.params.type} particle {i} with invalid position: x={species.particles[self.pc.XCOMP, i]}, y={species.particles[self.pc.YCOMP, i]}")
+        #             species.is_active[i] = False
+        #             species.free_slots.append(i)
+        #             species.particles[:, i] = 0.0  # Clear corrupted data
+        
+        active_indices = species._get_active_indices()
         
         if len(active_indices) > 0:
             # Vectorized density computation
@@ -315,14 +317,14 @@ class ParticleSpecies:
             self.is_active[slot] = True
             # Invalidate cache when adding particles
             self._cache_valid = False
-            print(self.params.type, "!%! added particle to slot", slot)
+            print(self.params.type, "!%! added particle to slot", slot, "with x=", self.particles[self.pc.XCOMP, slot], "y=", self.particles[self.pc.YCOMP, slot])
         else:
             print(f"Warning: Invalid particle data format for species {self.params.type}")
     
     def add_particles(self, particle_list):
         """Efficiently add multiple particles"""
-        if not particle_list:
-            return
+        # if not particle_list:
+        #     return
             
         expected_components = self.particles.shape[0]
         added_count = 0
@@ -344,9 +346,11 @@ class ParticleSpecies:
             self._cache_valid = False
 
     def estimate_initial_weight(self):
-        return (self.params.density * self.inp.dx * self.inp.dy) / self.inp.n_ppc
+        return (self.inp.n_n * self.inp.dx * self.inp.dy) / self.inp.n_ppc
 
     def update(self):
+        
+        print(f"!START! BEGINNING UPDATE: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
         
         self.num_collisions.fill(0)
         self.ionization_positions_x.clear()
@@ -357,6 +361,8 @@ class ParticleSpecies:
         
         if self.params.type == "n":
             self.bcs.apply_bcs()
+            print("!N! APPLIED BCS")
+            print(f"!BCS! AFTER BCS: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
             
         if self.params.type in ["i", "n"]:
             # Vectorized particle update for better performance
@@ -371,11 +377,12 @@ class ParticleSpecies:
                 Ex_values, Ey_values = self._interpolate_electric_field_batch(x_positions, y_positions)
                 
                 # Vectorized acceleration calculation using pre-computed ratio
-                ax_values = Ex_values * self.dt * 50000
-                ay_values = Ey_values * self.dt * 50000
+                # TODO: !GOODENOUGH! 
+                ax_values = self.params.charge * Ex_values * self.dt # * 50000
+                ay_values = self.params.charge * Ey_values * self.dt # * 50000
 
-                print("ax is", ax_values)
-                print("because Ex is", Ex_values)
+                # print("ax is", ax_values)
+                # print("because Ex is", Ex_values)
                 
                 # Check for invalid fields/accelerations
                 invalid_mask = (np.isnan(Ex_values) | np.isnan(Ey_values) | 
@@ -398,7 +405,7 @@ class ParticleSpecies:
                     self.particles[self.pc.VCOMP, valid_indices] += ay_values[valid_mask]
                     
                     # Check for near-zero velocities
-                    low_vel_mask = ((self.particles[self.pc.UCOMP, valid_indices] <= 1e-1) |
+                    low_vel_mask = ((self.particles[self.pc.UCOMP, valid_indices] <= 1e-1) &
                                    (self.particles[self.pc.VCOMP, valid_indices] <= 1e-1))
                     if np.any(low_vel_mask):
                         low_vel_indices = valid_indices[low_vel_mask]
@@ -408,40 +415,65 @@ class ParticleSpecies:
                     good_vel_mask = ~low_vel_mask
                     good_indices = valid_indices[good_vel_mask]
                     
-                    if len(good_indices) > 0:
-                        self.particles[self.pc.XCOMP, good_indices] += (self.dt * 
-                                                                       self.particles[self.pc.UCOMP, good_indices])
-                        self.particles[self.pc.YCOMP, good_indices] += (self.dt * 
-                                                                       self.particles[self.pc.VCOMP, good_indices])
+                    if True: # len(good_indices) > 0
                         
+                        #TODO: add back good_indices mask
+                        #TODO: FIGURE OUT WHERE THE MISSING LINK IS IN NORMALIZATION
+                        self.particles[self.pc.XCOMP] += (self.dt * self.particles[self.pc.UCOMP])
+                        
+                        # TODO: ADD MULTIPLIER HERE AND SUDDENLY NEUTRAL DENSITY WORKS? (grid bound issue for sure... it's not seeing small grid bounds?) - also if you turn it off then u can see REAL particle axial advection (but sparse)
+                        self.particles[self.pc.YCOMP] += (self.dt * self.particles[self.pc.VCOMP])
+                            
                         # Check for particles that moved outside domain
+                        print(f"!B! BEFORE BOUNDARY CHECK: x_positions = {self.particles[self.pc.XCOMP, good_indices[:5]]}")
                         for idx in good_indices:
-                            if (self._get_grid_coordinates(self.particles[self.pc.XCOMP, idx], 
-                                                         self.particles[self.pc.YCOMP, idx]) is None):
+                            x_pos = self.particles[self.pc.XCOMP, idx]
+                            y_pos = self.particles[self.pc.YCOMP, idx]
+                            grid_coords = self._get_grid_coordinates(x_pos, y_pos)
+                            if grid_coords is None:
+                                print(f"!REMOVE! Particle {idx} at ({x_pos:.6f}, {y_pos:.6f}) flagged for removal - outside domain")
                                 particles_to_remove.append(idx)
+                            else:
+                                print(f"!KEEP! Particle {idx} at ({x_pos:.6f}, {y_pos:.6f}) -> grid {grid_coords} - keeping")
+                            break  # Only debug first particle to avoid spam
+                        print(f"!B! AFTER BOUNDARY CHECK: x_positions = {self.particles[self.pc.XCOMP, good_indices[:5]]}")
             
 
         if particles_to_remove:
             active_before = np.sum(self.is_active)
             print("!%! BEFORE REMOVE THERE ARE:", active_before)
+            active_indices_before_remove = self._get_active_indices()
+            print("!%! BEFORE REMOVE X POSITIONS:", self.particles[self.pc.XCOMP, active_indices_before_remove[:5]] if active_indices_before_remove else "NO ACTIVE PARTICLES")
             self._remove_particles(particles_to_remove)
+            # print("!%! REMOVING THESE PARTICLES:")
+            # for idx in particles_to_remove:
+            #     print(f"({self.particles[self.pc.XCOMP, idx]}, {self.particles[self.pc.YCOMP, idx]})")
             active_after = np.sum(self.is_active)
-            print("!%! AFTER REMOVE THERE ARE:", active_after)
+            print(f"!%! AFTER REMOVE {self.params.type} THERE ARE:", active_after)
+            active_indices_after_remove = self._get_active_indices()
+            print("!%! AFTER REMOVE X POSITIONS:", self.particles[self.pc.XCOMP, active_indices_after_remove[:5]] if active_indices_after_remove else "NO ACTIVE PARTICLES")
     
         new_particles = []
         
         if self.params.type in ["e", "i"] and self.collision_data is not None:
-            # print("!#@! PROCESS COLLISIONS FOR", self.params.type)
+            print(f"!C! BEFORE COLLISION PROCESSING: x_positions = {self.particles[self.pc.XCOMP, :10]}")
+            # TODO: READD COLLISIONS
             new_particles = self.process_collisions()
+            print(f"!C! AFTER COLLISION PROCESSING: x_positions = {self.particles[self.pc.XCOMP, :10]}")
             # print("FROM PARTICLE.UPDATE() - new_particles is", new_particles)
             
             # Batch add new particles from collisions for better performance
             if new_particles:
                 self.add_particles(new_particles)
+                
+                # print("!!ADD PARTICLE!! FOR", self.params.type, len(new_particles))
 
         # particle per cell enforcement
         if self.params.type != "e":
-            self.enforce_ppc()
+            pass
+            # print(f"!PPC_BEFORE! BEFORE PPC: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
+            # self.enforce_ppc()
+            # print(f"!PPC_AFTER! AFTER PPC: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
 
         if hasattr(self, 'get_charge_density'):
             charge_density = self.get_charge_density()
@@ -454,7 +486,9 @@ class ParticleSpecies:
         # Perform periodic spatial sorting for cache locality (do this at end of update)
         self.sort_counter += 1
         if self.sort_counter >= self.sort_frequency:
+            print(f"!SORT_BEFORE! BEFORE SPATIAL SORT: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
             self._sort_particles_spatially()
+            print(f"!SORT_AFTER! AFTER SPATIAL SORT: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
             self.sort_counter = 0
 
         print("--##-- COLLISION EVENTS FOR", self.params.type)
@@ -463,6 +497,8 @@ class ParticleSpecies:
         print("elastic", self.collision_count[2])
 
         self.collision_count.fill(0)
+
+        print(f"!END! END UPDATE: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
 
         return new_particles
 
@@ -485,9 +521,10 @@ class ParticleSpecies:
         # Use optimized active particle retrieval
         active_indices = self._get_active_indices()
         if len(active_indices) < 100:  # Only print for small numbers to avoid spam
-            print(f"Processing {len(active_indices)} active particles")
-        
+            print(f"!ACTIVE! Processing {len(active_indices)} active particles")
+
         for n in active_indices:
+            
             events = self._attempt_collisions(n, neutral_density_field)
             
             for event in events:
@@ -523,26 +560,28 @@ class ParticleSpecies:
 
         grid_coords = self._get_grid_coordinates(x, y)
         if grid_coords is None:
-            #print("[ATTEMPT_COLLISIONS] grid_coords is None")
+            print("[ATTEMPT_COLLISIONS] grid_coords is None")
             return []
         
         if self.params.type == "e":
             # !GOODENOUGH!
-            v_rel = np.sqrt(vx**2 + vy**2 + (vz*100000)**2)
+            v_rel = np.sqrt(vx**2 + vy**2 + vz**2)
+            # TODO: do we need to add actual relative velocity for ion-neutral?
         else:
             v_rel = np.sqrt(vx**2 + vy**2 + vz**2)
 
         if v_rel < 1e-10:
-            #print("[ATTEMPT_COLLISIONS] v_rel < 1e-10")
+            print("[ATTEMPT_COLLISIONS] v_rel < 1e-10")
             print("v_rel is", v_rel)
             return []
 
-        # !NORM! energy_ev = 0.5 * self.params.mass * v_rel**2 / self.collision_data.E_CHARGE
-        energy_ev = 0.5 * self.params.mass * v_rel**2
+        # !NORM! 
+        energy_ev = 0.5 * self.params.mass * v_rel**2 / abs(self.params.charge)
+        # energy_ev = 0.5 * self.params.mass * v_rel**2
 
         neutral_density = self._interpolate_density(x, y, neutral_density_field)
         if neutral_density <= 0:
-            #print("[ATTEMPT_COLLISIONS] neutral_density <= 0")
+            print("[ATTEMPT_COLLISIONS] neutral_density <= 0")
             return []
 
         events = []
@@ -556,29 +595,34 @@ class ParticleSpecies:
 
         for collision_type, collision_data in collision_types.items():
             if energy_ev < collision_data["threshold"]:
-                #print("NOT ENOUGH ENERGY FOR", collision_type)
+                print("[ATTEMPT_COLLISIONS] NOT ENOUGH ENERGY FOR", collision_type, energy_ev)
                 continue
                 
             # !GOODENOUGH!
-            sigma = collision_data["cross_section_func"](energy_ev) * 1e18
+            sigma = collision_data["cross_section_func"](energy_ev)
                         
             if sigma <= 0:
                 #print("NEGATIVE SIGMA FOR", collision_type)
                 continue
 
             # Deposit sigma onto grid for cross section tracking
-            i, j = self._get_grid_coordinates(x, y)
-            if 0 <= i < self.inp.nx and 0 <= j < self.inp.ny:
-                self.sigma_temp_storage[i][j-1].append(sigma)
 
             # nu = n * sigma * v
-            nu_collision = neutral_density * sigma * v_rel
-            P_collision = 1.0 - np.exp(-nu_collision * self.dt)
+            # TODO: DO WE NEED TO MULTIPLY THIS BY WEIGHT OR SOMETHING?? PROBABILITY IS IN 1e-6 RANGE WITHOUT (WHICH IS CORRECT, BUT LOW)
+            nu_collision = neutral_density * sigma * v_rel # * 1e5
+            P_collision = 1.0 - np.exp(-nu_collision * self.inp.dt)
             
-            # print("PROBABILITY IS", P_collision)
-            # print("NEUTRAL DENSITY IS", neutral_density)
-            # print("SIGMA IS", sigma)
-            # print("ELECTRON SPEED IS", v_rel)
+            i, j = self._get_grid_coordinates(x, y)
+            if 0 <= i < self.inp.nx and 0 <= j < self.inp.ny:
+                self.sigma_temp_storage[i][j-1].append(P_collision)
+                
+            print("--[ATTEMPT_COLLISIONS]-- for", collision_type)
+            print("PROBABILITY IS", P_collision)
+            print("NEUTRAL DENSITY IS", neutral_density)
+            print("SIGMA IS", sigma)
+            print("ELECTRON SPEED IS", v_rel)
+            print("ELECTRON ENERGY IS", energy_ev)
+            # print("WEIGHT IS", weight)
 
             # monte carlo
             if np.random.rand() < P_collision:
@@ -786,12 +830,12 @@ class ParticleSpecies:
     def _get_active_indices(self):
         """Get cached active particle indices to avoid recomputation"""
         if not self._cache_valid:
-            safe_capacity = min(self.capacity, self.particles.shape[1], len(self.is_active))
+            safe_capacity = min(self.capacity, self.particles.shape[1]) #TODO: , len(self.is_active))
             active_indices = []
             for i in range(safe_capacity):
                 if (self.is_active[i] and 
                     not np.isnan(self.particles[self.pc.XCOMP, i]) and 
-                    not np.isnan(self.particles[self.pc.YCOMP, i]) and
+                    # TODO: not np.isnan(self.particles[self.pc.YCOMP, i]) and
                     not np.isinf(self.particles[self.pc.XCOMP, i]) and 
                     not np.isinf(self.particles[self.pc.YCOMP, i])):
                     active_indices.append(i)
@@ -875,10 +919,15 @@ class ParticleSpecies:
         if np.isnan(x) or np.isnan(y) or np.isinf(x) or np.isinf(y):
             return None
             
-        ix = int((x - self.inp.grid_x[0]) / self.inp.dx)
-        iy = int((y - self.inp.grid_y[0]) / self.inp.dy)
+        
+        ix = int((x) / self.inp.dx)
+        iy = int((y) / self.inp.dy)
+        
+        # if ix and iy:
+        #     return ix, iy
+    
         # Proper boundary checking to prevent edge accumulation
-        if self.inp.ng <= ix < self.inp.nx + self.inp.ng and self.inp.ng < iy < self.inp.ny + self.inp.ng - 2:
+        if self.inp.ng <= ix <= self.inp.nx + self.inp.ng and self.inp.ng <= iy <= self.inp.ny + self.inp.ng - 2:
             return ix, iy
         return None
 
