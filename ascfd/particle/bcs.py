@@ -16,7 +16,7 @@ class ParticleBoundaryConditions:
     def apply_bcs(self):
         #TODO: readd boundaries that aren't at the bottom corner lol
         pass
-        # self.apply_inflow_lo()
+        self.apply_inflow_lo()
         # self.remove_particles()
         
         
