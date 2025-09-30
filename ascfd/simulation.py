@@ -3,6 +3,7 @@ from ascfd.particle.constants import ParticleConstants
 from ascfd.fluid.bcs import FluidBoundaryConditions
 from ascfd.params import SpeciesParams
 from ascfd.fluid.species import FluidSpecies
+from ascfd.fluid.quasineutral.species import QNFluidSpecies
 from ascfd.particle.species import ParticleSpecies
 from ascfd.inputs import Inputs
 from ascfd.fields.fields import Fields
