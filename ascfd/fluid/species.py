@@ -52,20 +52,15 @@ class FluidSpecies:
         
     def update(self):
         
-        print("dt is", self.dt)
+        ng = self.inp.ng
         consU = self.euler.prim_to_cons(self.grid)
-
         _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
+        
+        for icomp in range(self.c.NUMQ):
+            delta = (self.dt / self.inp.dx) * (right_flux[icomp, ng:-ng, ng:-ng] - left_flux[icomp, ng:-ng, ng:-ng]) + \
+                    (self.dt / self.inp.dy) * (top_flux[icomp, ng:-ng, ng:-ng] - bottom_flux[icomp, ng:-ng, ng:-ng])
                 
-        for i in range(self.inp.ng, self.inp.nx + self.inp.ng):
-            for j in range(self.inp.ng, self.inp.ny + self.inp.ng):
-                for icomp in range(self.c.NUMQ):
-                    
-                    delta = (
-                        (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
-                        (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
-                        
-                    consU[icomp, i, j] = consU[icomp, i, j] - delta
+            consU[icomp, ng:-ng, ng:-ng] -= delta
                     
         ## --LORENTZ UPDATE--
         self._apply_lorentz_source_terms(consU)
