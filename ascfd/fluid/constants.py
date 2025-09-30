@@ -47,6 +47,28 @@ class FluidConstants:
             self.variable_names = ["Density", "X-Velocity", "Y-Velocity", "Z-Velocity", "Pressure"]
 
             self.NS = 1 
+        
+        elif a_inputs.system == "quasineutral":
+            
+            #primitive variables (Density, X-Velocity, Y-Velocity, Z-Velocity, Pressure)
+            self.NCOMP = 0 # Number Density
+            self.UCOMP = 1 # X-component of velocity
+            self.VCOMP = 2 # Y-component of velocity
+            self.WCOMP = 3 # Z-component of velocity (azimuthal/out-of-plane)
+            self.TCOMP = 4 # Temperature
+
+            # number of variables in the system
+            self.NUMQ = 5
+
+            self.system = "quasineutral"
+
+            self.gamma = a_inputs.gammas[0] #gammas
+            
+            self.k_B = 1.380649e-23
+
+            self.variable_names = ["Number Density", "X-Velocity", "Y-Velocity", "Z-Velocity", "Temperature"]
+
+            self.NS = 1 
             
         elif a_inputs.system == "mhd2d":
             # Primitive variables (Density, u, v, p, Bx, By)
