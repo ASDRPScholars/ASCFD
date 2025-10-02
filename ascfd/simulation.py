@@ -114,6 +114,18 @@ class Simulation:
         return normal_inp
     
     
+    def get_species_number_density(self, species):
+        # TODO: test does this work
+        
+        if species == "i":
+            return self.ions.compute_particle_density_field()
+        elif species == "n":
+            return self.neutrals.compute_particle_density_field()
+        elif species == "e" and self.inp.system == "quasineutral":
+            ng = self.inp.ng
+            return self.electrons.grid[self.c.NCOMP, ng:-ng, ng:-ng]
+    
+    
     # TODO: scale back to real dimensions without messing up other grid bounds?
     # def _normal_to_phys(self):
     #     phys_inp = copy.deepcopy(self.inp)
@@ -317,10 +329,10 @@ class Simulation:
             
             "phi": lambda idx: self.plot_2d_data(axs[idx], norm_potential, extent, "Electric Potential", cmap='coolwarm'),
             
-            "i": lambda idx: self.plot_2d_data(axs[idx], self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Ion Density (Scatter)", cmap=mpl.cm.Blues, scatter_data=(self.ions.particles[self.pc.XCOMP] * self.ref.L, self.ions.particles[self.pc.YCOMP] * self.ref.L)),
-            "n": lambda idx: self.plot_2d_data(axs[idx], self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Neutral Density (Scatter)", cmap=mpl.cm.Greys, scatter_data=(self.neutrals.particles[self.pc.XCOMP] * self.ref.L, self.neutrals.particles[self.pc.YCOMP] * self.ref.L)),
-            "rho_i": lambda idx: self.plot_2d_data(axs[idx], gaussian_filter(self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], sigma=4.5), extent, "Ion Number Density", cmap=mpl.cm.Blues),
-            "rho_n": lambda idx: self.plot_2d_data(axs[idx], gaussian_filter(self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], sigma=4.5), extent, "Neutral Number Density", cmap=mpl.cm.Greys),
+            "i": lambda idx: self.plot_2d_data(axs[idx], self.get_species_number_density("i")[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Ion Density (Scatter)", cmap=mpl.cm.Blues, scatter_data=(self.ions.particles[self.pc.XCOMP] * self.ref.L, self.ions.particles[self.pc.YCOMP] * self.ref.L)),
+            "n": lambda idx: self.plot_2d_data(axs[idx], self.get_species_number_density("n")[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Neutral Density (Scatter)", cmap=mpl.cm.Greys, scatter_data=(self.neutrals.particles[self.pc.XCOMP] * self.ref.L, self.neutrals.particles[self.pc.YCOMP] * self.ref.L)),
+            "rho_i": lambda idx: self.plot_2d_data(axs[idx], gaussian_filter(self.get_species_number_density("i")[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], sigma=4.5), extent, "Ion Number Density", cmap=mpl.cm.Blues),
+            "rho_n": lambda idx: self.plot_2d_data(axs[idx], gaussian_filter(self.get_species_number_density("n")[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], sigma=4.5), extent, "Neutral Number Density", cmap=mpl.cm.Greys),
             "rho_q": lambda idx: self.plot_2d_data(axs[idx], gaussian_filter(self.fields.charge_density[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], sigma=4.5), extent, "Charge Density", cmap='coolwarm'),
             "energy": lambda idx: self.plot_2d_data(axs[idx], self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Energy"),
             #TODO: temp change for plotting nu instead of sigma

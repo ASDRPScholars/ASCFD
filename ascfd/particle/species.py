@@ -153,28 +153,10 @@ class ParticleSpecies:
         
         self.collision_events = []
 
-    # def set_simulation(self, simulation):
-    #     """Allow access to other species through simulation reference"""
-    #     self.simulation = simulation
 
-    def get_species_density_field(self, species_type: str):
-        """Get density field of another species"""
-        if self.simulation is None:
-            return np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
-        
-        if species_type == "e" and hasattr(self.simulation, 'electrons'):
-            return self.simulation.electrons.get_number_density()
-        elif species_type == "i" and hasattr(self.simulation, 'ions'):
-            return self._compute_particle_density_field(self.simulation.ions)
-        elif species_type == "n" and hasattr(self.simulation, 'neutrals'):
-            # print("!!GET_SPECIES_DENSITY_FIELD SEES NEUTRALS AS!!", self.simulation.neutrals.particles[self.pc.XCOMP])
-            return self._compute_particle_density_field(self.simulation.neutrals)
-        
-        return np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
-
-    def _compute_particle_density_field(self, species: "ParticleSpecies"):
+    def compute_particle_density_field(self):
         """Compute number density field from particle positions"""
-        if not hasattr(species, 'particles') or not hasattr(species, 'is_active'):
+        if not hasattr(self, 'particles') or not hasattr(self, 'is_active'):
             return np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
         
         density_field = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
@@ -200,13 +182,13 @@ class ParticleSpecies:
         #             species.free_slots.append(i)
         #             species.particles[:, i] = 0.0  # Clear corrupted data
         
-        active_indices = species._get_active_indices()
+        active_indices = self._get_active_indices()
         
         if len(active_indices) > 0:
             # Vectorized density computation
-            x_positions = species.particles[self.pc.XCOMP, active_indices]
-            y_positions = species.particles[self.pc.YCOMP, active_indices]
-            weights = species.particles[self.WEIGHT, active_indices]
+            x_positions = self.particles[self.pc.XCOMP, active_indices]
+            y_positions = self.particles[self.pc.YCOMP, active_indices]
+            weights = self.particles[self.WEIGHT, active_indices]
             
             # Vectorized grid index calculation
             ix_values = ((x_positions - self.inp.grid_x[0]) / self.inp.dx).astype(int)
@@ -511,7 +493,7 @@ class ParticleSpecies:
         new_particles = []
         collision_events = []
         
-        neutral_density_field = self.get_species_density_field("n")
+        neutral_density_field = self.simulation.get_species_number_density("n")
         particles_to_remove = []
 
         # print("!#@! PROCESS COLLISIONS FOR", self.params.type)
