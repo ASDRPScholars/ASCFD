@@ -49,6 +49,7 @@ class Simulation:
             self.electrons.pelectrons = self.pelectrons
             
             self.all_species = [self.electrons, self.neutrals, self.ions]
+            self.particle_species = [self.neutrals, self.ions]
         else:
             self.all_species = [self.electrons]
         
@@ -57,11 +58,23 @@ class Simulation:
         self.timestep = 0
         # self.dt = self.get_dt()
         self.dt_physical = 1e-11
+
+        self.dt_ratio = 5
+
+        self.dt_particle = self.dt_physical * self.dt_ratio
+
         self.dt_norm = self.dt_physical / self.ref.dt
+        self.dt_particle_norm = self.dt_particle / self.ref.dt
         
         # Set timestep for all species
-        for species in self.all_species:
-            species.dt = self.dt_norm
+
+        self.electrons.dt = self.dt_norm
+
+        for species in self.particle_species :
+            species.dt = self.dt_particle_norm
+
+        # for species in self.all_species:
+        #     species.dt = self.dt_norm
 
         # self.pelectrons.dt = self.dt_norm
         
@@ -134,13 +147,26 @@ class Simulation:
             if self.inp.timeStepper == "RK1":
                 new_particles = []
                 
-                for species in self.all_species:
-                    new_particles_from_species = species.update()
-                    if new_particles_from_species:
-                        new_particles.extend(new_particles_from_species)
+                print(f"Electron update at timestep '{self.timestep}'")
+                new_particles_from_electrons = self.electrons.update()
+                if new_particles_from_electrons:
+                    new_particles.extend(new_particles_from_electrons)
+
+                # for species in self.all_species:
+                #     new_particles_from_species = species.update()
+                #     if new_particles_from_species:
+                #         new_particles.extend(new_particles_from_species)
                 
                 print("NUMBER OF NEW PARTICLES:", len(new_particles))
-                
+
+                if (self.timestep % self.dt_ratio == 0):
+                    print(f"Particle update at timestep '{self.timestep}'")
+
+                    for species in self.particle_species:
+                        new_particles_from_species = species.update()
+                        if new_particles_from_species:
+                            new_particles.extend(new_particles_from_species)
+
                 # Add all new particles at once (more efficient than per-particle loop)
                 if new_particles:
                     # Add to ions and fluid electrons as before
