@@ -12,6 +12,8 @@ class QNFluidSpecies(FluidSpecies):
     def update(self):
         """Update electron fluid with ion continuity, Ohm's law momentum, and Euler energy flux. (vectorized)"""
         
+        print("[UPDATE] THIS IS NUMBER DENSITY", self.grid[self.c.NCOMP])
+        
         ng = self.inp.ng
         U = self.grid
         _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(U, self.inp.nx, self.inp.ny, self.inp.ng)

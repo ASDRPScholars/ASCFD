@@ -45,6 +45,8 @@ class FluidSpecies:
         self.ics = FluidInitialConditions(self.grid, self.inp, self.params)
         
         self.grid[:] = self.ics.apply_ics()
+        
+        print("THIS IS NUMBER DENSITY", self.grid[self.c.NCOMP])
     
         # Apply boundary conditions AFTER setting initial conditions
         return 

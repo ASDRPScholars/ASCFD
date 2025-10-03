@@ -59,7 +59,7 @@ class FluidInitialConditions:
             
         elif self.inp.system == "quasineutral":
             if self.inp.fluid_ics == "static":
-                self.grid = self.qn_static()
+                return self.qn_static()
            
         elif self.inp.system == "mhd2d":
             if self.inp.fluid_ics == "orszag_tang":
@@ -276,11 +276,17 @@ class FluidInitialConditions:
     def qn_static(self):
         ic = np.zeros_like(self.grid)
         
+        print("[ics] QN STATIC!!")
+        
         ic[self.c.NCOMP] = 1e18
         ic[self.c.UCOMP] = 0
         ic[self.c.VCOMP] = 0
         ic[self.c.WCOMP] = 0
         ic[self.c.TCOMP] = 1
+        
+        print("[ics] INIT WITH:", ic[self.c.NCOMP])
+        
+        return ic
     
     
     def e_cloud_test(self):
