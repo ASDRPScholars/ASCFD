@@ -21,15 +21,17 @@ class QNFluidSpecies(FluidSpecies):
         for icomp in range(self.c.NUMQ):
             # TODO: make sure in the WHOLE CODE that ONLY grids have ghost cells - everything else that DOESN'T PHYSICALLY NEED THEM should NOT have them
             if icomp == self.c.NCOMP:
-                U[icomp, ng:-ng, ng:-ng] = self.simulation.get_species_number_density("i")[ng:-ng, ng:-ng]
+                U[icomp, ng:-ng, ng:-ng] = 1e17 #self.simulation.get_species_number_density("i")[ng:-ng, ng:-ng]
                 
             elif icomp == self.c.UCOMP:
                 # j_e = q_e * n_e * u_e
                 
                 # TODO: implement actual ion current
-                j_i = self.simulation.get_species_number_density("i")[ng:-ng, ng:-ng] * self.inp.q * 20
+                # j_i = self.simulation.get_species_number_density("i")[ng:-ng, ng:-ng] * self.inp.q * 20 * 1e17
+                j_i = 1e17 * self.inp.q * 20
                 q_e = self.params.charge
-                n_e = U[self.c.NCOMP, ng:-ng, ng:-ng]
+                # n_e = U[self.c.NCOMP, ng:-ng, ng:-ng]
+                n_e = 1e17
                 
                 U[icomp, ng:-ng, ng:-ng] = -j_i / (q_e * n_e)
                 
