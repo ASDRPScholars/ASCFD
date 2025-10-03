@@ -22,10 +22,15 @@ import sys
 class FluidSpecies:
     def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields, simulation):
         print("INITIALIZED ELECTRONS")
-        self.c = FluidConstants(a_inputs)
+        
+        self.inp = a_inputs
+        self.params = params
+        self.dt = None
+        
+        self.c = FluidConstants(self.inp)
         self.pc = ParticleConstants()
-        self.euler = FluidEuler(self.c)
-        self.flux = FluidFlux(self.c, a_inputs.flux)
+        self.euler = FluidEuler(self.c, self.inp)
+        self.flux = FluidFlux(self.c, self.inp)
         
         self.ref = PlasmaReferences()
         
@@ -33,9 +38,6 @@ class FluidSpecies:
         self.simulation = simulation
         self.pelectrons = None
         
-        self.inp = a_inputs
-        self.params = params
-        self.dt = None
         
         self.grid = np.zeros((self.c.NUMQ, self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
         
@@ -43,8 +45,9 @@ class FluidSpecies:
         self.ics = FluidInitialConditions(self.grid, self.inp, self.params)
         
         self.grid[:] = self.ics.apply_ics()
-        
+    
         # Apply boundary conditions AFTER setting initial conditions
+        return 
         self.bcs.apply_bcs()
         
         self.check_grid(self.c)

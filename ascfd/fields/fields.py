@@ -29,11 +29,11 @@ class Fields:
         
         self.ref = PlasmaReferences()
         
-        plt.figure()
-        im = plt.imshow(self.B[:, :, 1])
-        plt.title("apply_B_ics() magnetic field")
-        plt.colorbar(im)
-        plt.show()
+        # plt.figure()
+        # im = plt.imshow(self.B[:, :, 1])
+        # plt.title("apply_B_ics() magnetic field")
+        # plt.colorbar(im)
+        # plt.show()
         
         self.charge_density = np.zeros((self.inp.nx, self.inp.ny))
         self.potential = np.zeros((self.inp.nx, self.inp.ny))

@@ -2,6 +2,7 @@ from ascfd.fluid.euler import FluidEuler
 # from ascfd.reconstruct import weno5_reconstruction
 from ascfd.fluid.constants import *
 from ascfd.fluid.constants import FluidConstants
+from ascfd.inputs import Inputs
 
 import numpy as np
 import sys
@@ -9,12 +10,13 @@ import sys
 
 class FluidFlux:
 
-    def __init__(self, a_constants: FluidConstants, a_type: str):
+    def __init__(self, a_constants: FluidConstants, a_inp: Inputs):
 
-        self.type = a_type
+        self.inp = a_inp
+        self.type = self.inp.flux
         self.c = a_constants
 
-        self.euler = FluidEuler(self.c) # initialize the euler solver
+        self.euler = FluidEuler(self.c, self.inp) # initialize the euler solver
 
         # select the flux method based on the type
         if self.type == "rusanov":
@@ -38,13 +40,15 @@ class FluidFlux:
     def rusanov(self, a_grid, a_Nx, a_Ny, a_Nghost):
 
         #get density 
-        if self.c.system == "euler2d":
+        if self.inp.system == "euler2d":
             density = a_grid[self.c.RHOCOMP]
+            a = np.sqrt(self.c.gamma * a_grid[self.c.PCOMP] / density)
+        elif self.inp.system == "quasineutral":
+            density = self.inp.m_e * a_grid[self.c.NCOMP]
+            # TODO: VERIFY RUSANOV SOUND SPEED CALC
+            a = np.sqrt(a_grid[self.c.TCOMP] / density)
         else:
             raise RuntimeError("Density method needs to be implemented.")
-            
-        a = np.sqrt(self.c.gamma * a_grid[self.c.PCOMP] / density)
-
 
         U = a_grid
         consU = self.euler.prim_to_cons(U)
@@ -78,7 +82,7 @@ class FluidFlux:
     
     def rusanov_vectorized(self, a_grid, a_Nx, a_Ny, a_Nghost):
         #get density 
-        if self.c.system == "euler2d":
+        if self.inp.system == "euler2d":
             density = a_grid[self.c.RHOCOMP]
         else:
             raise RuntimeError("Density method needs to be implemented.")
@@ -152,7 +156,7 @@ class FluidFlux:
     def lax_friedrichs(self, a_grid):
         a_grid.assert_variable_type("prim")
 
-        if self.c.system == "euler2d":
+        if self.inp.system == "euler2d":
             density = a_grid.grid[self.c.RHOCOMP] # extract density
         else:
             raise RuntimeError("Density method needs to be implemented.")
@@ -190,7 +194,7 @@ class FluidFlux:
         """
         Calculates the numerical flux using the HLLC approximate Riemann solver.
         """
-        if self.c.system != "euler2d":
+        if self.inp.system != "euler2d":
             raise NotImplementedError("HLLC flux is only implemented for euler2d system.")
 
         # Get primitive variables (rho, u, v, p)
@@ -458,10 +462,10 @@ class FluidFlux:
         a_grid.assert_variable_type("prim")
 
         #get density 
-        if self.c.system == "euler2d":
+        if self.inp.system == "euler2d":
             print("HLLD on Euler is not supported!")
             sys.exit()
-        elif self.c.system == "mhd2d":
+        elif self.inp.system == "mhd2d":
             density = a_grid.grid[self.c.RHOCOMP]
         else:
             raise RuntimeError("Density method needs to be implemented.")
@@ -544,9 +548,9 @@ class FluidFlux:
         a_grid.assert_variable_type("prim")
 
         #get density 
-        if self.c.system == "euler2d":
+        if self.inp.system == "euler2d":
             density = a_grid.grid[self.c.RHOCOMP]
-        elif self.c.system == "mhd2d":
+        elif self.inp.system == "mhd2d":
             density = a_grid.grid[self.c.RHOCOMP]
         else:
             raise RuntimeError("Density method needs to be implemented.")
@@ -585,7 +589,7 @@ class FluidFlux:
         Calculates the numerical flux using the HLLD approximate Riemann solver for MHD.
         Based on the formulation by Miyoshi & Kusano (2005).
         """
-        if self.c.system != "mhd2d":
+        if self.inp.system != "mhd2d":
             raise NotImplementedError("HLLD flux is currently only implemented for mhd2d system.")
         if self.c.NUMQ != 6:
              raise ValueError("HLLD requires 6 variables (rho, u, v, p, Bx, By) in primitive state.")

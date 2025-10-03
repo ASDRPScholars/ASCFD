@@ -40,14 +40,19 @@ class Simulation:
         xe_n_params = SpeciesParams(0, self.inp.m_n, 5/3, "n", density=5.0, temperature=10.0)  # Xe neutrals
         e_params = SpeciesParams(-self.inp.q, self.inp.m_e, 5/3, "e", density=1.0, temperature=100.0)
         
-        self.electrons = FluidSpecies(e_params, self.inp, self.fields, self)
+        if self.inp.system in ["euler2d", "mhd2d"]:
+            self.electrons = FluidSpecies(e_params, self.inp, self.fields, self)
+        elif self.inp.system == "quasineutral":
+            self.electrons = QNFluidSpecies(e_params, self.inp, self.fields, self)
         
         if self.inp.particle_ics is not None:
             self.neutrals = ParticleSpecies(xe_n_params, self.inp, self.fields, self)
             self.ions = ParticleSpecies(xe_i_params, self.inp, self.fields, self)
-            self.pelectrons = ParticleSpecies(e_params, self.inp, self.fields, self)
+            
+            # TODO: ADD AN INPUT TOGGLE
+            # self.pelectrons = ParticleSpecies(e_params, self.inp, self.fields, self)
 
-            self.electrons.pelectrons = self.pelectrons
+            # self.electrons.pelectrons = self.pelectrons
             
             self.all_species = [self.electrons, self.neutrals, self.ions]
         else:
@@ -289,15 +294,20 @@ class Simulation:
         # Set up 2D field plots
         if self.inp.system == "euler2d":
             fig, axs = plt.subplots(3, 4, figsize=(24, 7))
+        elif self.inp.system == "quasineutral":
+            fig, axs = plt.subplots(3, 4, figsize=(24, 7))
         elif self.inp.system == "mhd2d":
             fig, axs = plt.subplots(2, 4, figsize=(36, 18))
         axs = axs.ravel()
 
         # Remove duplicate plotting: only use plot_vars_2d loop
-        norm_data = self.electrons.normal_to_phys()[:,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng]
-        i_scatter_data = (self.ions.particles[self.pc.XCOMP] * self.ref.L, self.ions.particles[self.pc.YCOMP] * self.ref.L)
-        n_scatter_data = (self.neutrals.particles[self.pc.XCOMP] * self.ref.L, self.neutrals.particles[self.pc.YCOMP] * self.ref.L)
-        norm_E, norm_B, norm_potential = self.fields.normal_to_phys()
+        # norm_data = self.electrons.normal_to_phys()[:,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng]
+        # i_scatter_data = (self.ions.particles[self.pc.XCOMP] * self.ref.L, self.ions.particles[self.pc.YCOMP] * self.ref.L)
+        # n_scatter_data = (self.neutrals.particles[self.pc.XCOMP] * self.ref.L, self.neutrals.particles[self.pc.YCOMP] * self.ref.L)
+        # norm_E, norm_B, norm_potential = self.fields.normal_to_phys()
+        
+        plot_data = self.electrons.grid[:,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng]
+        E_data, B_data, potential_data = self.fields.E, self.fields.B, self.fields.potential
 
         plot_vars_2d = self.inp.data_2d
         
@@ -313,21 +323,21 @@ class Simulation:
 
         # Define plotting logic in a dictionary (like a switch-case)
         plot_map = {
-            "rho_e": lambda idx: self.plot_2d_data(axs[idx], norm_data[0], extent, "Electron Mass Density"),
-            "n_e": lambda idx: self.plot_2d_data(axs[idx], norm_data[0]/self.inp.m_e, extent, "Electron Number Density"),
-            "u_e": lambda idx: self.plot_2d_data(axs[idx], norm_data[1], extent, "Electron Axial Velocity"),
-            "v_e": lambda idx: self.plot_2d_data(axs[idx], norm_data[2], extent, "Electron Radial Velocity"),
-            "w_e": lambda idx: self.plot_2d_data(axs[idx], norm_data[3], extent, "Electron Azimuthal Velocity"),
-            "mu_e": lambda idx: self.plot_2d_data(axs[idx], norm_data[0] * norm_data[1], extent, "Electron Axial Momentum"),
-            "mv_e": lambda idx: self.plot_2d_data(axs[idx], norm_data[0] * norm_data[2], extent, "Electron Radial Momentum"),
-            "mw_e": lambda idx: self.plot_2d_data(axs[idx], norm_data[0] * norm_data[3], extent, "Electron Azimuthal Momentum"),
-            "p_e": lambda idx: self.plot_2d_data(axs[idx], norm_data[4], extent, "Electron Pressure"),
+            "rho_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[0], extent, "Electron Mass Density"),
+            "n_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[0]/self.inp.m_e, extent, "Electron Number Density"),
+            "u_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[1], extent, "Electron Axial Velocity"),
+            "v_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[2], extent, "Electron Radial Velocity"),
+            "w_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[3], extent, "Electron Azimuthal Velocity"),
+            "mu_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[0] * plot_data[1], extent, "Electron Axial Momentum"),
+            "mv_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[0] * plot_data[2], extent, "Electron Radial Momentum"),
+            "mw_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[0] * plot_data[3], extent, "Electron Azimuthal Momentum"),
+            "p_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[4], extent, "Electron Pressure"),
             
-            "Ex": lambda idx: self.plot_2d_data(axs[idx], norm_E[:,:,0], extent, "Electric Field X", cmap='coolwarm'),
-            "Ey": lambda idx: self.plot_2d_data(axs[idx], norm_E[:,:,1], extent, "Electric Field Y", cmap='coolwarm'),
-            "By": lambda idx: self.plot_2d_data(axs[idx], norm_B[:,:,1], extent, "Magnetic Field Y", cmap='magma'),
+            "Ex": lambda idx: self.plot_2d_data(axs[idx], E_data[:,:,0], extent, "Electric Field X", cmap='coolwarm'),
+            "Ey": lambda idx: self.plot_2d_data(axs[idx], E_data[:,:,1], extent, "Electric Field Y", cmap='coolwarm'),
+            "By": lambda idx: self.plot_2d_data(axs[idx], B_data[:,:,1], extent, "Magnetic Field Y", cmap='magma'),
             
-            "phi": lambda idx: self.plot_2d_data(axs[idx], norm_potential, extent, "Electric Potential", cmap='coolwarm'),
+            "phi": lambda idx: self.plot_2d_data(axs[idx], potential_data, extent, "Electric Potential", cmap='coolwarm'),
             
             "i": lambda idx: self.plot_2d_data(axs[idx], self.get_species_number_density("i")[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Ion Density (Scatter)", cmap=mpl.cm.Blues, scatter_data=(self.ions.particles[self.pc.XCOMP] * self.ref.L, self.ions.particles[self.pc.YCOMP] * self.ref.L)),
             "n": lambda idx: self.plot_2d_data(axs[idx], self.get_species_number_density("n")[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Neutral Density (Scatter)", cmap=mpl.cm.Greys, scatter_data=(self.neutrals.particles[self.pc.XCOMP] * self.ref.L, self.neutrals.particles[self.pc.YCOMP] * self.ref.L)),

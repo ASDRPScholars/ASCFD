@@ -59,7 +59,8 @@ class FluidBoundaryConditions:
                 raise RuntimeError(f"BC Hi Type not supported: {self.types_hi[idim]}")
 
     def apply_bcs(self) -> None:
-         # apply boundary conditions for both low and high boundaries
+        # apply boundary conditions for both low and high boundaries
+        return
         self.apply_lo()
         self.apply_hi()
 

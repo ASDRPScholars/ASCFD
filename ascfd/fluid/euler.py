@@ -1,17 +1,19 @@
 import numpy as np
 from ascfd.fluid.constants import FluidConstants
+from ascfd.inputs import Inputs
 
 class FluidEuler:
 
-    def __init__(self, a_constants : FluidConstants):
+    def __init__(self, a_constants : FluidConstants, a_inp: Inputs):
         # store constants and system parameters
         self.c = a_constants
+        self.inp = a_inp
 
     
     def prim_to_cons(self, a_prim):
         cons = np.zeros_like(a_prim)
               
-        if self.c.system == "euler2d":
+        if self.inp.system == "euler2d":
             cons[self.c.RHOCOMP] = a_prim[self.c.RHOCOMP] # density stays the same
             cons[self.c.MUCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.UCOMP] # momentum components x, y, z
             cons[self.c.MVCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.VCOMP]
@@ -20,8 +22,11 @@ class FluidEuler:
             E = (a_prim[self.c.PCOMP] / ((self.c.gamma - 1) * a_prim[self.c.RHOCOMP]) + 
                  0.5 * (a_prim[self.c.UCOMP]**2 + a_prim[self.c.VCOMP]**2 + 0)) # TODO: a_prim[self.c.WCOMP]**2))
             cons[self.c.ECOMP] = E * a_prim[self.c.RHOCOMP]
+            
+        elif self.inp.system == "quasineutral":
+            pass
 
-        elif self.c.system == "mhd2d":
+        elif self.inp.system == "mhd2d":
             cons[self.c.RHOCOMP] = a_prim[self.c.RHOCOMP]
             cons[self.c.MUCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.UCOMP]
             cons[self.c.MVCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.VCOMP]
@@ -30,11 +35,10 @@ class FluidEuler:
             E = (a_prim[self.c.PCOMP] / ((self.c.gamma - 1) * a_prim[self.c.RHOCOMP]) + 
                  0.5 * (a_prim[self.c.UCOMP]**2 + a_prim[self.c.VCOMP]**2)) + 0.5 * (a_prim[self.c.BXCOMP]**2 + a_prim[self.c.BYCOMP]**2)
             cons[self.c.ECOMP] = E * a_prim[self.c.RHOCOMP]
-            
 
         else:
             # Raise error for unsupported systems
-            raise RuntimeError(f"System not supported: {self.c.system}")    
+            raise RuntimeError(f"System not supported: {self.inp.system}")    
         
         return cons
 
@@ -43,7 +47,7 @@ class FluidEuler:
     def cons_to_prim(self, a_cons):
         prim = np.zeros_like(a_cons)
             
-        if self.c.system == "euler2d":
+        if self.inp.system == "euler2d":
             # copy density
             prim[self.c.RHOCOMP] = a_cons[self.c.RHOCOMP]
             
@@ -70,8 +74,11 @@ class FluidEuler:
                 internal_energy = np.maximum(internal_energy, 1e-12 * np.abs(a_cons[self.c.ECOMP]))
             
             prim[self.c.PCOMP] = (self.c.gamma - 1) * internal_energy
+            
+        elif self.inp.system == "quasineutral":
+            pass
 
-        elif self.c.system == "mhd2d":
+        elif self.inp.system == "mhd2d":
             prim[self.c.RHOCOMP] = a_cons[self.c.RHOCOMP]
             prim[self.c.UCOMP] = a_cons[self.c.MUCOMP] / a_cons[self.c.RHOCOMP]
             prim[self.c.VCOMP] = a_cons[self.c.MVCOMP] / a_cons[self.c.RHOCOMP]
@@ -84,7 +91,7 @@ class FluidEuler:
             )
 
         else:
-            raise RuntimeError(f"System not supported: {self.c.system}")
+            raise RuntimeError(f"System not supported: {self.inp.system}")
         
         return prim
 
@@ -98,7 +105,7 @@ class FluidEuler:
         flux_x = np.zeros_like(a_prim) # flux in x-direction
         flux_y = np.zeros_like(a_prim) # flux in y-direction
 
-        if self.c.system == "euler2d":
+        if self.inp.system == "euler2d":
             # extract primitive variables
             rho = a_prim[self.c.RHOCOMP] # density
             u = a_prim[self.c.UCOMP] # x-velocity
@@ -126,8 +133,18 @@ class FluidEuler:
             flux_y[self.c.MVCOMP] = rho * v**2 + p # momentum flux in y 
             flux_y[self.c.MWCOMP] = 0 #TODO: rho * v * w # z-momentum flux (passively advected)
             flux_y[self.c.ECOMP] = (E + p) * v # energy flux
+            
+        elif self.inp.system == "quasineutral":
+            n_e = a_prim[self.c.NCOMP]
+            u = a_prim[self.c.UCOMP] # x-velocity
+            v = a_prim[self.c.VCOMP] # y-velocity
+            T_e = a_prim[self.c.TCOMP]
+            
+            flux_x[self.c.TCOMP] = (5/2) * T_e * n_e * u
+            flux_y[self.c.TCOMP] = (5/2) * T_e * n_e * v
+            
 
-        elif self.c.system == "mhd2d":
+        elif self.inp.system == "mhd2d":
             rho = a_prim[self.c.RHOCOMP]
             u = a_prim[self.c.UCOMP]
             v = a_prim[self.c.VCOMP]
@@ -157,7 +174,7 @@ class FluidEuler:
 
         else:
             # raise error for unsupported systems
-            raise RuntimeError(f"System not supported: {self.c.system}")
+            raise RuntimeError(f"System not supported: {self.inp.system}")
 
         return flux_x, flux_y
 
@@ -165,7 +182,7 @@ class FluidEuler:
  
     def get_max_speed(self, a_grid):
 
-        if self.c.system == "euler2d":
+        if self.inp.system == "euler2d":
             if a_grid.variables == "prim":
                 return np.max(a_grid.grid[self.c.UCOMP])
             elif a_grid.variables == "cons":
@@ -173,7 +190,7 @@ class FluidEuler:
             else:
                 print("unsupported")
                 exit()
-        elif self.c.system == "mhd2d":
+        elif self.inp.system == "mhd2d":
             if a_grid.variables == "prim":
                 cs = np.sqrt(self.c.gamma * a_grid.grid[self.c.PCOMP] / a_grid.grid[self.c.RHOCOMP])
                 mag_pressure = (a_grid.grid[self.c.BXCOMP]**2 + a_grid.grid[self.c.BYCOMP]**2) / a_grid.grid[self.c.RHOCOMP]

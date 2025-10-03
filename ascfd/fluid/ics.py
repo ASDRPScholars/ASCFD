@@ -39,8 +39,8 @@ class FluidInitialConditions:
                         
                     return new_grid
 
-                elif self.inp.fluid_ics == "tame_static":
-                    return self.tame_static()
+                elif self.inp.fluid_ics == "static":
+                    return self.static()
                 
                 elif self.inp.fluid_ics == "e_cloud_test":
                     return self.e_cloud_test()
@@ -55,7 +55,11 @@ class FluidInitialConditions:
                 else:
                     raise RuntimeError("[FLUID] ICS not valid.")
             else:
-                return self.tame_static()
+                return self.static()
+            
+        elif self.inp.system == "quasineutral":
+            if self.inp.fluid_ics == "static":
+                self.grid = self.qn_static()
            
         elif self.inp.system == "mhd2d":
             if self.inp.fluid_ics == "orszag_tang":
@@ -205,7 +209,7 @@ class FluidInitialConditions:
             return np.zeros_like(a_x)
     
     # ## real tame
-    # def tame_static(self):
+    # def static(self):
     #     ic = np.zeros_like(self.grid)
     #     rho0 = 9e-11                # kg/m³  → n≈1e20 m⁻³
     #     u0 = 0.0                     # m/s
@@ -221,7 +225,7 @@ class FluidInitialConditions:
     #     return ic
     
     ## wip tame
-    # def tame_static(self):
+    # def static(self):
     #     ic = np.zeros_like(self.grid)
     #     rho0 = 9.11e-13                # kg/m³  → n≈1e20 m⁻³
     #     u0 = 0.0                     # m/s
@@ -237,7 +241,7 @@ class FluidInitialConditions:
     #     return ic
     
     #normalized
-    # def tame_static(self):
+    # def static(self):
     #     ic = np.zeros_like(self.grid)
 
     #     # Normalized values (order unity)
@@ -254,7 +258,7 @@ class FluidInitialConditions:
     #     ic[self.c.PCOMP] = p_norm
     #     return ic
     
-    def tame_static(self):
+    def static(self):
         ic = np.zeros_like(self.grid)
 
         ic[self.c.RHOCOMP] = self.inp.rho_e / 100
@@ -267,7 +271,16 @@ class FluidInitialConditions:
         # print("!NORM! p_e", self.inp.p_e)
         
         return ic
-
+    
+    
+    def qn_static(self):
+        ic = np.zeros_like(self.grid)
+        
+        ic[self.c.NCOMP] = 1e18
+        ic[self.c.UCOMP] = 0
+        ic[self.c.VCOMP] = 0
+        ic[self.c.WCOMP] = 0
+        ic[self.c.TCOMP] = 1
     
     
     def e_cloud_test(self):
