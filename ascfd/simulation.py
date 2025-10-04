@@ -129,6 +129,16 @@ class Simulation:
         elif species == "e" and self.inp.system == "quasineutral":
             ng = self.inp.ng
             return self.electrons.grid[self.c.NCOMP, ng:-ng, ng:-ng]
+        
+        
+    def get_species_current_density(self, species):
+        """Retrieve 1D (axial) current from charged species"""
+        
+        if species == "i":
+            return self.ions.compute_particle_density_field() * self.ions.compute_particle_velocity_field() * self.inp.q
+        elif species == "e" and self.inp.system == "quasineutral":
+            ng = self.inp.ng
+            return self.electrons.grid[self.c.NCOMP, ng:-ng, ng:-ng] * self.electrons.grid[self.c.UCOMP, ng:-ng, ng:-ng] * -self.inp.q
     
     
     # TODO: scale back to real dimensions without messing up other grid bounds?
@@ -332,6 +342,7 @@ class Simulation:
             "mv_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[0] * plot_data[2], extent, "Electron Radial Momentum"),
             "mw_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[0] * plot_data[3], extent, "Electron Azimuthal Momentum"),
             "p_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[4], extent, "Electron Pressure"),
+            "T_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[4], extent, "Electron Temperature"),
             
             "Ex": lambda idx: self.plot_2d_data(axs[idx], E_data[:,:,0], extent, "Electric Field X", cmap='coolwarm'),
             "Ey": lambda idx: self.plot_2d_data(axs[idx], E_data[:,:,1], extent, "Electric Field Y", cmap='coolwarm'),

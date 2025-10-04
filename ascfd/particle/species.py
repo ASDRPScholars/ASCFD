@@ -161,27 +161,6 @@ class ParticleSpecies:
         
         density_field = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
         
-        # TODO: can we just get rid of this
-        # # Use optimized active particle retrieval
-        # if hasattr(species, '_get_active_indices'):
-        #     active_indices = species._get_active_indices()
-        # else:
-        #     # Fallback for species without optimization
-        #     safe_capacity = min(species.capacity, species.particles.shape[1], len(species.is_active))
-        #     active_indices = []
-        #     for i in range(safe_capacity):
-        #         if (species.is_active[i] and 
-        #             not np.isnan(species.particles[self.pc.XCOMP, i]) and 
-        #             not np.isnan(species.particles[self.pc.YCOMP, i]) and
-        #             not np.isinf(species.particles[self.pc.XCOMP, i]) and 
-        #             not np.isinf(species.particles[self.pc.YCOMP, i])):
-        #             active_indices.append(i)
-        #         elif species.is_active[i]:  # Active but invalid data - cleanup
-        #             print(f"WARNING: Density computation deactivating {species.params.type} particle {i} with invalid position: x={species.particles[self.pc.XCOMP, i]}, y={species.particles[self.pc.YCOMP, i]}")
-        #             species.is_active[i] = False
-        #             species.free_slots.append(i)
-        #             species.particles[:, i] = 0.0  # Clear corrupted data
-        
         active_indices = self._get_active_indices()
         
         if len(active_indices) > 0:
@@ -207,6 +186,46 @@ class ParticleSpecies:
                 np.add.at(density_field, (ix_valid, iy_valid), weights_valid / (self.inp.dx * self.inp.dy))
         
         return density_field
+    
+    
+    def compute_particle_velocity_field(self):
+        """Compute number density field from particle positions"""
+        if not hasattr(self, 'particles') or not hasattr(self, 'is_active'):
+            return np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
+        
+        velocity_field = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
+        count_field = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
+        
+        active_indices = self._get_active_indices()
+        
+        if len(active_indices) > 0:
+            # Vectorized density computation
+            x_positions = self.particles[self.pc.XCOMP, active_indices]
+            y_positions = self.particles[self.pc.YCOMP, active_indices]
+            x_vel = self.particles[self.pc.UCOMP, active_indices]
+            
+            # Vectorized grid index calculation
+            ix_values = ((x_positions - self.inp.grid_x[0]) / self.inp.dx).astype(int)
+            iy_values = ((y_positions - self.inp.grid_y[0]) / self.inp.dy).astype(int)
+            
+            # Bounds check
+            valid_mask = ((ix_values >= 0) & (ix_values < self.inp.nx_with_ghosts) & 
+                         (iy_values >= 0) & (iy_values < self.inp.ny_with_ghosts))
+            
+            if np.any(valid_mask):
+                ix_valid = ix_values[valid_mask]
+                iy_valid = iy_values[valid_mask]
+                x_vel_valid = x_vel[valid_mask]
+                
+                # Use np.add.at for efficient accumulation
+                np.add.at(velocity_field, (ix_valid, iy_valid), x_vel_valid)
+                np.add.at(count_field, (ix_valid, iy_valid), 1)
+                
+                nonzero_mask = count_field > 0
+                velocity_field[nonzero_mask] /= count_field[nonzero_mask]
+        
+        return velocity_field
+
 
     def _get_free_slot(self):
         """Get a free slot index for new particle"""
