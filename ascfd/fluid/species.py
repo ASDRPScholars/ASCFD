@@ -125,7 +125,7 @@ class FluidSpecies:
         _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
         k1 = self.compute_delta_cons(consU_0, right_flux, left_flux, top_flux, bottom_flux)
 
-        consU_temp = consU_0.copy()
+        consU_temp = copy.copy(consU_0)
         self._apply_lorentz_source_terms(consU_temp)
 
         k1 += (consU_temp - consU_0) / self.dt
@@ -136,7 +136,7 @@ class FluidSpecies:
         _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(grid_1, self.inp.nx, self.inp.ny, self.inp.ng)
         k2 = self.compute_delta_cons(consU_1, right_flux, left_flux, top_flux, bottom_flux)
 
-        consU_temp = consU_1.copy()
+        consU_temp = copy.copy(consU_1)
         self._apply_lorentz_source_terms(consU_temp)
         k2 += (consU_temp - consU_1) / self.dt
 
@@ -146,7 +146,7 @@ class FluidSpecies:
         _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(grid_2, self.inp.nx, self.inp.ny, self.inp.ng)
         k3 = self.compute_delta_cons(consU_2, right_flux, left_flux, top_flux, bottom_flux)
 
-        consU_temp = consU_2.copy()
+        consU_temp = copy.copy(consU_2)
         self._apply_lorentz_source_terms(consU_temp)
 
         k3 += (consU_temp - consU_2) / self.dt
