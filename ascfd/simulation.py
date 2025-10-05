@@ -144,7 +144,8 @@ class Simulation:
             print("do we enter run loop?")
             print("\033[1m" + f"Timestep: {self.timestep}, Current time: {self.t}" + "\033[0m")
             
-            if self.inp.timeStepper == "RK1":
+            if self.inp.timeStepper in ["RK1", "RK3"]:
+                print("TIMESTEPPER IS", self.inp.timeStepper)
                 new_particles = []
                 
                 print(f"Electron update at timestep '{self.timestep}'")

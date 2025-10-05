@@ -49,10 +49,19 @@ class FluidSpecies:
         
         self.check_grid(self.c)
         
+    def compute_delta_cons(self, cons, right_flux, left_flux, top_flux, bottom_flux):
+        delta = np.zeros_like(cons)
+
+        for i in range(self.inp.ng, self.inp.nx + self.inp.ng):
+            for j in range(self.inp.ng, self.inp.ny + self.inp.ng):
+                for icomp in range(self.c.NUMQ):
+                    flux_x = (right_flux[icomp, i, j] - left_flux[icomp, i, j]) / self.inp.dx
+                    flux_y = (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]) / self.inp.dy
+                    delta[icomp, i, j] = -flux_x - flux_y
+
+        return delta
         
-    def update(self):
-        
-        print("dt is", self.dt)
+    def update_RK1(self):
         consU = self.euler.prim_to_cons(self.grid)
 
         _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
@@ -108,8 +117,90 @@ class FluidSpecies:
 
         if self.pelectrons:
             return new_particles
-    
 
+    def update_RK3(self):
+
+        consU_0 = self.euler.prim_to_cons(self.grid)
+
+        _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
+        k1 = self.compute_delta_cons(consU_0, right_flux, left_flux, top_flux, bottom_flux)
+
+        consU_temp = consU_0.copy()
+        self._apply_lorentz_source_terms(consU_temp)
+
+        k1 += (consU_temp - consU_0) / self.dt
+
+        consU_1 = consU_0 + 0.5 * self.dt * k1
+        grid_1 = self.euler.cons_to_prim(consU_1)
+
+        _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(grid_1, self.inp.nx, self.inp.ny, self.inp.ng)
+        k2 = self.compute_delta_cons(consU_1, right_flux, left_flux, top_flux, bottom_flux)
+
+        consU_temp = consU_1.copy()
+        self._apply_lorentz_source_terms(consU_temp)
+        k2 += (consU_temp - consU_1) / self.dt
+
+        consU_2 = consU_0 + self.dt * (-k1 + 2 * k2)
+        grid_2 = self.euler.cons_to_prim(consU_2)
+
+        _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(grid_2, self.inp.nx, self.inp.ny, self.inp.ng)
+        k3 = self.compute_delta_cons(consU_2, right_flux, left_flux, top_flux, bottom_flux)
+
+        consU_temp = consU_2.copy()
+        self._apply_lorentz_source_terms(consU_temp)
+
+        k3 += (consU_temp - consU_2) / self.dt
+
+        consU_update = consU_0 + self.dt * ((1.0 / 6.0) * k1 + (2.0 / 3.0) * k2 + (1.0 / 6.0) * k3)
+
+        self.grid[:] = self.euler.cons_to_prim(consU_update)
+
+        if self.pelectrons:
+            ## --P ELECTRONS UPDATE + COLLISIONAL DAMPING--
+            new_particle_array = self.convert_to_particles()
+            
+            # Clear existing particles and properly initialize with new ones
+            self.pelectrons.active_count = 0
+            self.pelectrons.is_active.fill(False)
+            self.pelectrons.free_slots.clear()
+        
+            # Add particles from converted array
+            n_new_particles = new_particle_array.shape[1]
+            for i in range(n_new_particles):
+                if i < self.pelectrons.capacity:
+                    self.pelectrons.particles[:, i] = new_particle_array[:, i]
+                    self.pelectrons.is_active[i] = True
+                    self.pelectrons.active_count += 1
+            
+            new_particles = self.pelectrons.update()
+            self.pelectrons.update_cross_section_grid()
+            sigma = self.pelectrons.cross_section_grid
+            
+            # self._apply_damping_source_terms(sigma, consU)
+
+        ##
+        self.bcs.apply_bcs()
+        
+        ## --ELECTRIC FIELD UPDATE--
+        charge_density = self.get_charge_density()
+        
+        self.fields.clear_charge_density()
+        self.fields.add_charge_density(charge_density) # -!- TOGGLE -!-
+
+        self.fields.update_E()
+
+        if self.pelectrons:
+            return new_particles
+        
+    def update(self):
+
+        print("dt is", self.dt)
+
+        if self.inp.timeStepper == "RK1":
+            self.update_RK1()
+        elif self.inp.timeStepper == "RK3":
+            self.update_RK3()
+        
     # def _apply_damping_source_terms(self, sigma, consU_new):
     #     from scipy.ndimage import gaussian_filter
     #     # OK ALL IT IS: a * sigma(e) * n_n * rho_e * V_e
@@ -145,7 +236,7 @@ class FluidSpecies:
         m_e = self.params.mass
         n_e = self.get_number_density()
         u_e_perp = consU_new[self.c.VCOMP]
-        nu_
+        # nu_
         
     
     def _apply_lorentz_source_terms(self, consU_new):
