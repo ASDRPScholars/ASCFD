@@ -5,12 +5,13 @@ from ascfd.inputs import Inputs
 from ascfd.params import SpeciesParams
 from ascfd.fields.fields import Fields
 from ascfd.particle.bcs import ParticleBoundaryConditions
-from ascfd.particle.cross_sections.xe import XenonCollisionData
+from ascfd.cross_sections.xe import XenonCollisionData
 # from ascfd.simulation import Simulation
 
 import numpy as np
 from scipy.spatial import cKDTree
 from scipy.interpolate import interp1d
+from scipy import integrate, special
 from collections import deque
 
 class CollisionEvent:
@@ -139,14 +140,14 @@ class ParticleSpecies:
         # initialize collision system for Xenon
         if self.params.type in ["e", "i"]:  # electrons and ions collide with neutrals
             self.collision_data = XenonCollisionData({
-                'elastic': 'ascfd/particle/cross_sections/elastic.txt',
-                'exc1': 'ascfd/particle/cross_sections/exc1.txt',
-                'exc2': 'ascfd/particle/cross_sections/exc2.txt',
-                'exc3': 'ascfd/particle/cross_sections/exc3.txt',
-                'exc4': 'ascfd/particle/cross_sections/exc4.txt',
-                'ionization': 'ascfd/particle/cross_sections/ionization.txt',
-                'ion_elastic': 'ascfd/particle/cross_sections/ion_elastic.txt',
-                'ion_backward': 'ascfd/particle/cross_sections/ion_backward.txt'
+                'elastic': 'ascfd/cross_sections/elastic.txt',
+                'exc1': 'ascfd/cross_sections/exc1.txt',
+                'exc2': 'ascfd/cross_sections/exc2.txt',
+                'exc3': 'ascfd/cross_sections/exc3.txt',
+                'exc4': 'ascfd/cross_sections/exc4.txt',
+                'ionization': 'ascfd/cross_sections/ionization.txt',
+                'ion_elastic': 'ascfd/cross_sections/ion_elastic.txt',
+                'ion_backward': 'ascfd/cross_sections/ion_backward.txt'
             })
         else:
             self.collision_data = None
@@ -188,7 +189,7 @@ class ParticleSpecies:
         return density_field
     
     
-    def compute_particle_velocity_field(self):
+    def compute_particle_x_velocity_field(self):
         """Compute number density field from particle positions"""
         if not hasattr(self, 'particles') or not hasattr(self, 'is_active'):
             return np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
@@ -512,38 +513,81 @@ class ParticleSpecies:
         new_particles = []
         collision_events = []
         
-        neutral_density_field = self.simulation.get_species_number_density("n")
+        m_e = self.inp.m_e
+        k_B = self.inp.k_B
+        n_e = self.simulation.get_species_number_density("e")
+        v_e = self.simulation.get_species_velocity("e")
+        T_e = self.simulation.get_species_temperature("e")
+        n_n = self.simulation.get_species_number_density("n")
         particles_to_remove = []
 
         # print("!#@! PROCESS COLLISIONS FOR", self.params.type)
         active_count = np.sum(self.is_active)
         # print("N ACTIVE PARTICLES", active_count)
         
-        # Use optimized active particle retrieval
-        active_indices = self._get_active_indices()
-        if len(active_indices) < 100:  # Only print for small numbers to avoid spam
-            print(f"!ACTIVE! Processing {len(active_indices)} active particles")
+        if self.inp.system == "euler2d":
+            # Use optimized active particle retrieval
+            active_indices = self._get_active_indices()
+            if len(active_indices) < 100:  # Only print for small numbers to avoid spam
+                print(f"!ACTIVE! Processing {len(active_indices)} active particles")
 
-        for n in active_indices:
-            
-            events = self._attempt_collisions(n, neutral_density_field)
-            
-            for event in events:
-                collision_events.append(event)
+            for n in active_indices:
+                events = self._attempt_collisions(n, n_n)
                 
-                if event.event_type == "ionization":
-                    new_particles.extend(event.products)
-                    # print("!#! IONIZED")
-                elif event.event_type in ["first_excitation", "second_excitation", "third_excitation", "fourth_excitation"]:
-                    self._apply_energy_loss(n, event.energy_change)
-                elif event.event_type.startswith("elastic"):
-                    self._apply_elastic_scattering(n, event)
-                    
-                # print(event)
-                # print(event.event_type)
+                for event in events:
+                    collision_events.append(event)
+                    if event.event_type == "ionization":
+                        new_particles.extend(event.products)
+                        # print("!#! IONIZED")
+                    elif event.event_type in ["first_excitation", "second_excitation", "third_excitation", "fourth_excitation"]:
+                        self._apply_energy_loss(n, event.energy_change)
+                    elif event.event_type.startswith("elastic"):
+                        self._apply_elastic_scattering(n, event)
 
-        self.collision_events.extend(collision_events)
+            self.collision_events.extend(collision_events)
+            
+        elif self.inp.system == "quasineutral":
+            return # TODO: IDK DO WE NEED TO IMPLEMENT FIFE ANYMORE
+            
+            # def I_theta(theta, beta2):
+            #     # analytic J1 piece
+            #     J1 = theta * np.exp(-1.0/theta) - special.exp1(1.0/theta)   # exp1 is E1
+            #     part1 = np.log(1.25 * beta2) * J1
+
+            #     # define integrand for J2
+            #     def integrand(u):
+            #         return np.exp(-u/theta) * (1.0 - 1.0/u) * np.log(u)
+
+            #     # numeric J2 via adaptive quad (good for infinite tail / exponential decay)
+            #     J2, err = integrate.quad(integrand, 1.0, np.inf, epsabs=1e-10, epsrel=1e-10, limit=200)
+
+            #     return part1 + J2
+            
+            # f_e = n_e * (m_e / (2*np.pi * k_B * T_e))**(3/2) * np.exp(-(m_e*v_e**2)/(2*k_B*T_e))
+            
+            # f = np.exp
+            # I_theta = integrate.quad()
+            # ion_production_rate = quad()
+            
+            epsilon_i = 12.13 # eV
+            
+            beta_1 = 1.00 # darwin ionization model constants for xenon - from Fife 1999 Table 2.3
+            beta_2 = 0.80 #
+            Q = 4.13e-13 #
+            
+            def integrand(u, theta):
+                return np.exp(-(u/theta)) * (1-(1/u)) * np.log(1.25 * beta_2 * u)
+            
+            for i in range (0, self.inp.nx):
+                for j in range (0, self.inp.ny):
+                    theta = k_B * T_e[i, j] / epsilon_i # TODO: will we have to for loop over T_e...
+                    I_theta = integrate.quad(integrand, 1, np.inf, args=(theta,))
+            
+                    zeta = (Q * beta_1 * I_theta[i, j]) / theta**(3/2)
+                    ion_rate = zeta * n_e[i, j] * n_n[i, j]
+        
         return new_particles
+
 
     def _attempt_collisions(self, particle_idx: int, neutral_density_field: np.ndarray):
         # print("!#! ATTEMPT COLLISION FOR", self.params.type)

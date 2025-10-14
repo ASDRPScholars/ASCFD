@@ -29,8 +29,8 @@ class FluidSpecies:
         
         self.c = FluidConstants(self.inp)
         self.pc = ParticleConstants()
-        self.euler = FluidEuler(self.c, self.inp)
-        self.flux = FluidFlux(self.c, self.inp)
+        self.euler = FluidEuler(self.c, self.inp, simulation)
+        self.flux = FluidFlux(self.c, self.inp, simulation)
         
         self.ref = PlasmaReferences()
         

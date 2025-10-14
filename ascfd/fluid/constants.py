@@ -43,6 +43,7 @@ class FluidConstants:
             self.gamma = a_inputs.gammas[0] #gammas
             
             self.k_B = 1.380649e-23
+            self.eps_0 = 8.85418782e-12
 
             self.variable_names = ["Density", "X-Velocity", "Y-Velocity", "Z-Velocity", "Pressure"]
 
@@ -52,9 +53,9 @@ class FluidConstants:
             
             #primitive variables (Density, X-Velocity, Y-Velocity, Z-Velocity, Pressure)
             self.NCOMP = 0 # Number Density
-            self.UCOMP = 1 # X-component of velocity
-            self.VCOMP = 2 # Y-component of velocity
-            self.WCOMP = 3 # Z-component of velocity (azimuthal/out-of-plane)
+            self.JXCOMP = 1 # X-component of velocity
+            self.JYCOMP = 2 # Y-component of velocity
+            self.JZCOMP = 3 # Z-component of velocity (azimuthal/out-of-plane)
             self.TCOMP = 4 # Temperature
 
             # number of variables in the system
@@ -65,6 +66,7 @@ class FluidConstants:
             self.gamma = a_inputs.gammas[0] #gammas
             
             self.k_B = 1.380649e-23
+            self.eps_0 = 8.85418782e-12
 
             self.variable_names = ["Number Density", "X-Velocity", "Y-Velocity", "Z-Velocity", "Temperature"]
 

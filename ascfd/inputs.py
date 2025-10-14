@@ -60,13 +60,8 @@ class Inputs:
         
         self.dt = self.get_config_value(config, "Time", "dt", type_func=float)
 
+        self.k_B = 1.3806e-23
 
-        # Params
-        self.q = self.get_config_value(config, "Parameters", "charge", type_func = float)
-        self.m_e = self.get_config_value(config, "Parameters", "e_mass", type_func = float)
-        self.m_i = self.get_config_value(config, "Parameters", "i_mass", type_func = float)
-        self.m_n = self.get_config_value(config, "Parameters", "n_mass", type_func = float)
-        
         
         # Fluid
         self.fluid_ics = self.get_config_value(config, "Fluid", "fluid_ics")
@@ -82,6 +77,13 @@ class Inputs:
         self.bcs_lo = self.get_config_value(config, "Method", "bcs_lo", type_func=self.parse_bcs)
         self.bcs_hi = self.get_config_value(config, "Method", "bcs_hi", type_func=self.parse_bcs)
 
+        # Params
+        self.propellant = self.get_config_value(config, "Parameters", "propellant", type_func = str)
+        self.q = self.get_config_value(config, "Parameters", "charge", type_func = float)
+        self.m_e = self.get_config_value(config, "Parameters", "e_mass", type_func = float)
+        self.m_i = self.get_config_value(config, "Parameters", "i_mass", type_func = float)
+        self.m_n = self.get_config_value(config, "Parameters", "n_mass", type_func = float)
+        
         # Particle
         self.particle_ics = self.get_config_value(config, "Particle", "particle_ics", mandatory = False, default=None)
         self.n_ppc = self.get_config_value(config, "Particle", "n_ppc", mandatory = False, default = 0, type_func = int)
@@ -99,6 +101,8 @@ class Inputs:
         
         # Electric Field
         self.B_ics = self.get_config_value(config, "Fields", "B_ics")
+        
+        self.internal_grid = np.zeros((self.nx, self.ny))
         
         # TODO
         self.B_max = self.get_config_value(config, "Fields", "B_max", type_func = float)

@@ -279,9 +279,9 @@ class FluidInitialConditions:
         print("[ics] QN STATIC!!")
         
         ic[self.c.NCOMP] = 1e18
-        ic[self.c.UCOMP] = 0
-        ic[self.c.VCOMP] = 0
-        ic[self.c.WCOMP] = 0
+        ic[self.c.JXCOMP] = 0
+        ic[self.c.JYCOMP] = 0
+        ic[self.c.JZCOMP] = 0
         ic[self.c.TCOMP] = 1
         
         print("[ics] INIT WITH:", ic[self.c.NCOMP])

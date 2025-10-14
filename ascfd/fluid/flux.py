@@ -10,13 +10,14 @@ import sys
 
 class FluidFlux:
 
-    def __init__(self, a_constants: FluidConstants, a_inp: Inputs):
+    def __init__(self, a_constants: FluidConstants, a_inp: Inputs, simulation):
 
         self.inp = a_inp
         self.type = self.inp.flux
         self.c = a_constants
+        self.simulation = simulation
 
-        self.euler = FluidEuler(self.c, self.inp) # initialize the euler solver
+        self.euler = FluidEuler(self.c, self.inp, self.simulation) # initialize the euler solver
 
         # select the flux method based on the type
         if self.type == "rusanov":
@@ -33,12 +34,21 @@ class FluidFlux:
             raise RuntimeError(f"Flux method not supported: {self.type}")
 
 
-    def getFlux(self, a_grid, a_Nx, a_Ny, a_Nghost):
-        return self.flux_method(a_grid, a_Nx, a_Ny, a_Nghost)
+    def getFlux(self, a_grid, a_Nx, a_Ny, a_Nghost, **kwargs):
+        nu_e = kwargs.get('nu_e', None)
+        hall_param = kwargs.get('hall_param', None)
+        
+        flux_method = self.flux_method(a_grid, a_Nx, a_Ny, a_Nghost, nu_e=nu_e, hall_param=hall_param) if kwargs is not None \
+                 else self.flux_method(a_grid, a_Nx, a_Ny, a_Nghost)
+        
+        return flux_method
 
 
-    def rusanov(self, a_grid, a_Nx, a_Ny, a_Nghost):
-
+    def rusanov(self, a_grid, a_Nx, a_Ny, a_Nghost, **kwargs):
+        
+        nu_e = kwargs.get('nu_e', None)
+        hall_param = kwargs.get('hall_param', None)
+        
         #get density 
         if self.inp.system == "euler2d":
             density = a_grid[self.c.RHOCOMP]
@@ -53,23 +63,40 @@ class FluidFlux:
         U = a_grid
         consU = self.euler.prim_to_cons(U)
 
-        fx, fy = self.euler.flux(U) # analytical flux
+        fx, fy = self.euler.flux(U, nu_e=nu_e, hall_param=hall_param) if kwargs is not None else self.euler.flux(U) # analytical flux
 
         numFluxX_plus = np.zeros_like(a_grid)
         numFluxX_minus = np.zeros_like(a_grid)
         numFluxY_plus = np.zeros_like(a_grid)
         numFluxY_minus = np.zeros_like(a_grid)
+        
+        u = self.simulation.get_species_velocity("e", "u")
+        v = self.simulation.get_species_velocity("e", "v")
+        
+        u = np.pad(u, pad_width=((2, 2), (2, 2)), mode='edge')
+        v = np.pad(v, pad_width=((2, 2), (2, 2)), mode='edge')
 
         for i in range(a_Nghost - 1, a_Nx + a_Nghost):
             for j in range(a_Nghost - 1, a_Ny + a_Nghost):
-                sMaxX = max(
-                    np.abs(a_grid[self.c.UCOMP, i, j]) + a[i, j],
-                    np.abs(a_grid[self.c.UCOMP, i+1, j]) + a[i+1, j]
-                )
-                sMaxY = max(
-                    np.abs(a_grid[self.c.VCOMP, i, j]) + a[i, j],
-                    np.abs(a_grid[self.c.VCOMP, i, j+1]) + a[i, j+1]
-                )
+                
+                if self.inp.system == "quasineutral":
+                    sMaxX = max(
+                    np.abs(u[i, j]) + a[i, j],
+                    np.abs(u[i+1, j]) + a[i+1, j]
+                    )
+                    sMaxY = max(
+                        np.abs(v[i, j]) + a[i, j],
+                        np.abs(v[i, j+1]) + a[i, j+1]
+                    )
+                else:
+                    sMaxX = max(
+                        np.abs(a_grid[self.c.UCOMP, i, j]) + a[i, j],
+                        np.abs(a_grid[self.c.UCOMP, i+1, j]) + a[i+1, j]
+                    )
+                    sMaxY = max(
+                        np.abs(a_grid[self.c.VCOMP, i, j]) + a[i, j],
+                        np.abs(a_grid[self.c.VCOMP, i, j+1]) + a[i, j+1]
+                    )
 
                 # compute flux components for each variable
                 for icomp in range(self.c.NUMQ):

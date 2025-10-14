@@ -4,10 +4,11 @@ from ascfd.inputs import Inputs
 
 class FluidEuler:
 
-    def __init__(self, a_constants : FluidConstants, a_inp: Inputs):
+    def __init__(self, a_constants : FluidConstants, a_inp: Inputs, simulation):
         # store constants and system parameters
         self.c = a_constants
         self.inp = a_inp
+        self.simluation = simulation
 
     
     def prim_to_cons(self, a_prim):
@@ -97,7 +98,7 @@ class FluidEuler:
 
 
 
-    def flux(self, a_prim):
+    def flux(self, a_prim, **kwargs):
         """
         Compute the flux for the Euler equations
         """
@@ -134,14 +135,32 @@ class FluidEuler:
             flux_y[self.c.MWCOMP] = 0 #TODO: rho * v * w # z-momentum flux (passively advected)
             flux_y[self.c.ECOMP] = (E + p) * v # energy flux
             
+        #TODO: DO PROPERLY
         elif self.inp.system == "quasineutral":
+            
+            nu_e = kwargs.get('nu_e', None)
+            hall_param = kwargs.get('hall_param', None)
+            
             n_e = a_prim[self.c.NCOMP]
-            u = a_prim[self.c.UCOMP] # x-velocity
-            v = a_prim[self.c.VCOMP] # y-velocity
+            j_e = a_prim[self.c.JXCOMP] # x-velocity
             T_e = a_prim[self.c.TCOMP]
             
-            flux_x[self.c.TCOMP] = (5/2) * T_e * n_e * u
-            flux_y[self.c.TCOMP] = (5/2) * T_e * n_e * v
+            q_e = self.inp.q
+            m_e = self.inp.m_e
+            
+            omega_ce = hall_param * nu_e
+            
+            nu_e = np.pad(nu_e, pad_width=((2, 2), (2, 2)), mode='edge')
+            omega_ce = np.pad(omega_ce, pad_width=((2, 2), (2, 2)), mode='edge')
+
+            # RESEARCH TODO: THERE ARE PROBLEMS WITH DERIVING HEAT FLUX FROM FOURIER LAW OF CONDUCTION THOUGH
+            
+            kappa_e_perp = 4.7 * (nu_e * n_e * T_e) / (m_e * omega_ce**2) # thermal conductivity coefficient - marks eq (6.18)
+            
+            # BIG TODO TODO: CROSS CHECK WITH MIKELLIDES EQ (25) - DO WE ADD Q TO THERMAL ENERGY
+            print(np.shape(T_e), np.shape(j_e), np.shape(kappa_e_perp), np.shape(np.gradient(T_e, self.inp.dx)))
+            flux_x[self.c.TCOMP] = (5/2 * T_e * j_e) - (-kappa_e_perp * np.gradient(T_e, self.inp.dx)[0]) # thermal energy density (3/2 * n_e * k_B * T_e) equation - rearrange mikellides eq (25), or marks eq (4.8)
+            # TODO: flux_y[self.c.ECOMP] = ...
             
 
         elif self.inp.system == "mhd2d":

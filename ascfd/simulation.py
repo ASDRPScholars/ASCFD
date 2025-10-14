@@ -8,8 +8,10 @@ from ascfd.particle.species import ParticleSpecies
 from ascfd.inputs import Inputs
 from ascfd.fields.fields import Fields
 from ascfd.plasma_refs import PlasmaReferences
+from ascfd.cross_sections.xe import XenonCollisionData
 
 import numpy as np
+from scipy.integrate import quad
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import os
@@ -57,6 +59,20 @@ class Simulation:
             self.all_species = [self.electrons, self.neutrals, self.ions]
         else:
             self.all_species = [self.electrons]
+            
+        if self.inp.propellant == "xe":  # electrons and ions collide with neutrals
+            self.collisions = XenonCollisionData({
+                'elastic': 'ascfd/cross_sections/elastic.txt',
+                'exc1': 'ascfd/cross_sections/exc1.txt',
+                'exc2': 'ascfd/cross_sections/exc2.txt',
+                'exc3': 'ascfd/cross_sections/exc3.txt',
+                'exc4': 'ascfd/cross_sections/exc4.txt',
+                'ionization': 'ascfd/cross_sections/ionization.txt',
+                'ion_elastic': 'ascfd/cross_sections/ion_elastic.txt',
+                'ion_backward': 'ascfd/cross_sections/ion_backward.txt'
+            })
+        else:
+            self.collisions = None
         
         # setup initial time to be the starting time from the inputs file.
         self.t = self.inp.t0
@@ -118,16 +134,34 @@ class Simulation:
         
         return normal_inp
     
+    def get_collision_frequency(self, collision_type):
+        
+        sigma_grid = np.zeros_like(self.inp.internal_grid)
+        n_e = self.get_species_number_density("e")
+        n_n = self.get_species_number_density("n")
+        T_e = self.get_species_temperature("e")
+        E_e = T_e * self.inp.k_B
+        
+        if collision_type == "en":
+            for i in range (self.inp.nx):
+                for j in range (self.inp.ny):
+                    energy = E_e[i, j]
+                    sigma_grid[i, j] = self.collisions.get_total_en_cross_section(energy)
+    
+        print(np.shape(n_e), np.shape(n_n), np.shape(sigma_grid))
+        nu_grid = n_e * n_n * sigma_grid
+        return nu_grid
+    
     
     def get_species_number_density(self, species):
         # TODO: test does this work
+        ng = self.inp.ng
         
         if species == "i":
-            return self.ions.compute_particle_density_field()
+            return self.ions.compute_particle_density_field()[ng:-ng, ng:-ng]
         elif species == "n":
-            return self.neutrals.compute_particle_density_field()
+            return self.neutrals.compute_particle_density_field()[ng:-ng, ng:-ng]
         elif species == "e" and self.inp.system == "quasineutral":
-            ng = self.inp.ng
             return self.electrons.grid[self.c.NCOMP, ng:-ng, ng:-ng]
         
         
@@ -135,12 +169,44 @@ class Simulation:
         """Retrieve 1D (axial) current from charged species"""
         
         if species == "i":
-            return self.ions.compute_particle_density_field() * self.ions.compute_particle_velocity_field() * self.inp.q
+            return self.ions.compute_particle_density_field() * self.ions.compute_particle_x_velocity_field() * self.inp.q
         elif species == "e" and self.inp.system == "quasineutral":
             ng = self.inp.ng
             return self.electrons.grid[self.c.NCOMP, ng:-ng, ng:-ng] * self.electrons.grid[self.c.UCOMP, ng:-ng, ng:-ng] * -self.inp.q
     
     
+    def get_species_velocity(self, species, direction=None):
+        # TODO: complete implementation for particles
+        
+        if species == "i":
+            pass
+        elif species == "n":
+            pass
+        elif species == "e" and self.inp.system == "quasineutral":
+            ng = self.inp.ng
+            n_e = self.get_species_number_density("e")
+            q_e = -self.inp.q
+            
+            u = self.electrons.grid[self.c.JXCOMP, ng:-ng, ng:-ng] / (n_e * q_e)
+            v = self.electrons.grid[self.c.JYCOMP, ng:-ng, ng:-ng] / (n_e * q_e)
+            w = self.electrons.grid[self.c.JZCOMP, ng:-ng, ng:-ng] / (n_e * q_e)
+            vel = np.sqrt(u**2 + v**2 + w**2)
+        
+            value = {"u": u, "v": v, "w": w}.get(direction, vel)
+            
+            return value
+        
+    def get_species_temperature(self, species):
+        # TODO: complete implementation for particles
+        
+        if species == "i":
+            pass
+        elif species == "n":
+            pass
+        elif species == "e" and self.inp.system == "quasineutral":
+            ng = self.inp.ng
+            return self.electrons.grid[self.c.TCOMP, ng:-ng, ng:-ng]
+        
     # TODO: scale back to real dimensions without messing up other grid bounds?
     # def _normal_to_phys(self):
     #     phys_inp = copy.deepcopy(self.inp)
@@ -342,6 +408,10 @@ class Simulation:
             "mv_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[0] * plot_data[2], extent, "Electron Radial Momentum"),
             "mw_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[0] * plot_data[3], extent, "Electron Azimuthal Momentum"),
             "p_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[4], extent, "Electron Pressure"),
+            
+            "jx_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[1], extent, "Electron Axial Current"),
+            "jy_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[2], extent, "Electron Radial Current"),
+            "jz_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[3], extent, "Electron Azimuthal Current"),
             "T_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[4], extent, "Electron Temperature"),
             
             "Ex": lambda idx: self.plot_2d_data(axs[idx], E_data[:,:,0], extent, "Electric Field X", cmap='coolwarm'),
