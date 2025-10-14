@@ -60,6 +60,9 @@ class QNFluidSpecies(FluidSpecies):
             # TODO: BECAUSE WHEN WE SET GRID, THE GHOST CELLS ACTUALLY GET INCLUDED IN GRID BOUNDS (so tehnically bounds are off by (2*ng)/n in every sim...)
             if icomp == self.c.NCOMP:
                 U[icomp, ng:-ng, ng:-ng] = n_i
+                print("!CONTINUITY UPDATE!")
+                print(n_i)
+                print(U[icomp, ng:-ng, ng:-ng])
                 
             elif icomp == self.c.JXCOMP:
                 # j_e = q_e * n_e * u_e

@@ -54,7 +54,7 @@ class ParticleSpecies:
         self._cache_valid = False
         
         # Pre-allocate particle arrays with 3x initial capacity for growth
-        initial_capacity = max(self.inp.n_particles * 3, 1000) if self.params.type != "i" else 1000
+        initial_capacity = max(self.inp.n_particles * 3, 1000) # TODO: TEMP IC - if self.params.type != "i" else 1000
         self.capacity = initial_capacity
         
         # Determine number of components based on species type
@@ -76,24 +76,18 @@ class ParticleSpecies:
         self.sort_counter = 0
         self.sort_frequency = 50  # Sort every 50 timesteps
 
-        if self.params.type != "i":
-            # Initialize active particles
-            self.active_count = min(self.inp.n_particles, self.capacity)
-            self.is_active[:self.active_count] = True
-            print(f"Initialized {self.active_count} active {self.params.type} particles")
-            
-        if self.params.type == "n":
+        # TODO: TEMP IC - if self.params.type != "i":
+        # Initialize active particles
+        self.active_count = min(self.inp.n_particles, self.capacity)
+        self.is_active[:self.active_count] = True
+        print(f"Initialized {self.active_count} active {self.params.type} particles")
+        
+        # TODO: TEMP IC -
+        if self.params.type in ["n", "i"]:
             # Create temporary array for ICs - ensure correct shape
             temp_particles = self.particles[:, :self.active_count].copy()
-            print(f"Creating ICs for neutrals with shape: {temp_particles.shape}")
             self.ics = ParticleInitialConditions(temp_particles, self.inp, self.params)        
             self.ics.apply_ics()
-            
-            # Validate initialized data before copying back
-            if np.any(np.isnan(temp_particles)) or np.any(np.isinf(temp_particles)):
-                print(f"ERROR: NaN/inf values in {self.params.type} initial conditions!")
-                nan_mask = np.isnan(temp_particles) | np.isinf(temp_particles)
-                temp_particles[nan_mask] = 0.0
             
             # Copy back the initialized data
             self.particles[:, :self.active_count] = temp_particles
@@ -104,7 +98,22 @@ class ParticleSpecies:
                 print(f"ERROR: Invalid initial weight for {self.params.type}: {weight}")
                 self.particles[self.WEIGHT, :self.active_count] = 1.0  # Default weight
             
-        if self.params.type == "i":
+        # TODO: VERY MUCH SCUFFED TEMP IC - ALSO FIGURE OUT THIS LOGIC
+        elif self.params.type == "i":
+            
+            temp_particles = self.particles[:, :self.active_count].copy()
+            self.ics = ParticleInitialConditions(temp_particles, self.inp, self.params)        
+            self.ics.apply_ics()
+            
+            # Copy back the initialized data
+            self.particles[:, :self.active_count] = temp_particles
+            weight = self.estimate_initial_weight()
+            
+            if not (np.isnan(weight) or np.isinf(weight)):
+                self.particles[self.WEIGHT, :self.active_count] = weight
+                
+            pass
+            
             self.active_count = 1
             self.is_active[0] = True
             

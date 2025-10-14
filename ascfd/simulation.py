@@ -78,7 +78,7 @@ class Simulation:
         self.t = self.inp.t0
         self.timestep = 0
         # self.dt = self.get_dt()
-        self.dt_physical = 1e-11
+        self.dt_physical = 1e-5
         self.dt_norm = self.dt_physical / self.ref.dt
         
         # Set timestep for all species
@@ -399,8 +399,8 @@ class Simulation:
 
         # Define plotting logic in a dictionary (like a switch-case)
         plot_map = {
-            "rho_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[0], extent, "Electron Mass Density"),
-            "n_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[0]/self.inp.m_e, extent, "Electron Number Density"),
+            "rho_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[0]*self.inp.m_e if self.inp.system == "quasineutral" else plot_data[0], extent, "Electron Mass Density"),
+            "n_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[0] if self.inp.system == "quasineutral" else plot_data[0]/self.inp.m_e, extent, "Electron Number Density"),
             "u_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[1], extent, "Electron Axial Velocity"),
             "v_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[2], extent, "Electron Radial Velocity"),
             "w_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[3], extent, "Electron Azimuthal Velocity"),
@@ -422,9 +422,9 @@ class Simulation:
             
             "i": lambda idx: self.plot_2d_data(axs[idx], self.get_species_number_density("i")[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Ion Density (Scatter)", cmap=mpl.cm.Blues, scatter_data=(self.ions.particles[self.pc.XCOMP] * self.ref.L, self.ions.particles[self.pc.YCOMP] * self.ref.L)),
             "n": lambda idx: self.plot_2d_data(axs[idx], self.get_species_number_density("n")[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Neutral Density (Scatter)", cmap=mpl.cm.Greys, scatter_data=(self.neutrals.particles[self.pc.XCOMP] * self.ref.L, self.neutrals.particles[self.pc.YCOMP] * self.ref.L)),
-            "rho_i": lambda idx: self.plot_2d_data(axs[idx], gaussian_filter(self.get_species_number_density("i")[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], sigma=4.5), extent, "Ion Number Density", cmap=mpl.cm.Blues),
-            "rho_n": lambda idx: self.plot_2d_data(axs[idx], gaussian_filter(self.get_species_number_density("n")[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], sigma=4.5), extent, "Neutral Number Density", cmap=mpl.cm.Greys),
-            "rho_q": lambda idx: self.plot_2d_data(axs[idx], gaussian_filter(self.fields.charge_density[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], sigma=4.5), extent, "Charge Density", cmap='coolwarm'),
+            "n_i": lambda idx: self.plot_2d_data(axs[idx], self.get_species_number_density("i")[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Ion Number Density", cmap=mpl.cm.Blues),
+            "n_n": lambda idx: self.plot_2d_data(axs[idx], self.get_species_number_density("n")[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Neutral Number Density", cmap=mpl.cm.Greys),
+            "rho_q": lambda idx: self.plot_2d_data(axs[idx], self.fields.charge_density[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Charge Density", cmap='coolwarm'),
             "energy": lambda idx: self.plot_2d_data(axs[idx], self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Energy"),
             #TODO: temp change for plotting nu instead of sigma
             "sigma": lambda idx: self.plot_2d_data(axs[idx], gaussian_filter(self.electrons.pelectrons.cross_section_grid, sigma=3), extent, "Electron Collision Frequency", cmap='coolwarm'),
