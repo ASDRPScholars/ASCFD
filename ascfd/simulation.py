@@ -140,7 +140,7 @@ class Simulation:
         n_e = self.get_species_number_density("e")
         n_n = self.get_species_number_density("n")
         T_e = self.get_species_temperature("e")
-        E_e = T_e * self.inp.k_B
+        E_e = T_e * self.inp.k_B # TODO: or 3/2
         
         if collision_type == "en":
             for i in range (self.inp.nx):

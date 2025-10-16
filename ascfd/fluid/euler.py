@@ -144,6 +144,7 @@ class FluidEuler:
             n_e = a_prim[self.c.NCOMP]
             j_e = a_prim[self.c.JXCOMP] # x-velocity
             T_e = a_prim[self.c.TCOMP]
+            k_B = self.inp.k_B
             
             q_e = self.inp.q
             m_e = self.inp.m_e
@@ -159,7 +160,12 @@ class FluidEuler:
             
             # BIG TODO TODO: CROSS CHECK WITH MIKELLIDES EQ (25) - DO WE ADD Q TO THERMAL ENERGY
             print(np.shape(T_e), np.shape(j_e), np.shape(kappa_e_perp), np.shape(np.gradient(T_e, self.inp.dx)))
-            flux_x[self.c.TCOMP] = (5/2 * T_e * j_e) - (-kappa_e_perp * np.gradient(T_e, self.inp.dx)[0]) # thermal energy density (3/2 * n_e * k_B * T_e) equation - rearrange mikellides eq (25), or marks eq (4.8)
+            
+            Q_e_perp = -kappa_e_perp * np.gradient(T_e, self.inp.dx, 0)[0]
+            
+            energy_flux = (5/2*j_e*k_B*T_e - Q_e_perp)
+            
+            flux_x[self.c.TCOMP] = 2/(3*n_e*k_B) # thermal energy density (3/2 * n_e * k_B * T_e) equation - rearrange mikellides eq (25), or marks eq (4.8)
             # TODO: flux_y[self.c.ECOMP] = ...
             
 

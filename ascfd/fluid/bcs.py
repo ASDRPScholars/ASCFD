@@ -60,7 +60,6 @@ class FluidBoundaryConditions:
 
     def apply_bcs(self) -> None:
         # apply boundary conditions for both low and high boundaries
-        return
         self.apply_lo()
         self.apply_hi()
 

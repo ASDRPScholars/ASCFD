@@ -9,7 +9,7 @@ class QNFluidSpecies(FluidSpecies):
     def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields, simulation):
         super().__init__(params, a_inputs, fields, simulation)
         
-        self.E_perp = 0 # TODO: IS THIS OK...
+        self.E_perp = 4e4 # TODO: better than 0 somehow
         
     # TODO: DOUBLE CHECK WE'RE HANDLING GHOSTS HERE RIGHT CUZ THIS ALWAYS TRIPS ME UP
     
@@ -84,7 +84,8 @@ class QNFluidSpecies(FluidSpecies):
             
                 # TODO: fix improper dx with ghost cells later, if its a problem
                 self.E_perp = eta * (1 + hall_param**2) * j_e_perp - (np.gradient(p_e, self.inp.dx, 0)[0]/(q_e * n_e)) + eta_ei * j_i_perp # mikellides eqs (24a-24b)
-                U[icomp, ng:-ng, ng:-ng] = j_e_perp
+                # TODO: !TEMP! U[icomp, ng:-ng, ng:-ng] = j_e_perp
+                U[icomp, ng:-ng, ng:-ng] = 1
             
             elif icomp == self.c.JYCOMP:
                 (q_e**2 * n_e)/(m_e * nu_e) * (self.E_perp + np.gradient(p_e, 0, self.inp.dy)/(q_e*n_e)) # parallel electron current - marks eqs (2.29-2.31)
@@ -97,6 +98,8 @@ class QNFluidSpecies(FluidSpecies):
                         (self.dt / self.inp.dy) * (top_flux[icomp, ng:-ng, ng:-ng] - bottom_flux[icomp, ng:-ng, ng:-ng])
                     
                 U[icomp, ng:-ng, ng:-ng] -= delta
+                
+                self.bcs.apply_bcs()
                 
                 # ACTUAL TODO: add other source terms later
                 
