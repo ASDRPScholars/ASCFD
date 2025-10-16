@@ -145,7 +145,6 @@ class FluidSpecies:
         m_e = self.params.mass
         n_e = self.get_number_density()
         u_e_perp = consU_new[self.c.VCOMP]
-        nu_
         
     
     def _apply_lorentz_source_terms(self, consU_new):

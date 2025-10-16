@@ -60,7 +60,7 @@ class Inputs:
         
         self.dt = self.get_config_value(config, "Time", "dt", type_func=float)
 
-        self.k_B = 1.3806e-23
+        self.k_B = 8.617e-5
 
         
         # Fluid

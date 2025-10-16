@@ -60,9 +60,9 @@ class QNFluidSpecies(FluidSpecies):
             # TODO: BECAUSE WHEN WE SET GRID, THE GHOST CELLS ACTUALLY GET INCLUDED IN GRID BOUNDS (so tehnically bounds are off by (2*ng)/n in every sim...)
             if icomp == self.c.NCOMP:
                 U[icomp, ng:-ng, ng:-ng] = n_i
-                print("!CONTINUITY UPDATE!")
-                print(n_i)
-                print(U[icomp, ng:-ng, ng:-ng])
+                # print("!CONTINUITY UPDATE!")
+                # print(n_i)
+                # print(U[icomp, ng:-ng, ng:-ng])
                 
             elif icomp == self.c.JXCOMP:
                 # j_e = q_e * n_e * u_e
@@ -84,8 +84,8 @@ class QNFluidSpecies(FluidSpecies):
             
                 # TODO: fix improper dx with ghost cells later, if its a problem
                 self.E_perp = eta * (1 + hall_param**2) * j_e_perp - (np.gradient(p_e, self.inp.dx, 0)[0]/(q_e * n_e)) + eta_ei * j_i_perp # mikellides eqs (24a-24b)
-                # TODO: !TEMP! U[icomp, ng:-ng, ng:-ng] = j_e_perp
-                U[icomp, ng:-ng, ng:-ng] = 1
+                U[icomp, ng:-ng, ng:-ng] = j_e_perp
+                # U[icomp, ng:-ng, ng:-ng] = 1
             
             elif icomp == self.c.JYCOMP:
                 (q_e**2 * n_e)/(m_e * nu_e) * (self.E_perp + np.gradient(p_e, 0, self.inp.dy)/(q_e*n_e)) # parallel electron current - marks eqs (2.29-2.31)

@@ -2,6 +2,8 @@ import numpy as np
 from ascfd.fluid.constants import FluidConstants
 from ascfd.inputs import Inputs
 
+import sys
+
 class FluidEuler:
 
     def __init__(self, a_constants : FluidConstants, a_inp: Inputs, simulation):
@@ -164,6 +166,13 @@ class FluidEuler:
             Q_e_perp = -kappa_e_perp * np.gradient(T_e, self.inp.dx, 0)[0]
             
             energy_flux = (5/2*j_e*k_B*T_e - Q_e_perp)
+            
+            np.set_printoptions(threshold=sys.maxsize)
+            print("!@! j_e", j_e)
+            print("!@! T_e", T_e)
+            print("!@! Q_e_perp", Q_e_perp)
+            print("!@! 5/2*j_e*k_B*T_e - Q_e_perp", energy_flux)
+            
             
             flux_x[self.c.TCOMP] = 2/(3*n_e*k_B) # thermal energy density (3/2 * n_e * k_B * T_e) equation - rearrange mikellides eq (25), or marks eq (4.8)
             # TODO: flux_y[self.c.ECOMP] = ...

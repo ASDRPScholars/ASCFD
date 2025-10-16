@@ -328,7 +328,7 @@ class ParticleSpecies:
             self.is_active[slot] = True
             # Invalidate cache when adding particles
             self._cache_valid = False
-            print(self.params.type, "!%! added particle to slot", slot, "with x=", self.particles[self.pc.XCOMP, slot], "y=", self.particles[self.pc.YCOMP, slot])
+            # print(self.params.type, "!%! added particle to slot", slot, "with x=", self.particles[self.pc.XCOMP, slot], "y=", self.particles[self.pc.YCOMP, slot])
         else:
             print(f"Warning: Invalid particle data format for species {self.params.type}")
     
@@ -372,8 +372,8 @@ class ParticleSpecies:
         
         if self.params.type == "n":
             self.bcs.apply_bcs()
-            print("!N! APPLIED BCS")
-            print(f"!BCS! AFTER BCS: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
+            # print("!N! APPLIED BCS")
+            # print(f"!BCS! AFTER BCS: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
             
         if self.params.type in ["i", "n"]:
             # Vectorized particle update for better performance
@@ -452,17 +452,17 @@ class ParticleSpecies:
 
         if particles_to_remove:
             active_before = np.sum(self.is_active)
-            print("!%! BEFORE REMOVE THERE ARE:", active_before)
+            # print("!%! BEFORE REMOVE THERE ARE:", active_before)
             active_indices_before_remove = self._get_active_indices()
-            print("!%! BEFORE REMOVE X POSITIONS:", self.particles[self.pc.XCOMP, active_indices_before_remove[:5]] if active_indices_before_remove else "NO ACTIVE PARTICLES")
+            # print("!%! BEFORE REMOVE X POSITIONS:", self.particles[self.pc.XCOMP, active_indices_before_remove[:5]] if active_indices_before_remove else "NO ACTIVE PARTICLES")
             self._remove_particles(particles_to_remove)
             # print("!%! REMOVING THESE PARTICLES:")
             # for idx in particles_to_remove:
             #     print(f"({self.particles[self.pc.XCOMP, idx]}, {self.particles[self.pc.YCOMP, idx]})")
             active_after = np.sum(self.is_active)
-            print(f"!%! AFTER REMOVE {self.params.type} THERE ARE:", active_after)
+            # print(f"!%! AFTER REMOVE {self.params.type} THERE ARE:", active_after)
             active_indices_after_remove = self._get_active_indices()
-            print("!%! AFTER REMOVE X POSITIONS:", self.particles[self.pc.XCOMP, active_indices_after_remove[:5]] if active_indices_after_remove else "NO ACTIVE PARTICLES")
+            # print("!%! AFTER REMOVE X POSITIONS:", self.particles[self.pc.XCOMP, active_indices_after_remove[:5]] if active_indices_after_remove else "NO ACTIVE PARTICLES")
     
         new_particles = []
         

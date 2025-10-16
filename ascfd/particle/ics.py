@@ -49,7 +49,7 @@ class ParticleInitialConditions:
             print("!RAND! vy", vy)
             ic_particles[self.pc.XCOMP, n] = random_x
             ic_particles[self.pc.YCOMP, n] = random_y
-            ic_particles[self.pc.UCOMP, n] = 1 # vx # * 50000 # + 20
+            ic_particles[self.pc.UCOMP, n] = 10 #vx # vx # * 50000 # + 20
             ic_particles[self.pc.VCOMP, n] = 0 # vy
             if self.pc.WCOMP < self.pc.NUMQ:
                 ic_particles[self.pc.WCOMP, n] = vz

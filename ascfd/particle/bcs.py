@@ -53,7 +53,7 @@ class ParticleBoundaryConditions:
                 
                 particle_data[self.pc.XCOMP] = x_rand
                 
-                print("!N! NEW X IS", x_rand, "STORED AS", particle_data[self.pc.XCOMP])
+                # print("!N! NEW X IS", x_rand, "STORED AS", particle_data[self.pc.XCOMP])
                 particle_data[self.pc.YCOMP] = y_rand
                 
                 # TODO: WHY MULTIPLIER WHERES THE MISSING LINK
@@ -65,11 +65,11 @@ class ParticleBoundaryConditions:
                     particle_data[self.pc.WCOMP] = vz
                     
                 # Use efficient particle addition instead of np.hstack
-                print("!N! ABOUT TO ADD PARTICLE WITH X, Y=", particle_data[self.pc.XCOMP], particle_data[self.pc.YCOMP])
+                # print("!N! ABOUT TO ADD PARTICLE WITH X, Y=", particle_data[self.pc.XCOMP], particle_data[self.pc.YCOMP])
                 self.particle_species.add_particle(particle_data)
-                print("!N! AFTER ADD_PARTICLE, ALL STORED X, Y:", self.particle_species.particles[self.pc.XCOMP, :10], self.particle_species.particles[self.pc.YCOMP, :10])
+                # print("!N! AFTER ADD_PARTICLE, ALL STORED X, Y:", self.particle_species.particles[self.pc.XCOMP, :10], self.particle_species.particles[self.pc.YCOMP, :10])
 
-        print("!!ADD PARTICLE!! FOR", self.params.type, len(new_particles))
+        # print("!!ADD PARTICLE!! FOR", self.params.type, len(new_particles))
     
     
     def remove_particles(self):
