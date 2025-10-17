@@ -370,7 +370,8 @@ class ParticleSpecies:
         
         particles_to_remove = []
         
-        if self.params.type == "n":
+        # TODO TEMP if self.params.type == "n":
+        if self.params.type in ["i", "n"]:
             self.bcs.apply_bcs()
             # print("!N! APPLIED BCS")
             # print(f"!BCS! AFTER BCS: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
