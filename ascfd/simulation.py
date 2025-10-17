@@ -155,7 +155,7 @@ class Simulation:
                     sigma_grid[i, j] = self.collisions.get_total_en_cross_section(energy)
     
         print(np.shape(n_e), np.shape(n_n), np.shape(sigma_grid))
-        nu_grid = n_e * n_n
+        nu_grid = n_n
         nu_grid *= sigma_grid
         nu_grid *= v_e
         return nu_grid
