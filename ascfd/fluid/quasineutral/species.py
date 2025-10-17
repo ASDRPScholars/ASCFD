@@ -4,17 +4,24 @@ from ascfd.inputs import Inputs
 from ascfd.fields.fields import Fields
 
 import numpy as np
+import sys
+import warnings
 
 class QNFluidSpecies(FluidSpecies):
     def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields, simulation):
         super().__init__(params, a_inputs, fields, simulation)
         
+        self.var_grids = {}
+        
         self.E_perp = 4e4 # TODO: better than 0 somehow
+        self.check_grid()
         
     # TODO: DOUBLE CHECK WE'RE HANDLING GHOSTS HERE RIGHT CUZ THIS ALWAYS TRIPS ME UP
     
     def update(self):
         """Update electron fluid with ion continuity, Ohm's law momentum, and Euler energy flux."""
+        
+        self.check_grid()
         
         print("[UPDATE] THIS IS NUMBER DENSITY", self.grid[self.c.NCOMP])
         
@@ -32,6 +39,7 @@ class QNFluidSpecies(FluidSpecies):
         eps_0 = self.c.eps_0
         
         p_e = n_e * k_B * T_e # TODO (ideal gas law?) - CHECK UHHHH - WHY IS THIS SO CLOSE TO ENERGY FORMULA
+        grad_p_e_perp = np.gradient(p_e, self.inp.dx, 0)[0]
         
         l_D = np.sqrt((eps_0 * k_B * T_e)/(q_e**2 * n_e)) # debye length - marks eq (2.2)
         
@@ -44,7 +52,8 @@ class QNFluidSpecies(FluidSpecies):
         nu_ei = (n_e * Z_star * q_e**4 * couloumb_ln) / (3 * (2*np.pi)**(3/2) * eps_0**2 * np.sqrt(m_e) * (k_B * T_e)**(3/2))
         nu_en = self.simulation.get_collision_frequency("en")
         nu_anom = 0 # TODO (much later)
-        nu_e = nu_ei + nu_en + nu_anom
+        # nu_e = nu_ei + nu_en + nu_anom # TODO: SHOULLD WE STILL USE NU_EI FROM MIKELLIDES
+        nu_e = nu_en + nu_anom
         
         omega_ce = q_e * np.abs(self.fields.B[:, :, 1]) / m_e # cyclotron frequency - marks eq (2.3)
         hall_param = omega_ce / nu_e # hall parameter - marks eq (2.5), alternatively combine the two to get q_e * B / m_e * nu_e per (pg 50 inline)
@@ -54,36 +63,47 @@ class QNFluidSpecies(FluidSpecies):
         
         _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(U, self.inp.nx, self.inp.ny, self.inp.ng, nu_e=nu_e, hall_param=hall_param, omega_ce=omega_ce)
         
+        self.var_grids.update({
+            "n_i": n_i,
+            "n_n": n_n,
+            "p_e": p_e,
+            "grad_p_e_perp":grad_p_e_perp,
+            "l_D": l_D,
+            "plasma_param": plasma_param,
+            "couloumb_ln": couloumb_ln,
+            "nu_en": nu_en,
+            "nu_e": nu_e,
+            "omega_ce": omega_ce,
+            "hall_param": hall_param,
+            "E_perp": self.E_perp
+        })
+        
         for icomp in range(self.c.NUMQ):
             # FIX CONSISTENT GHOSTS IF BOUNDS BECOME A REAL PROBLEM:
             # TODO: ION GET DENSITY FUNCTIONS INCLUDE GHOSTS...
             # TODO: BECAUSE WHEN WE SET GRID, THE GHOST CELLS ACTUALLY GET INCLUDED IN GRID BOUNDS (so tehnically bounds are off by (2*ng)/n in every sim...)
             if icomp == self.c.NCOMP:
                 U[icomp, ng:-ng, ng:-ng] = n_i
-                # print("!CONTINUITY UPDATE!")
-                # print(n_i)
-                # print(U[icomp, ng:-ng, ng:-ng])
                 
             elif icomp == self.c.JXCOMP:
                 # j_e = q_e * n_e * u_e
-    
-                # j_i = self.simulation.get_species_current_density("i")[ng:-ng, ng:-ng]
-                # # j_i = 1e17 * self.inp.q * 20
-                # q_e = self.params.charge
-                # n_e = U[self.c.NCOMP, ng:-ng, ng:-ng]
-                # # n_e = 1e17
                 
-                # U[icomp, ng:-ng, ng:-ng] = j_i / (q_e * n_e) # ok if no ions OR electrons then we get div by zero yeah
+                # print("!@! hall_param", hall_param)
+                # print("!@! n_e", n_e)
+                # print("!@! m_e", m_e)
+                # print("!@! nu_e", nu_e)
+                # print("!@! self.E_perp", self.E_perp)
+                # print("!@! p_e", p_e)
+                # print("!@! grad_p_e_perp", np.gradient(p_e, self.inp.dx, 0)[0])
                 
-                
-                
-                j_e_perp = (1/(1 + hall_param**2) * (q_e**2 * n_e)/(m_e * nu_e)) * (self.E_perp + np.gradient(p_e, self.inp.dx, 0)[0]/(q_e*n_e)) # perpendicular electron current - marks eqs (2.29-2.31)
+                j_e_perp = (1/(1 + hall_param**2) * (q_e**2 * n_e)/(m_e * nu_e)) * (self.E_perp + grad_p_e_perp/(q_e*n_e)) # perpendicular electron current - marks eqs (2.29-2.31)
                 
                 j_i_perp = self.simulation.get_species_current_density("i")[ng:-ng, ng:-ng] # TODO completely 1d, for now
                 # TODO ^ ALSO SLICING NG 1) HERE AND 2) ON SIMLUATION GET_DENSITY IS KINDA SUS...
+                print("!@! j_i_perp", j_i_perp)
             
                 # TODO: fix improper dx with ghost cells later, if its a problem
-                self.E_perp = eta * (1 + hall_param**2) * j_e_perp - (np.gradient(p_e, self.inp.dx, 0)[0]/(q_e * n_e)) + eta_ei * j_i_perp # mikellides eqs (24a-24b)
+                self.E_perp = eta * (1 + hall_param**2) * j_e_perp - (grad_p_e_perp/(q_e * n_e)) + eta_ei * j_i_perp # mikellides eqs (24a-24b)
                 U[icomp, ng:-ng, ng:-ng] = j_e_perp
                 # U[icomp, ng:-ng, ng:-ng] = 1
             
@@ -109,3 +129,36 @@ class QNFluidSpecies(FluidSpecies):
                 
                 # U[icomp, ng:-ng, ng:-ng] -= delta
                 # add heat flux source terms
+    
+    
+    def check_grid(self):
+        U = self.grid
+        
+        for icomp in range(self.c.NUMQ):
+            nan_mask = np.isnan(U[icomp])
+            
+            if nan_mask.any():
+                nan_rows, nan_cols = np.where(nan_mask)
+                nan_rows = list(nan_rows)
+                nan_cols = list(nan_cols)
+                
+                nan_cells = [(nan_rows[i], nan_cols[i]) for i in range(len(nan_rows))]
+
+                with open("output/debug/nan_values.txt", "a") as f:
+                    f.write(f"\n[QN] NAN VALUE FOR ICOMP={icomp} AT: {nan_cells}")
+                    warnings.warn(f"[QN] NAN VALUE FOR ICOMP={icomp} AT: {nan_cells}", category=RuntimeWarning)
+        
+        for var in self.var_grids:
+            nan_mask = np.isnan(self.var_grids[var])
+            
+            if nan_mask.any():
+                nan_rows, nan_cols = np.where(nan_mask)
+                nan_rows = list(nan_rows)
+                nan_cols = list(nan_cols)
+                
+                nan_cells = [(nan_rows[i], nan_cols[i]) for i in range(len(nan_rows))]
+
+                with open("output/debug/nan_values.txt", "a") as f:
+                    f.write(f"\n[QN] NAN VALUE FOR VAR={var} AT: {nan_cells}")
+                    warnings.warn(f"[QN] NAN VALUE FOR VAR={var} AT: {nan_cells}", category=RuntimeWarning)
+            

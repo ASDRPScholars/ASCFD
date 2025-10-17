@@ -167,11 +167,11 @@ class FluidEuler:
             
             energy_flux = (5/2*j_e*k_B*T_e - Q_e_perp)
             
-            np.set_printoptions(threshold=sys.maxsize)
-            print("!@! j_e", j_e)
-            print("!@! T_e", T_e)
-            print("!@! Q_e_perp", Q_e_perp)
-            print("!@! 5/2*j_e*k_B*T_e - Q_e_perp", energy_flux)
+            # np.set_printoptions(threshold=sys.maxsize)
+            # print("!@! j_e", j_e)
+            # print("!@! T_e", T_e)
+            # print("!@! Q_e_perp", Q_e_perp)
+            # print("!@! 5/2*j_e*k_B*T_e - Q_e_perp", energy_flux)
             
             
             flux_x[self.c.TCOMP] = 2/(3*n_e*k_B) # thermal energy density (3/2 * n_e * k_B * T_e) equation - rearrange mikellides eq (25), or marks eq (4.8)

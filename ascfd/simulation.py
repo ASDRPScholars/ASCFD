@@ -90,6 +90,9 @@ class Simulation:
         # -1 is no output. Always output ICs if we are outputting.
         if self.inp.output_freq >= 0:
             self.output()
+            
+        with open("output/debug/nan_values.txt", "w") as f:
+            pass
         
         
     def _phys_to_normal(self) -> Inputs:
@@ -135,12 +138,15 @@ class Simulation:
         return normal_inp
     
     def get_collision_frequency(self, collision_type):
+        # NOTE: a good eV/k_B range for electrons is 1-30 eV
+        # TODO: THAT MEANS GRAPHS THAT SAY ENERGY (eV) BUT SHOW VALUES BETWEEN 1-30 ARE REALLY TALKING ABOUT TEMP eV/k_B (?)
         
         sigma_grid = np.zeros_like(self.inp.internal_grid)
         n_e = self.get_species_number_density("e")
         n_n = self.get_species_number_density("n")
         T_e = self.get_species_temperature("e")
-        E_e = T_e * self.inp.k_B # TODO: or 3/2
+        v_e = self.get_species_velocity("e")
+        E_e = T_e # TODO: let's assume the cross-section graphs are talking about energy as eV/k_B... - so we don't multiply by k_B for now...
         
         if collision_type == "en":
             for i in range (self.inp.nx):
@@ -149,7 +155,9 @@ class Simulation:
                     sigma_grid[i, j] = self.collisions.get_total_en_cross_section(energy)
     
         print(np.shape(n_e), np.shape(n_n), np.shape(sigma_grid))
-        nu_grid = n_e * n_n * sigma_grid
+        nu_grid = n_e * n_n
+        nu_grid *= sigma_grid
+        nu_grid *= v_e
         return nu_grid
     
     
@@ -246,6 +254,9 @@ class Simulation:
             else:
                 raise ValueError(f"Unknown time stepper: {self.inp.timeStepper}")
             
+            with open("output/debug/nan_values.txt", "a") as f:
+                f.write(f"\n--Timestep: {self.timestep}--")
+                
             self.t += self.dt_physical
             self.timestep += 1
             

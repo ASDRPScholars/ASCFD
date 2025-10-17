@@ -28,7 +28,7 @@ class ParticleBoundaryConditions:
         # weight = 1000000
         
         #TODO: kB = 1.380649e-23
-        kB = 1
+        kB = self.inp.k_B
         v_th = np.sqrt(2 * kB * self.params.temperature / self.params.mass)
         
         new_particles = []
