@@ -96,15 +96,17 @@ class QNFluidSpecies(FluidSpecies):
                 # print("!@! p_e", p_e)
                 # print("!@! grad_p_e_perp", np.gradient(p_e, self.inp.dx, 0)[0])
                 
-                j_e_perp = (1/(1 + hall_param**2) * (q_e**2 * n_e)/(m_e * nu_e)) * (self.E_perp + grad_p_e_perp/(q_e*n_e)) # perpendicular electron current - marks eqs (2.29-2.31)
-                
+                # j_e_perp = (1/(1 + hall_param**2) * (q_e**2 * n_e)/(m_e * nu_e)) * (self.E_perp + grad_p_e_perp/(q_e*n_e)) # perpendicular electron current - marks eqs (2.29-2.31)
+                j_e_perp = ((q_e * n_e * nu_e)/(omega_ce * self.fields.B[:, :, 1])) * (self.E_perp + grad_p_e_perp/(q_e*n_e)) # perpendicular electron current - marks eqs (2.29-2.31)
+                j_e_perp = (1 / (1+hall_param**2) * (q_e**2 * n_e)/(m_e * nu_e)) * (self.E_perp + grad_p_e_perp/(q_e*n_e))
+                j_e_perp_clipped = np.clip(j_e_perp, a_min=None, a_max=1e12)
                 j_i_perp = self.simulation.get_species_current_density("i")[ng:-ng, ng:-ng] # TODO completely 1d, for now
                 # TODO ^ ALSO SLICING NG 1) HERE AND 2) ON SIMLUATION GET_DENSITY IS KINDA SUS...
                 print("!@! j_i_perp", j_i_perp)
             
                 # TODO: fix improper dx with ghost cells later, if its a problem
                 self.E_perp = eta * (1 + hall_param**2) * j_e_perp - (grad_p_e_perp/(q_e * n_e)) + eta_ei * j_i_perp # mikellides eqs (24a-24b)
-                U[icomp, ng:-ng, ng:-ng] = j_e_perp
+                U[icomp, ng:-ng, ng:-ng] = j_e_perp_clipped
                 # U[icomp, ng:-ng, ng:-ng] = 1
             
             elif icomp == self.c.JYCOMP:
@@ -135,30 +137,38 @@ class QNFluidSpecies(FluidSpecies):
         U = self.grid
         
         for icomp in range(self.c.NUMQ):
-            nan_mask = np.isnan(U[icomp])
+            mask = np.isnan(U[icomp])
+            inf_mask = np.isinf(U[icomp])
+            masks = {"nan": mask, "inf": inf_mask}
             
-            if nan_mask.any():
-                nan_rows, nan_cols = np.where(nan_mask)
-                nan_rows = list(nan_rows)
-                nan_cols = list(nan_cols)
-                
-                nan_cells = [(nan_rows[i], nan_cols[i]) for i in range(len(nan_rows))]
+            for mask_name in masks:
+                mask = masks[mask_name]
+                if mask.any():
+                    rows, cols = np.where(mask)
+                    rows = list(rows)
+                    cols = list(cols)
+                    
+                    cells = [(rows[i], cols[i]) for i in range(len(rows))]
 
-                with open("output/debug/nan_values.txt", "a") as f:
-                    f.write(f"\n[QN] NAN VALUE FOR ICOMP={icomp} AT: {nan_cells}")
-                    warnings.warn(f"[QN] NAN VALUE FOR ICOMP={icomp} AT: {nan_cells}", category=RuntimeWarning)
+                    with open(f"output/debug/{mask_name}_values.txt", "a") as f:
+                        f.write(f"\n[QN] {mask_name} VALUE FOR ICOMP={icomp} AT: {cells}")
+                        warnings.warn(f"[QN] {mask_name} VALUE FOR ICOMP={icomp} AT: {cells}", category=RuntimeWarning)
         
         for var in self.var_grids:
-            nan_mask = np.isnan(self.var_grids[var])
+            mask = np.isnan(self.var_grids[var])
+            inf_mask = np.isinf(self.var_grids[var])
+            masks = {"nan": mask, "inf": inf_mask}
             
-            if nan_mask.any():
-                nan_rows, nan_cols = np.where(nan_mask)
-                nan_rows = list(nan_rows)
-                nan_cols = list(nan_cols)
-                
-                nan_cells = [(nan_rows[i], nan_cols[i]) for i in range(len(nan_rows))]
+            for mask_name in masks:
+                mask = masks[mask_name]
+                if mask.any():
+                    rows, cols = np.where(mask)
+                    rows = list(rows)
+                    cols = list(cols)
+                    
+                    cells = [(rows[i], cols[i]) for i in range(len(rows))]
 
-                with open("output/debug/nan_values.txt", "a") as f:
-                    f.write(f"\n[QN] NAN VALUE FOR VAR={var} AT: {nan_cells}")
-                    warnings.warn(f"[QN] NAN VALUE FOR VAR={var} AT: {nan_cells}", category=RuntimeWarning)
+                    with open(f"output/debug/{mask_name}_values.txt", "a") as f:
+                        f.write(f"\n[QN] {mask_name} VALUE FOR VAR={var} AT: {cells}")
+                        warnings.warn(f"[QN] {mask_name} VALUE FOR VAR={var} AT: {cells}", category=RuntimeWarning)
             

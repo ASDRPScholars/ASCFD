@@ -94,6 +94,9 @@ class Simulation:
         with open("output/debug/nan_values.txt", "w") as f:
             pass
         
+        with open("output/debug/inf_values.txt", "w") as f:
+            pass
+        
         
     def _phys_to_normal(self) -> Inputs:
         print("CALLED PHYS TO NORMAL")
@@ -166,11 +169,11 @@ class Simulation:
         ng = self.inp.ng
         
         if species == "i":
-            return self.ions.compute_particle_density_field()[ng:-ng, ng:-ng]
+            return np.maximum(self.ions.compute_particle_density_field()[ng:-ng, ng:-ng], 1e-12)
         elif species == "n":
-            return self.neutrals.compute_particle_density_field()[ng:-ng, ng:-ng]
+            return np.maximum(self.neutrals.compute_particle_density_field()[ng:-ng, ng:-ng], 1e-12)
         elif species == "e" and self.inp.system == "quasineutral":
-            return self.electrons.grid[self.c.NCOMP, ng:-ng, ng:-ng]
+            return np.maximum(self.electrons.grid[self.c.NCOMP, ng:-ng, ng:-ng], 1e-12)
         
         
     def get_species_current_density(self, species):
@@ -256,6 +259,11 @@ class Simulation:
             
             with open("output/debug/nan_values.txt", "a") as f:
                 f.write(f"\n--Timestep: {self.timestep}--")
+                f.close()
+                
+            with open("output/debug/inf_values.txt", "a") as f:
+                f.write(f"\n--Timestep: {self.timestep}--")
+                f.close()
                 
             self.t += self.dt_physical
             self.timestep += 1
@@ -450,6 +458,11 @@ class Simulation:
                 plot_map[var](idx)
                 axs[idx].set_xlim(self.inp.xlim[0] * self.ref.L, self.inp.xlim[1] * self.ref.L)
                 axs[idx].set_ylim(self.inp.ylim[0] * self.ref.L, self.inp.ylim[1] * self.ref.L)
+                
+                # masked_array = np.ma.array (plot, mask=np.isnan(plot))
+                # cmap = mpl.cm.jet
+                # cmap.set_bad('white',1.)
+                # axs.imshow(masked_array, interpolation='nearest', cmap=cmap)
                 
                 print("X LIM", self.inp.xlim[1])
                 print("y LIM", self.inp.ylim[1])
