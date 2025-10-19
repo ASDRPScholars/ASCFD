@@ -20,6 +20,7 @@ import subprocess
 import scienceplots
 import cmocean
 import copy
+import os
 
 # plt.rcParams['text.usetex'] = True
 # plt.style.use(['science','ieee'])
@@ -78,7 +79,7 @@ class Simulation:
         self.t = self.inp.t0
         self.timestep = 0
         # self.dt = self.get_dt()
-        self.dt_physical = 1e-5
+        self.dt_physical = 1e-7
         self.dt_norm = self.dt_physical / self.ref.dt
         
         # Set timestep for all species
@@ -91,11 +92,10 @@ class Simulation:
         if self.inp.output_freq >= 0:
             self.output()
             
-        with open("output/debug/nan_values.txt", "w") as f:
-            pass
-        
-        with open("output/debug/inf_values.txt", "w") as f:
-            pass
+        for entry_name in os.listdir("output/debug"):
+            path = os.path.join("output/debug", entry_name)
+            with open (path, "w"):
+                pass
         
         
     def _phys_to_normal(self) -> Inputs:
@@ -257,13 +257,10 @@ class Simulation:
             else:
                 raise ValueError(f"Unknown time stepper: {self.inp.timeStepper}")
             
-            with open("output/debug/nan_values.txt", "a") as f:
-                f.write(f"\n--Timestep: {self.timestep}--")
-                f.close()
-                
-            with open("output/debug/inf_values.txt", "a") as f:
-                f.write(f"\n--Timestep: {self.timestep}--")
-                f.close()
+            for entry_name in os.listdir("output/debug"):
+                path = os.path.join("output/debug", entry_name)
+                with open (path, "a") as f:
+                    f.write(f"\n--Timestep: {self.timestep}--")
                 
             self.t += self.dt_physical
             self.timestep += 1

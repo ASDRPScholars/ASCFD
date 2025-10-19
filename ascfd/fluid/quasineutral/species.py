@@ -137,6 +137,10 @@ class QNFluidSpecies(FluidSpecies):
         U = self.grid
         
         for icomp in range(self.c.NUMQ):
+            
+            with open(f"output/debug/all_values.txt", "a") as f:
+                f.write(f"\n[QN] VALUE FOR ICOMP={icomp}: {U[icomp]}")
+            
             mask = np.isnan(U[icomp])
             inf_mask = np.isinf(U[icomp])
             masks = {"nan": mask, "inf": inf_mask}
