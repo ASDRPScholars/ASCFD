@@ -21,8 +21,6 @@ class QNFluidSpecies(FluidSpecies):
     def update(self):
         """Update electron fluid with ion continuity, Ohm's law momentum, and Euler energy flux."""
         
-        self.check_grid()
-        
         print("[UPDATE] THIS IS NUMBER DENSITY", self.grid[self.c.NCOMP])
         
         ng = self.inp.ng
@@ -85,6 +83,29 @@ class QNFluidSpecies(FluidSpecies):
             # TODO: BECAUSE WHEN WE SET GRID, THE GHOST CELLS ACTUALLY GET INCLUDED IN GRID BOUNDS (so tehnically bounds are off by (2*ng)/n in every sim...)
             if icomp == self.c.NCOMP:
                 U[icomp, ng:-ng, ng:-ng] = n_i
+            
+            # elif icomp == self.c.JYCOMP:
+            #     (q_e**2 * n_e)/(m_e * nu_e) * (self.E_perp + np.gradient(p_e, 0, self.inp.dy)/(q_e*n_e)) # parallel electron current - marks eqs (2.29-2.31)
+                
+            # elif icomp == self.c.JZCOMP:
+            #     j_theta = hall_param * j_e_perp # azimuthal electron current - marks eqs (2.29-2.31)
+                
+            elif icomp == self.c.TCOMP:
+                delta = (self.dt / self.inp.dx) * (right_flux[icomp, ng:-ng, ng:-ng] - left_flux[icomp, ng:-ng, ng:-ng]) + \
+                        (self.dt / self.inp.dy) * (top_flux[icomp, ng:-ng, ng:-ng] - bottom_flux[icomp, ng:-ng, ng:-ng])
+                    
+                U[icomp, ng:-ng, ng:-ng] -= delta
+                
+                self.bcs.apply_bcs()
+                
+                # ACTUAL TODO: add other source terms later
+                
+                # TODO: complete implement based on mikellides 2012 eq. (25)
+                # do necessary conversion between E and n * k_B * T_e?
+                # EDIT FLUX DEFINED IN EULER?
+                
+                # U[icomp, ng:-ng, ng:-ng] -= delta
+                # add heat flux source terms
                 
             elif icomp == self.c.JXCOMP:
                 # j_e = q_e * n_e * u_e
@@ -105,35 +126,17 @@ class QNFluidSpecies(FluidSpecies):
                 # TODO ^ ALSO SLICING NG 1) HERE AND 2) ON SIMLUATION GET_DENSITY IS KINDA SUS...
             
                 j_e_perp = (mu_e / (1 + hall_param**2)) * (-q_e * n_e * self.E_perp + grad_p_e_perp) # textbook eq (7.5-11)
+                # j_e_perp_clipped = np.clip(j_e_perp, a_min=None, a_max=1e6)
                 # TODO: fix improper dx with ghost cells later, if its a problem
                 self.E_perp = eta * (1 + hall_param**2) * j_e_perp # - (grad_p_e_perp/(q_e * n_e)) + eta_ei * j_i_perp # mikellides eqs (24a-24b)
                 
                 
                 U[icomp, ng:-ng, ng:-ng] = j_e_perp
                 # U[icomp, ng:-ng, ng:-ng] = 1
-            
-            elif icomp == self.c.JYCOMP:
-                (q_e**2 * n_e)/(m_e * nu_e) * (self.E_perp + np.gradient(p_e, 0, self.inp.dy)/(q_e*n_e)) # parallel electron current - marks eqs (2.29-2.31)
                 
-            elif icomp == self.c.JZCOMP:
-                j_theta = hall_param * j_e_perp # azimuthal electron current - marks eqs (2.29-2.31)
-                
-            elif icomp == self.c.TCOMP:
-                delta = (self.dt / self.inp.dx) * (right_flux[icomp, ng:-ng, ng:-ng] - left_flux[icomp, ng:-ng, ng:-ng]) + \
-                        (self.dt / self.inp.dy) * (top_flux[icomp, ng:-ng, ng:-ng] - bottom_flux[icomp, ng:-ng, ng:-ng])
-                    
-                U[icomp, ng:-ng, ng:-ng] -= delta
-                
-                self.bcs.apply_bcs()
-                
-                # ACTUAL TODO: add other source terms later
-                
-                # TODO: complete implement based on mikellides 2012 eq. (25)
-                # do necessary conversion between E and n * k_B * T_e?
-                # EDIT FLUX DEFINED IN EULER?
-                
-                # U[icomp, ng:-ng, ng:-ng] -= delta
-                # add heat flux source terms
+        self.check_grid()
+        
+        print("a")
     
     
     def check_grid(self):
@@ -155,7 +158,7 @@ class QNFluidSpecies(FluidSpecies):
                     rows = list(rows)
                     cols = list(cols)
                     
-                    cells = [(rows[i], cols[i]) for i in range(len(rows))]
+                    cells = [(rows[i]-2, cols[i]-2) for i in range(len(rows))]
 
                     with open(f"output/debug/{mask_name}_values.txt", "a") as f:
                         f.write(f"\n[QN] {mask_name} VALUE FOR ICOMP={icomp} AT: {cells}")
@@ -173,7 +176,7 @@ class QNFluidSpecies(FluidSpecies):
                     rows = list(rows)
                     cols = list(cols)
                     
-                    cells = [(rows[i], cols[i]) for i in range(len(rows))]
+                    cells = [(rows[i]-2, cols[i]-2) for i in range(len(rows))]
 
                     with open(f"output/debug/{mask_name}_values.txt", "a") as f:
                         f.write(f"\n[QN] {mask_name} VALUE FOR VAR={var} AT: {cells}")

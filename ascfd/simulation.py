@@ -161,7 +161,8 @@ class Simulation:
         nu_grid = n_n
         nu_grid *= sigma_grid
         nu_grid *= v_e
-        return nu_grid
+        
+        return np.maximum(nu_grid, 1e-12)
     
     
     def get_species_number_density(self, species):
