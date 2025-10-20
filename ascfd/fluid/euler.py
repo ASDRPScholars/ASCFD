@@ -151,7 +151,7 @@ class FluidEuler:
             q_e = self.inp.q
             m_e = self.inp.m_e
             
-            p_e = k_B * T_e * n_e # TODO PRESSURE IS ENERGY / VOLUME?
+            p_e = n_e * k_B * T_e # NOTE: CONFIRMED ON TEXTBOOK PG 48
             u_e = j_e / (q_e * n_e)
             
             # omega_ce = hall_param * nu_e

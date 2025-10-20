@@ -100,10 +100,10 @@ class FluidFlux:
 
                 # compute flux components for each variable
                 for icomp in range(self.c.NUMQ):
-                    numFluxX_plus[icomp, i, j] = 0.5 * (fx[icomp, i+1, j] + fx[icomp, i, j]) - 0.5 * sMaxX * (consU[icomp, i+1, j] - consU[icomp, i, j])
-                    numFluxX_minus[icomp, i, j] = 0.5 * (fx[icomp, i, j] + fx[icomp, i-1, j]) - 0.5 * sMaxX * (consU[icomp, i, j] - consU[icomp, i-1, j])
-                    numFluxY_plus[icomp, i, j] = 0.5 * (fy[icomp, i, j+1] + fy[icomp, i, j]) - 0.5 * sMaxY * (consU[icomp, i, j+1] - consU[icomp, i, j])
-                    numFluxY_minus[icomp, i, j] = 0.5 * (fy[icomp, i, j] + fy[icomp, i, j-1]) - 0.5 * sMaxY * (consU[icomp, i, j] - consU[icomp, i, j-1])
+                    numFluxX_plus[icomp, i, j] = 0.5 * (fx[icomp, i+1, j] + fx[icomp, i, j]) #- 0.5 * sMaxX * (consU[icomp, i+1, j] - consU[icomp, i, j])
+                    numFluxX_minus[icomp, i, j] = 0.5 * (fx[icomp, i, j] + fx[icomp, i-1, j]) #- 0.5 * sMaxX * (consU[icomp, i, j] - consU[icomp, i-1, j])
+                    numFluxY_plus[icomp, i, j] = 0.5 * (fy[icomp, i, j+1] + fy[icomp, i, j]) #- 0.5 * sMaxY * (consU[icomp, i, j+1] - consU[icomp, i, j])
+                    numFluxY_minus[icomp, i, j] = 0.5 * (fy[icomp, i, j] + fy[icomp, i, j-1]) #- 0.5 * sMaxY * (consU[icomp, i, j] - consU[icomp, i, j-1])
 
         return consU, numFluxX_plus, numFluxX_minus, numFluxY_plus, numFluxY_minus
     
