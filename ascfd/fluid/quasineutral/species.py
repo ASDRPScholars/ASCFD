@@ -38,7 +38,7 @@ class QNFluidSpecies(FluidSpecies):
         k_B = self.c.k_B
         eps_0 = self.c.eps_0
         
-        p_e = n_e * k_B * T_e # TODO (ideal gas law?) - CHECK UHHHH - WHY IS THIS SO CLOSE TO ENERGY FORMULA
+        p_e = n_e * k_B * T_e
         grad_p_e_perp = np.gradient(p_e, self.inp.dx, 0)[0]
         
         l_D = np.sqrt((eps_0 * k_B * T_e)/(q_e**2 * n_e)) # debye length - marks eq (2.2)
@@ -61,6 +61,7 @@ class QNFluidSpecies(FluidSpecies):
         eta = (m_e * nu_e) / (q_e**2 * n_e) # eta, total resistivity - mikellides eq (23)
         eta_ei = (m_e * nu_ei) / (q_e**2 * n_e) # eta, electron-ion resistivity - mikellides eq (23)
         
+        mu_e = -q_e/(m_e * nu_e) # total electron mobility - textbook pg 68
         _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(U, self.inp.nx, self.inp.ny, self.inp.ng, nu_e=nu_e, hall_param=hall_param, omega_ce=omega_ce)
         
         self.var_grids.update({
@@ -102,11 +103,13 @@ class QNFluidSpecies(FluidSpecies):
                 j_e_perp_clipped = np.clip(j_e_perp, a_min=None, a_max=1e12)
                 j_i_perp = self.simulation.get_species_current_density("i")[ng:-ng, ng:-ng] # TODO completely 1d, for now
                 # TODO ^ ALSO SLICING NG 1) HERE AND 2) ON SIMLUATION GET_DENSITY IS KINDA SUS...
-                print("!@! j_i_perp", j_i_perp)
             
+                j_e_perp = (mu_e / (1 + hall_param**2)) * (-q_e * n_e * self.E_perp + grad_p_e_perp) # textbook eq (7.5-11)
                 # TODO: fix improper dx with ghost cells later, if its a problem
-                self.E_perp = eta * (1 + hall_param**2) * j_e_perp - (grad_p_e_perp/(q_e * n_e)) + eta_ei * j_i_perp # mikellides eqs (24a-24b)
-                U[icomp, ng:-ng, ng:-ng] = j_e_perp_clipped
+                self.E_perp = eta * (1 + hall_param**2) * j_e_perp # - (grad_p_e_perp/(q_e * n_e)) + eta_ei * j_i_perp # mikellides eqs (24a-24b)
+                
+                
+                U[icomp, ng:-ng, ng:-ng] = j_e_perp
                 # U[icomp, ng:-ng, ng:-ng] = 1
             
             elif icomp == self.c.JYCOMP:
