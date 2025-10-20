@@ -151,21 +151,26 @@ class FluidEuler:
             q_e = self.inp.q
             m_e = self.inp.m_e
             
-            omega_ce = hall_param * nu_e
+            p_e = k_B * T_e * n_e # TODO PRESSURE IS ENERGY / VOLUME?
+            u_e = j_e / (q_e * n_e)
             
-            nu_e = np.pad(nu_e, pad_width=((2, 2), (2, 2)), mode='edge')
-            omega_ce = np.pad(omega_ce, pad_width=((2, 2), (2, 2)), mode='edge')
+            # omega_ce = hall_param * nu_e
+            
+            # nu_e = np.pad(nu_e, pad_width=((2, 2), (2, 2)), mode='edge')
+            # omega_ce = np.pad(omega_ce, pad_width=((2, 2), (2, 2)), mode='edge')
 
-            # RESEARCH TODO: THERE ARE PROBLEMS WITH DERIVING HEAT FLUX FROM FOURIER LAW OF CONDUCTION THOUGH
+            # # RESEARCH TODO: THERE ARE PROBLEMS WITH DERIVING HEAT FLUX FROM FOURIER LAW OF CONDUCTION THOUGH
             
-            kappa_e_perp = 4.7 * (nu_e * n_e * T_e) / (m_e * omega_ce**2) # thermal conductivity coefficient - marks eq (6.18)
+            # kappa_e_perp = 4.7 * (nu_e * n_e * T_e) / (m_e * omega_ce**2) # thermal conductivity coefficient - marks eq (6.18)
             
-            # BIG TODO TODO: CROSS CHECK WITH MIKELLIDES EQ (25) - DO WE ADD Q TO THERMAL ENERGY
-            print(np.shape(T_e), np.shape(j_e), np.shape(kappa_e_perp), np.shape(np.gradient(T_e, self.inp.dx)))
+            # # BIG TODO TODO: CROSS CHECK WITH MIKELLIDES EQ (25) - DO WE ADD Q TO THERMAL ENERGY
+            # print(np.shape(T_e), np.shape(j_e), np.shape(kappa_e_perp), np.shape(np.gradient(T_e, self.inp.dx)))
             
-            Q_e_perp = -kappa_e_perp * np.gradient(T_e, self.inp.dx, 0)[0]
+            # Q_e_perp = -kappa_e_perp * np.gradient(T_e, self.inp.dx, 0)[0]
             
-            energy_flux = (5/2*j_e*k_B*T_e - Q_e_perp)
+            # energy_flux = (5/2*j_e*k_B*T_e - Q_e_perp)
+            
+            energy_flux = ((3/2)*k_B*T_e + p_e) * u_e
             
             # np.set_printoptions(threshold=sys.maxsize)
             # print("!@! j_e", j_e)
@@ -173,8 +178,8 @@ class FluidEuler:
             # print("!@! Q_e_perp", Q_e_perp)
             # print("!@! 5/2*j_e*k_B*T_e - Q_e_perp", energy_flux)
             
-            
-            flux_x[self.c.TCOMP] = 2/(3*n_e*k_B) * energy_flux # thermal energy density (3/2 * n_e * k_B * T_e) equation - rearrange mikellides eq (25), or marks eq (4.8)
+            flux_x[self.c.TCOMP] = 2/(3*k_B) * energy_flux # thermal energy density (3/2 * n_e * k_B * T_e) equation - rearrange mikellides eq (25), or marks eq (4.8)
+            flux_x[self.c.TCOMP] = 0
             # TODO: flux_y[self.c.ECOMP] = ...
             
 
