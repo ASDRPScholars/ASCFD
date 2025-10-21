@@ -9,7 +9,7 @@ class FieldInitialConditions:
         
     # TODO: THIS IS WHERE WE IMPLEMENT THE MAGNETIC FIELD INITIAL CONDITION
     def apply_B_ics(self):
-        if self.inp.system in ["euler2d", "quasineutral"]:
+        if self.inp.e_system in ["euler2d", "quasineutral"]:
             if self.inp.B_ics == "guillaume":
                 return np.ones_like(self.B_field) * 200
                 return self.guillaume()
@@ -19,7 +19,7 @@ class FieldInitialConditions:
                 
                 
     def apply_E_ics(self):
-        if self.inp.system == "euler2d":
+        if self.inp.e_system == "euler2d":
             pass
         
         

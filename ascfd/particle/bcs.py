@@ -24,7 +24,7 @@ class ParticleBoundaryConditions:
         """Apply inflow boundary condition with proper n_ppc seeding"""
         WEIGHT = self.pc.NUMQ
         
-        weight = self.inp.n_n * self.inp.v_n * self.inp.ylim[1] * self.inp.dt / self.inp.n_ppc
+        weight = self.inp.n_n * self.inp.v_n * self.inp.ylim[1] * self.inp.dt / self.inp.N_ppc
         # weight = 1000000
         
         #TODO: kB = 1.380649e-23

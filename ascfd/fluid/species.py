@@ -20,17 +20,17 @@ import copy
 import sys
 
 class FluidSpecies:
-    def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields, simulation):
+    def __init__(self, c: FluidConstants, params: SpeciesParams, a_inputs: Inputs, fields: Fields, simulation):
         print("INITIALIZED ELECTRONS")
         
         self.inp = a_inputs
         self.params = params
         self.dt = None
         
-        self.c = FluidConstants(self.inp)
+        self.c = c
         self.pc = ParticleConstants()
-        self.euler = FluidEuler(self.c, self.inp, simulation)
-        self.flux = FluidFlux(self.c, self.inp, simulation)
+        self.euler = FluidEuler(self.c, self.inp, self.params, simulation)
+        self.flux = FluidFlux(self.c, self.inp, self.params, simulation)
         
         self.ref = PlasmaReferences()
         
@@ -41,12 +41,10 @@ class FluidSpecies:
         
         self.grid = np.zeros((self.c.NUMQ, self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
         
-        self.bcs = FluidBoundaryConditions(self.grid, self.inp.bcs_lo, self.inp.bcs_hi, self.inp)
-        self.ics = FluidInitialConditions(self.grid, self.inp, self.params)
+        self.bcs = FluidBoundaryConditions(self.c, self.inp, self.grid, self.inp.bcs_lo, self.inp.bcs_hi)
+        self.ics = FluidInitialConditions(self.c, self.inp, self.params, self.grid)
         
         self.grid[:] = self.ics.apply_ics()
-        
-        print("THIS IS NUMBER DENSITY", self.grid[self.c.NCOMP])
     
         # Apply boundary conditions AFTER setting initial conditions
         return 
@@ -288,7 +286,7 @@ class FluidSpecies:
         WEIGHT = self.pc.NUMQ
         
         # TODO: DO WE ACTUALLY NEED n_ppc particle electrons??
-        n_particles = self.inp.n_ppc * self.inp.nx * self.inp.ny
+        n_particles = self.inp.N_ppc * self.inp.nx * self.inp.ny
         
         # Particle array: [x, y, vx, vy, vz, weight] = 6 components
         ic_particles = np.zeros((self.pc.NUMQ + 1, n_particles))
@@ -313,9 +311,9 @@ class FluidSpecies:
                     # # TODO: use global v_th or use this?
                     # v_th = np.sqrt(2 * p / rho)
                     
-                    weight = rho * self.inp.dx * self.inp.dy / self.inp.n_ppc
+                    weight = rho * self.inp.dx * self.inp.dy / self.inp.N_ppc
                     
-                    for n in range (self.inp.n_ppc):
+                    for n in range (self.inp.N_ppc):
                         R1, R2 = np.random.rand(2)
                         R3, R4 = np.random.rand(2)
 

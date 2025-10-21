@@ -34,7 +34,8 @@ class Simulation:
         self.inp = a_inputs
         self.inp = self._phys_to_normal()
         
-        self.c = FluidConstants(a_inputs)
+        self.c = FluidConstants(self.inp.e_system)
+        self.p_c = FluidConstants(self.inp.i_system)
         self.pc = ParticleConstants()
         self.fields = Fields(self.inp)
         
@@ -43,20 +44,15 @@ class Simulation:
         xe_n_params = SpeciesParams(0, self.inp.m_n, 5/3, "n", density=5.0, temperature=10.0)  # Xe neutrals
         e_params = SpeciesParams(-self.inp.q, self.inp.m_e, 5/3, "e", density=1.0, temperature=100.0)
         
-        if self.inp.system in ["euler2d", "mhd2d"]:
-            self.electrons = FluidSpecies(e_params, self.inp, self.fields, self)
-        elif self.inp.system == "quasineutral":
-            self.electrons = QNFluidSpecies(e_params, self.inp, self.fields, self)
+        if self.inp.e_system in ["euler2d", "mhd2d"]:
+            self.electrons = FluidSpecies(self.c, e_params, self.inp, self.fields, self)
+        elif self.inp.e_system == "quasineutral":
+            self.electrons = QNFluidSpecies(self.c, e_params, self.inp, self.fields, self)
+            self.ions = FluidSpecies(self.p_c, xe_i_params, self.inp, self.fields, self)
         
-        if self.inp.particle_ics is not None:
-            self.neutrals = ParticleSpecies(xe_n_params, self.inp, self.fields, self)
-            self.ions = ParticleSpecies(xe_i_params, self.inp, self.fields, self)
-            
-            # TODO: ADD AN INPUT TOGGLE
-            # self.pelectrons = ParticleSpecies(e_params, self.inp, self.fields, self)
-
-            # self.electrons.pelectrons = self.pelectrons
-            
+        if self.inp.i_ics is not None:
+            self.neutrals = ParticleSpecies(self.pc, xe_n_params, self.inp, self.fields, self)
+            # self.ions = ParticleSpecies(xe_i_params, self.inp, self.fields, self)
             self.all_species = [self.electrons, self.neutrals, self.ions]
         else:
             self.all_species = [self.electrons]
@@ -170,21 +166,31 @@ class Simulation:
         ng = self.inp.ng
         
         if species == "i":
-            return np.maximum(self.ions.compute_particle_density_field()[ng:-ng, ng:-ng], 1e-12)
+            try:
+                return np.maximum(self.ions.compute_particle_density_field()[ng:-ng, ng:-ng], 1e-12)
+            except:
+                return np.maximum(self.ions.grid[self.ions.c.RHOCOMP, ng:-ng, ng:-ng]/self.inp.m_i, 1e-12)
         elif species == "n":
             return np.maximum(self.neutrals.compute_particle_density_field()[ng:-ng, ng:-ng], 1e-12)
-        elif species == "e" and self.inp.system == "quasineutral":
-            return np.maximum(self.electrons.grid[self.c.NCOMP, ng:-ng, ng:-ng], 1e-12)
+            # except:
+            #     return np.maximum(self.neutrals.grid[self.neutrals.c.RHOCOMP, ng:-ng, ng:-ng]/self.inp.m_n, 1e-12)
+        elif species == "e" and self.inp.e_system == "quasineutral":
+            return np.maximum(self.electrons.grid[self.electrons.c.NCOMP, ng:-ng, ng:-ng], 1e-12)
         
         
     def get_species_current_density(self, species):
         """Retrieve 1D (axial) current from charged species"""
         
         if species == "i":
-            return self.ions.compute_particle_density_field() * self.ions.compute_particle_x_velocity_field() * self.inp.q
-        elif species == "e" and self.inp.system == "quasineutral":
+            try:
+                return self.ions.compute_particle_density_field() * self.ions.compute_particle_x_velocity_field() * self.inp.q
+            except:
+                ng = self.inp.ng
+                return self.ions.grid[self.ions.c.RHOCOMP, ng:-ng, ng:-ng] * self.ions.grid[self.ions.c.UCOMP, ng:-ng, ng:-ng] * -self.inp.q
+    
+        elif species == "e" and self.inp.e_system == "quasineutral":
             ng = self.inp.ng
-            return self.electrons.grid[self.c.NCOMP, ng:-ng, ng:-ng] * self.electrons.grid[self.c.UCOMP, ng:-ng, ng:-ng] * -self.inp.q
+            return self.electrons.grid[self.electrons.c.NCOMP, ng:-ng, ng:-ng] * self.electrons.grid[self.electrons.c.UCOMP, ng:-ng, ng:-ng] * -self.inp.q
     
     
     def get_species_velocity(self, species, direction=None):
@@ -194,14 +200,14 @@ class Simulation:
             pass
         elif species == "n":
             pass
-        elif species == "e" and self.inp.system == "quasineutral":
+        elif species == "e" and self.inp.e_system == "quasineutral":
             ng = self.inp.ng
             n_e = self.get_species_number_density("e")
             q_e = -self.inp.q
             
-            u = self.electrons.grid[self.c.JXCOMP, ng:-ng, ng:-ng] / (n_e * q_e)
-            v = self.electrons.grid[self.c.JYCOMP, ng:-ng, ng:-ng] / (n_e * q_e)
-            w = self.electrons.grid[self.c.JZCOMP, ng:-ng, ng:-ng] / (n_e * q_e)
+            u = self.electrons.grid[self.electrons.c.JXCOMP, ng:-ng, ng:-ng] / (n_e * q_e)
+            v = self.electrons.grid[self.electrons.c.JYCOMP, ng:-ng, ng:-ng] / (n_e * q_e)
+            w = self.electrons.grid[self.electrons.c.JZCOMP, ng:-ng, ng:-ng] / (n_e * q_e)
             vel = np.sqrt(u**2 + v**2 + w**2)
         
             value = {"u": u, "v": v, "w": w}.get(direction, vel)
@@ -215,9 +221,9 @@ class Simulation:
             pass
         elif species == "n":
             pass
-        elif species == "e" and self.inp.system == "quasineutral":
+        elif species == "e" and self.inp.e_system == "quasineutral":
             ng = self.inp.ng
-            return self.electrons.grid[self.c.TCOMP, ng:-ng, ng:-ng]
+            return self.electrons.grid[self.electrons.c.TCOMP, ng:-ng, ng:-ng]
         
     # TODO: scale back to real dimensions without messing up other grid bounds?
     # def _normal_to_phys(self):
@@ -284,32 +290,32 @@ class Simulation:
         # TODO: consider particles + fields as well when calculating dt
         
         # Determine timestep dt based on CFL condition
-        if self.inp.system == "euler2d":
-            density = self.electrons.grid[self.c.RHOCOMP]
-            pressure = self.electrons.grid[self.c.PCOMP]
-            u = self.electrons.grid[self.c.UCOMP]
-            v = self.electrons.grid[self.c.VCOMP]
+        if self.inp.e_system == "euler2d":
+            density = self.electrons.grid[self.electrons.c.RHOCOMP]
+            pressure = self.electrons.grid[self.electrons.c.PCOMP]
+            u = self.electrons.grid[self.electrons.c.UCOMP]
+            v = self.electrons.grid[self.electrons.c.VCOMP]
             # Ensure pressure and density are positive before sqrt
             pressure = np.maximum(pressure, 1e-12)
             density = np.maximum(density, 1e-12)
-            a = np.sqrt(self.c.gamma * pressure / density) # Sound speed
+            a = np.sqrt(self.electrons.c.gamma * pressure / density) # Sound speed
             max_speed_x = np.max(np.abs(u) + a)
             max_speed_y = np.max(np.abs(v) + a)
             max_speed = max(max_speed_x, max_speed_y) # More robust estimate
         
-        elif self.inp.system == "mhd2d":
-            density = self.electrons.grid[self.c.RHOCOMP]
-            pressure = self.electrons.grid[self.c.PCOMP]
-            u = self.electrons.grid[self.c.UCOMP]
-            v = self.electrons.grid[self.c.VCOMP]
-            Bx = self.electrons.grid[self.c.BXCOMP]
-            By = self.electrons.grid[self.c.BYCOMP]
+        elif self.inp.e_system == "mhd2d":
+            density = self.electrons.grid[self.electrons.c.RHOCOMP]
+            pressure = self.electrons.grid[self.electrons.c.PCOMP]
+            u = self.electrons.grid[self.electrons.c.UCOMP]
+            v = self.electrons.grid[self.electrons.c.VCOMP]
+            Bx = self.electrons.grid[self.electrons.c.BXCOMP]
+            By = self.electrons.grid[self.electrons.c.BYCOMP]
             
             # Ensure pressure and density are positive
             pressure = np.maximum(pressure, 1e-12)
             density = np.maximum(density, 1e-12)
             
-            a = np.sqrt(self.c.gamma * pressure / density) # Sound speed
+            a = np.sqrt(self.electrons.c.gamma * pressure / density) # Sound speed
             # Alfven speed squared components
             ca_sq_x = Bx**2 / density
             ca_sq_y = By**2 / density
@@ -331,7 +337,7 @@ class Simulation:
             max_speed = max(max_signal_x, max_signal_y)
         
         else:
-            raise RuntimeError(f"System {self.inp.system} not supported for dt calculation.")
+            raise RuntimeError(f"System {self.inp.e_system} not supported for dt calculation.")
 
         # Calculate dt, ensuring it doesn't overshoot t_finish
         dt = min(self.inp.cfl * min(self.inp.dx, self.inp.dy) / max_speed, self.inp.t_finish - self.t)
@@ -381,15 +387,15 @@ class Simulation:
                 for j in range(self.inp.ng, self.inp.ny - self.inp.ng):
                     x = self.inp.grid_x[i]
                     y = self.inp.grid_y[j]
-                    components = [self.electrons.grid[q, i, j] for q in range(self.c.NUMQ)]
+                    components = [self.electrons.grid[q, i, j] for q in range(self.electrons.c.NUMQ)]
                     f.write(f"{x:.12f}, {y:.12f}, " + ", ".join(f"{comp:.8f}" for comp in components) + "\n")
 
         # Set up 2D field plots
-        if self.inp.system == "euler2d":
+        if self.inp.e_system == "euler2d":
             fig, axs = plt.subplots(3, 4, figsize=(24, 7))
-        elif self.inp.system == "quasineutral":
+        elif self.inp.e_system == "quasineutral":
             fig, axs = plt.subplots(3, 4, figsize=(24, 7))
-        elif self.inp.system == "mhd2d":
+        elif self.inp.e_system == "mhd2d":
             fig, axs = plt.subplots(2, 4, figsize=(36, 18))
         axs = axs.ravel()
 
@@ -416,8 +422,8 @@ class Simulation:
 
         # Define plotting logic in a dictionary (like a switch-case)
         plot_map = {
-            "rho_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[0]*self.inp.m_e if self.inp.system == "quasineutral" else plot_data[0], extent, "Electron Mass Density"),
-            "n_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[0] if self.inp.system == "quasineutral" else plot_data[0]/self.inp.m_e, extent, "Electron Number Density"),
+            "rho_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[0]*self.inp.m_e if self.inp.e_system == "quasineutral" else plot_data[0], extent, "Electron Mass Density"),
+            "n_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[0] if self.inp.e_system == "quasineutral" else plot_data[0]/self.inp.m_e, extent, "Electron Number Density"),
             "u_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[1], extent, "Electron Axial Velocity"),
             "v_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[2], extent, "Electron Radial Velocity"),
             "w_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[3], extent, "Electron Azimuthal Velocity"),
@@ -442,7 +448,7 @@ class Simulation:
             "n_i": lambda idx: self.plot_2d_data(axs[idx], self.get_species_number_density("i")[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Ion Number Density", cmap=mpl.cm.Blues),
             "n_n": lambda idx: self.plot_2d_data(axs[idx], self.get_species_number_density("n")[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Neutral Number Density", cmap=mpl.cm.Greys),
             "rho_q": lambda idx: self.plot_2d_data(axs[idx], self.fields.charge_density[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Charge Density", cmap='coolwarm'),
-            "energy": lambda idx: self.plot_2d_data(axs[idx], self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Energy"),
+            "energy": lambda idx: self.plot_2d_data(axs[idx], self.electrons.euler.prim_to_cons(self.electrons.grid)[self.electrons.c.ECOMP,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Energy"),
             #TODO: temp change for plotting nu instead of sigma
             "sigma": lambda idx: self.plot_2d_data(axs[idx], gaussian_filter(self.electrons.pelectrons.cross_section_grid, sigma=3), extent, "Electron Collision Frequency", cmap='coolwarm'),
         }

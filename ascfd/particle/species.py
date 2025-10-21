@@ -24,8 +24,8 @@ class CollisionEvent:
         self.energy_change = energy_change
 
 class ParticleSpecies:
-    def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields, simulation):
-        self.pc = ParticleConstants()
+    def __init__(self, pc: ParticleConstants, params: SpeciesParams, a_inputs: Inputs, fields: Fields, simulation):
+        self.pc = pc
         self.fields = fields
 
         self.inp = a_inputs
@@ -357,7 +357,7 @@ class ParticleSpecies:
             self._cache_valid = False
 
     def estimate_initial_weight(self):
-        return (self.inp.n_n * self.inp.dx * self.inp.dy) / self.inp.n_ppc
+        return (self.inp.n_n * self.inp.dx * self.inp.dy) / self.inp.N_ppc
 
     def update(self):
         
@@ -535,7 +535,7 @@ class ParticleSpecies:
         active_count = np.sum(self.is_active)
         # print("N ACTIVE PARTICLES", active_count)
         
-        if self.inp.system == "euler2d":
+        if self.inp.e_system == "euler2d":
             # Use optimized active particle retrieval
             active_indices = self._get_active_indices()
             if len(active_indices) < 100:  # Only print for small numbers to avoid spam
@@ -556,7 +556,7 @@ class ParticleSpecies:
 
             self.collision_events.extend(collision_events)
             
-        elif self.inp.system == "quasineutral":
+        elif self.inp.e_system == "quasineutral":
             return # TODO: IDK DO WE NEED TO IMPLEMENT FIFE ANYMORE
             
             # def I_theta(theta, beta2):

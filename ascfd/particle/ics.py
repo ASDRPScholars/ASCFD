@@ -14,17 +14,17 @@ class ParticleInitialConditions:
         
     def apply_ics(self):
         
-        if self.inp.particle_ics == "origin":
+        if self.inp.i_ics == "origin":
             self.particles[:] = self.origin()
-        if self.inp.particle_ics == "random":
+        if self.inp.i_ics == "random":
             ic_particles = self.random()
             print("!IC! IC PARTICLES", ic_particles)
             self.particles[:] = ic_particles
             print("!IC! SELF.PARTICLES", self.particles)
-        if self.inp.particle_ics == "random_left_wall":
+        if self.inp.i_ics == "random_left_wall":
             self.particles[:] = self.random_left_wall()
     
-        if self.inp.particle_ics == "random_particles_no_condition":
+        if self.inp.i_ics == "random_particles_no_condition":
             self.particles[:] = self.random()
             
         print(self.particles[self.pc.XCOMP])

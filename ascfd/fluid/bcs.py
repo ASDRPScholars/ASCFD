@@ -13,13 +13,14 @@ Notes:
 """
 class FluidBoundaryConditions:
     
-    def __init__(self, grid, types_lo: tuple[str, str], types_hi: tuple[str, str], a_inputs: Inputs) -> None:
+    def __init__(self, c: FluidConstants, a_inputs: Inputs, grid, types_lo: tuple[str, str], types_hi: tuple[str, str]) -> None:
+        self.c = c
+        self.inp = a_inputs
+        
         # store boundary condition types and associate grid object
         self.types_lo = types_lo
         self.types_hi = types_hi
         self.grid = grid
-        self.inp = a_inputs
-        self.c = FluidConstants(a_inputs)
         
         self.ref = PlasmaReferences()
 

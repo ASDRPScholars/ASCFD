@@ -8,8 +8,8 @@ import sys
 import warnings
 
 class QNFluidSpecies(FluidSpecies):
-    def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields, simulation):
-        super().__init__(params, a_inputs, fields, simulation)
+    def __init__(self, c, params: SpeciesParams, a_inputs: Inputs, fields: Fields, simulation):
+        super().__init__(c, params, a_inputs, fields, simulation)
         
         self.var_grids = {}
         

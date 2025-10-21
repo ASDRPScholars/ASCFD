@@ -3,12 +3,11 @@ from ascfd.plasma_refs import PlasmaReferences
 
 class FluidConstants:
 
-    def __init__(self, a_inputs: Inputs, dimensions=2):
+    def __init__(self, system, dimensions=2):
 
         # Default ratio of specific heats (gamma)
         self.gamma = 1.4
         self.g = 9.81
-        self.system = a_inputs.system
         
         # Initialize plasma normalization for Hall thruster simulations
         # Using electron parameters as reference
@@ -20,7 +19,7 @@ class FluidConstants:
         # )
 
         # Define constants and variables for the Euler 2D system
-        if a_inputs.system == "euler2d":
+        if system == "euler2d":
             
             #primitive variables (Density, X-Velocity, Y-Velocity, Z-Velocity, Pressure)
             self.RHOCOMP = 0 # Density
@@ -40,7 +39,7 @@ class FluidConstants:
 
             self.system = "euler2d"
 
-            self.gamma = a_inputs.gammas[0] #gammas
+            # self.gamma = a_inputs.gammas[0]
             
             self.k_B = 8.617e-5
             self.eps_0 = 8.85418782e-12
@@ -49,7 +48,7 @@ class FluidConstants:
 
             self.NS = 1 
         
-        elif a_inputs.system == "quasineutral":
+        elif system == "quasineutral":
             
             #primitive variables (Density, X-Velocity, Y-Velocity, Z-Velocity, Pressure)
             self.NCOMP = 0 # Number Density
@@ -63,7 +62,7 @@ class FluidConstants:
 
             self.system = "quasineutral"
 
-            self.gamma = a_inputs.gammas[0] #gammas
+            # self.gamma = a_inputs.gammas[0] #gammas
             
             self.k_B = 8.617e-5
             self.eps_0 = 8.85418782e-12
@@ -72,7 +71,7 @@ class FluidConstants:
 
             self.NS = 1 
             
-        elif a_inputs.system == "mhd2d":
+        elif system == "mhd2d":
             # Primitive variables (Density, u, v, p, Bx, By)
             self.RHOCOMP = 0 # Density
             self.UCOMP = 1   # X-velocity
@@ -91,7 +90,7 @@ class FluidConstants:
             self.system = "mhd2d"
             
             # Assuming gamma is still relevant for MHD pressure equation
-            self.gamma = a_inputs.gammas[0] # Use first gamma if provided
+            # self.gamma = a_inputs.gammas[0] # Use first gamma if provided
             
             self.variable_names = ["Density", "X-Velocity", "Y-Velocity", "Pressure", "Bx", "By"]
             
@@ -100,4 +99,4 @@ class FluidConstants:
 
         else:
             #error for unsupported systems
-            raise RuntimeError(f"system in inputs file is not supported: {a_inputs.system}")
+            raise RuntimeError(f"system in inputs file is not supported: {system}")

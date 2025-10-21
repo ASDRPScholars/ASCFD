@@ -4,8 +4,8 @@ from ascfd.params import SpeciesParams
 import numpy as np
 
 class FluidInitialConditions:
-    def __init__(self, grid, a_inputs: Inputs, params: SpeciesParams):
-        self.c = FluidConstants(a_inputs)
+    def __init__(self, c: FluidConstants, a_inputs: Inputs, params: SpeciesParams, grid):
+        self.c = c
         self.params = params
         self.inp = a_inputs
         self.grid = grid
@@ -13,9 +13,9 @@ class FluidInitialConditions:
         self.mesh_x, self.mesh_y = np.meshgrid(self.inp.grid_x, self.inp.grid_y)
         
     def apply_ics(self):
-        if self.inp.system == "euler2d":
+        if self.inp.e_system == "euler2d" or self.params.type == "i":
             if hasattr(self.inp, "fluid_ics"):
-                if self.inp.fluid_ics == "diagonal_advection":
+                if self.inp.e_ics == "diagonal_advection":
                     print("applying diag advection")
                     f = self.diagonal_advection_2d
                     
@@ -27,7 +27,7 @@ class FluidInitialConditions:
                         
                     return new_grid
                 
-                elif self.inp.fluid_ics == "poisson_validation":
+                elif self.inp.e_ics == "poisson_validation":
                     print("applying diag advection")
                     f = self.poisson_validation_charge_density
                     
@@ -39,17 +39,17 @@ class FluidInitialConditions:
                         
                     return new_grid
 
-                elif self.inp.fluid_ics == "static":
+                elif self.inp.e_ics == "static":
                     return self.static()
                 
-                elif self.inp.fluid_ics == "e_cloud_test":
+                elif self.inp.e_ics == "e_cloud_test":
                     return self.e_cloud_test()
                     
-                elif self.inp.fluid_ics == "kelvin_helmholtz":
+                elif self.inp.e_ics == "kelvin_helmholtz":
                     self.grid = self.kelvin_helmholtz_2d()
-                elif self.inp.fluid_ics == "double_mach_reflection":
+                elif self.inp.e_ics == "double_mach_reflection":
                     self.grid = self.double_mach_reflection_2d()
-                elif self.inp.fluid_ics == "riemann_problem":
+                elif self.inp.e_ics == "riemann_problem":
                     self.grid = self.riemann_2d()
 
                 else:
@@ -57,12 +57,12 @@ class FluidInitialConditions:
             else:
                 return self.static()
             
-        elif self.inp.system == "quasineutral":
-            if self.inp.fluid_ics == "static":
+        elif self.inp.e_system == "quasineutral":
+            if self.inp.e_ics == "static":
                 return self.qn_static()
            
-        elif self.inp.system == "mhd2d":
-            if self.inp.fluid_ics == "orszag_tang":
+        elif self.inp.e_system == "mhd2d":
+            if self.inp.e_ics == "orszag_tang":
                 self.grid = self.orszag_tang_2d()
            
         else:

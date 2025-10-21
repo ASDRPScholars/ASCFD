@@ -10,14 +10,16 @@ import sys
 
 class FluidFlux:
 
-    def __init__(self, a_constants: FluidConstants, a_inp: Inputs, simulation):
+    def __init__(self, a_constants: FluidConstants, a_inp: Inputs, a_params, simulation):
 
         self.inp = a_inp
-        self.type = self.inp.flux
         self.c = a_constants
+        self.params = a_params
+        
+        self.type = self.inp.flux
         self.simulation = simulation
 
-        self.euler = FluidEuler(self.c, self.inp, self.simulation) # initialize the euler solver
+        self.euler = FluidEuler(self.c, self.inp, self.params, self.simulation) # initialize the euler solver
 
         # select the flux method based on the type
         if self.type == "rusanov":
@@ -50,10 +52,10 @@ class FluidFlux:
         hall_param = kwargs.get('hall_param', None)
         
         #get density 
-        if self.inp.system == "euler2d":
+        if self.inp.e_system == "euler2d" or self.params.type == "i":
             density = a_grid[self.c.RHOCOMP]
             a = np.sqrt(self.c.gamma * a_grid[self.c.PCOMP] / density)
-        elif self.inp.system == "quasineutral":
+        elif self.inp.e_system == "quasineutral":
             density = self.inp.m_e * a_grid[self.c.NCOMP]
             # TODO: VERIFY RUSANOV SOUND SPEED CALC
             a = np.sqrt(a_grid[self.c.TCOMP] / density)
@@ -79,7 +81,16 @@ class FluidFlux:
         for i in range(a_Nghost - 1, a_Nx + a_Nghost):
             for j in range(a_Nghost - 1, a_Ny + a_Nghost):
                 
-                if self.inp.system == "quasineutral":
+                if self.inp.e_system in ["euler2d", "mhd2d"] or self.params.type == "i":
+                    sMaxX = max(
+                        np.abs(a_grid[self.c.UCOMP, i, j]) + a[i, j],
+                        np.abs(a_grid[self.c.UCOMP, i+1, j]) + a[i+1, j]
+                    )
+                    sMaxY = max(
+                        np.abs(a_grid[self.c.VCOMP, i, j]) + a[i, j],
+                        np.abs(a_grid[self.c.VCOMP, i, j+1]) + a[i, j+1]
+                    )
+                elif self.inp.e_system == "quasineutral":
                     sMaxX = max(
                     np.abs(u[i, j]) + a[i, j],
                     np.abs(u[i+1, j]) + a[i+1, j]
@@ -89,14 +100,8 @@ class FluidFlux:
                         np.abs(v[i, j+1]) + a[i, j+1]
                     )
                 else:
-                    sMaxX = max(
-                        np.abs(a_grid[self.c.UCOMP, i, j]) + a[i, j],
-                        np.abs(a_grid[self.c.UCOMP, i+1, j]) + a[i+1, j]
-                    )
-                    sMaxY = max(
-                        np.abs(a_grid[self.c.VCOMP, i, j]) + a[i, j],
-                        np.abs(a_grid[self.c.VCOMP, i, j+1]) + a[i, j+1]
-                    )
+                    raise AssertionError("[FLUX] SYSTEM FOR RUSANOV NOT SUPPORTED")
+
 
                 # compute flux components for each variable
                 for icomp in range(self.c.NUMQ):
@@ -109,7 +114,7 @@ class FluidFlux:
     
     def rusanov_vectorized(self, a_grid, a_Nx, a_Ny, a_Nghost):
         #get density 
-        if self.inp.system == "euler2d":
+        if self.inp.e_system == "euler2d":
             density = a_grid[self.c.RHOCOMP]
         else:
             raise RuntimeError("Density method needs to be implemented.")
@@ -183,7 +188,7 @@ class FluidFlux:
     def lax_friedrichs(self, a_grid):
         a_grid.assert_variable_type("prim")
 
-        if self.inp.system == "euler2d":
+        if self.inp.e_system == "euler2d":
             density = a_grid.grid[self.c.RHOCOMP] # extract density
         else:
             raise RuntimeError("Density method needs to be implemented.")
@@ -221,7 +226,7 @@ class FluidFlux:
         """
         Calculates the numerical flux using the HLLC approximate Riemann solver.
         """
-        if self.inp.system != "euler2d":
+        if self.inp.e_system != "euler2d":
             raise NotImplementedError("HLLC flux is only implemented for euler2d system.")
 
         # Get primitive variables (rho, u, v, p)
@@ -489,10 +494,10 @@ class FluidFlux:
         a_grid.assert_variable_type("prim")
 
         #get density 
-        if self.inp.system == "euler2d":
+        if self.inp.e_system == "euler2d":
             print("HLLD on Euler is not supported!")
             sys.exit()
-        elif self.inp.system == "mhd2d":
+        elif self.inp.e_system == "mhd2d":
             density = a_grid.grid[self.c.RHOCOMP]
         else:
             raise RuntimeError("Density method needs to be implemented.")
@@ -575,9 +580,9 @@ class FluidFlux:
         a_grid.assert_variable_type("prim")
 
         #get density 
-        if self.inp.system == "euler2d":
+        if self.inp.e_system == "euler2d":
             density = a_grid.grid[self.c.RHOCOMP]
-        elif self.inp.system == "mhd2d":
+        elif self.inp.e_system == "mhd2d":
             density = a_grid.grid[self.c.RHOCOMP]
         else:
             raise RuntimeError("Density method needs to be implemented.")
@@ -616,7 +621,7 @@ class FluidFlux:
         Calculates the numerical flux using the HLLD approximate Riemann solver for MHD.
         Based on the formulation by Miyoshi & Kusano (2005).
         """
-        if self.inp.system != "mhd2d":
+        if self.inp.e_system != "mhd2d":
             raise NotImplementedError("HLLD flux is currently only implemented for mhd2d system.")
         if self.c.NUMQ != 6:
              raise ValueError("HLLD requires 6 variables (rho, u, v, p, Bx, By) in primitive state.")
