@@ -35,7 +35,7 @@ class Simulation:
         self.inp = self._phys_to_normal()
         
         self.c = FluidConstants(self.inp.e_system)
-        self.p_c = FluidConstants(self.inp.i_system)
+        # self.p_c = FluidConstants(self.inp.i_system)
         self.pc = ParticleConstants()
         self.fields = Fields(self.inp)
         
@@ -48,11 +48,14 @@ class Simulation:
             self.electrons = FluidSpecies(self.c, e_params, self.inp, self.fields, self)
         elif self.inp.e_system == "quasineutral":
             self.electrons = QNFluidSpecies(self.c, e_params, self.inp, self.fields, self)
+            
+        if self.inp.i_system == "euler2d":
             self.ions = FluidSpecies(self.p_c, xe_i_params, self.inp, self.fields, self)
-        
+        elif self.inp.i_system == "pic":
+            self.ions = ParticleSpecies(self.pc, xe_i_params, self.inp, self.fields, self)
+            
         if self.inp.i_ics is not None:
             self.neutrals = ParticleSpecies(self.pc, xe_n_params, self.inp, self.fields, self)
-            # self.ions = ParticleSpecies(xe_i_params, self.inp, self.fields, self)
             self.all_species = [self.electrons, self.neutrals, self.ions]
         else:
             self.all_species = [self.electrons]
@@ -145,6 +148,7 @@ class Simulation:
         n_n = self.get_species_number_density("n")
         T_e = self.get_species_temperature("e")
         v_e = self.get_species_velocity("e")
+        # v_e = np.sqrt((3 * self.inp.k_B * T_e)/(self.inp.m_e))
         E_e = T_e # TODO: let's assume the cross-section graphs are talking about energy as eV/k_B... - so we don't multiply by k_B for now...
         
         if collision_type == "en":
@@ -169,7 +173,7 @@ class Simulation:
             try:
                 return np.maximum(self.ions.compute_particle_density_field()[ng:-ng, ng:-ng], 1e-12)
             except:
-                return np.maximum(self.ions.grid[self.ions.c.RHOCOMP, ng:-ng, ng:-ng]/self.inp.m_i, 1e-12)
+                return self.ions.grid[self.ions.c.RHOCOMP, ng:-ng, ng:-ng]/self.inp.m_i
         elif species == "n":
             return np.maximum(self.neutrals.compute_particle_density_field()[ng:-ng, ng:-ng], 1e-12)
             # except:
@@ -446,6 +450,9 @@ class Simulation:
             "i": lambda idx: self.plot_2d_data(axs[idx], self.get_species_number_density("i")[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Ion Density (Scatter)", cmap=mpl.cm.Blues, scatter_data=(self.ions.particles[self.pc.XCOMP] * self.ref.L, self.ions.particles[self.pc.YCOMP] * self.ref.L)),
             "n": lambda idx: self.plot_2d_data(axs[idx], self.get_species_number_density("n")[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Neutral Density (Scatter)", cmap=mpl.cm.Greys, scatter_data=(self.neutrals.particles[self.pc.XCOMP] * self.ref.L, self.neutrals.particles[self.pc.YCOMP] * self.ref.L)),
             "n_i": lambda idx: self.plot_2d_data(axs[idx], self.get_species_number_density("i")[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Ion Number Density", cmap=mpl.cm.Blues),
+            "rho_i": lambda idx: self.plot_2d_data(axs[idx], self.ions.grid[self.ions.c.RHOCOMP, self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Ion Mass Density", cmap=mpl.cm.Blues),
+            "u_i": lambda idx: self.plot_2d_data(axs[idx], self.ions.grid[self.ions.c.UCOMP, self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Ion Axial Velocity", cmap="magma"),
+            "p_i": lambda idx: self.plot_2d_data(axs[idx], self.ions.grid[self.ions.c.PCOMP, self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Ion Pressure", cmap="magma"),
             "n_n": lambda idx: self.plot_2d_data(axs[idx], self.get_species_number_density("n")[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Neutral Number Density", cmap=mpl.cm.Greys),
             "rho_q": lambda idx: self.plot_2d_data(axs[idx], self.fields.charge_density[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Charge Density", cmap='coolwarm'),
             "energy": lambda idx: self.plot_2d_data(axs[idx], self.electrons.euler.prim_to_cons(self.electrons.grid)[self.electrons.c.ECOMP,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Energy"),

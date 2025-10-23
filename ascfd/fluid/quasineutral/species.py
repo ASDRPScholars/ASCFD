@@ -53,7 +53,7 @@ class QNFluidSpecies(FluidSpecies):
         # nu_e = nu_ei + nu_en + nu_anom # TODO: SHOULLD WE STILL USE NU_EI FROM MIKELLIDES
         nu_e = nu_en + nu_anom
         
-        omega_ce = q_e * np.abs(self.fields.B[:, :, 1]) / m_e # cyclotron frequency - marks eq (2.3)
+        omega_ce = -q_e * np.abs(self.fields.B[:, :, 1]) / m_e # cyclotron frequency - marks eq (2.3)
         hall_param = omega_ce / nu_e # hall parameter - marks eq (2.5), alternatively combine the two to get q_e * B / m_e * nu_e per (pg 50 inline)
         
         eta = (m_e * nu_e) / (q_e**2 * n_e) # eta, total resistivity - mikellides eq (23)
@@ -110,22 +110,16 @@ class QNFluidSpecies(FluidSpecies):
             elif icomp == self.c.JXCOMP:
                 # j_e = q_e * n_e * u_e
                 
-                # print("!@! hall_param", hall_param)
-                # print("!@! n_e", n_e)
-                # print("!@! m_e", m_e)
-                # print("!@! nu_e", nu_e)
-                # print("!@! self.E_perp", self.E_perp)
-                # print("!@! p_e", p_e)
-                # print("!@! grad_p_e_perp", np.gradient(p_e, self.inp.dx, 0)[0])
-                
                 # j_e_perp = (1/(1 + hall_param**2) * (q_e**2 * n_e)/(m_e * nu_e)) * (self.E_perp + grad_p_e_perp/(q_e*n_e)) # perpendicular electron current - marks eqs (2.29-2.31)
-                j_e_perp = ((q_e * n_e * nu_e)/(omega_ce * self.fields.B[:, :, 1])) * (self.E_perp + grad_p_e_perp/(q_e*n_e)) # perpendicular electron current - marks eqs (2.29-2.31)
-                j_e_perp = (1 / (1+hall_param**2) * (q_e**2 * n_e)/(m_e * nu_e)) * (self.E_perp + grad_p_e_perp/(q_e*n_e))
-                j_e_perp_clipped = np.clip(j_e_perp, a_min=None, a_max=1e12)
-                j_i_perp = self.simulation.get_species_current_density("i")[ng:-ng, ng:-ng] # TODO completely 1d, for now
+                j_e_perp = ((q_e * n_e * nu_e)/(omega_ce * self.fields.B[:, :, 1])) * (self.E_perp + grad_p_e_perp/(q_e*n_e)) # perpendicular electron current - marks eqs (2.29-2.31) 
+                j_e_perp = (1 / (1+hall_param**2) * (q_e**2 * n_e)/(m_e * nu_e)) * (self.E_perp) #TODO: TEMP + grad_p_e_perp/(q_e*n_e))
+                
+                # j_e_perp_clipped = np.clip(j_e_perp, a_min=None, a_max=1e12)
+                # j_i_perp = self.simulation.get_species_current_density("i")[ng:-ng, ng:-ng] # TODO completely 1d, for now
                 # TODO ^ ALSO SLICING NG 1) HERE AND 2) ON SIMLUATION GET_DENSITY IS KINDA SUS...
             
-                j_e_perp = (mu_e / (1 + hall_param**2)) * (-q_e * n_e * self.E_perp + grad_p_e_perp) # textbook eq (7.5-11)
+                # j_e_perp = (mu_e / (1 + hall_param**2)) * (-q_e * n_e * self.E_perp + grad_p_e_perp) # textbook eq (7.5-11)
+                # j_e_perp_clipped = np.clip(j_e_perp, a_min=-1e12, a_max=1e12)
                 # j_e_perp_clipped = np.clip(j_e_perp, a_min=None, a_max=1e6)
                 # TODO: fix improper dx with ghost cells later, if its a problem
                 self.E_perp = eta * (1 + hall_param**2) * j_e_perp # - (grad_p_e_perp/(q_e * n_e)) + eta_ei * j_i_perp # mikellides eqs (24a-24b)

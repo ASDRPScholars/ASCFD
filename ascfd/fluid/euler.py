@@ -109,7 +109,7 @@ class FluidEuler:
         flux_x = np.zeros_like(a_prim) # flux in x-direction
         flux_y = np.zeros_like(a_prim) # flux in y-direction
 
-        if self.inp.e_system == "euler2d" or self.params.type == "i":
+        if self.inp.i_system == "euler2d" and self.params.type == "i":
             # extract primitive variables
             rho = a_prim[self.c.RHOCOMP] # density
             u = a_prim[self.c.UCOMP] # x-velocity
@@ -139,7 +139,7 @@ class FluidEuler:
             flux_y[self.c.ECOMP] = (E + p) * v # energy flux
             
         #TODO: DO PROPERLY
-        elif self.inp.e_system == "quasineutral":
+        elif self.inp.e_system == "quasineutral" and self.params.type == "e":
             
             nu_e = kwargs.get('nu_e', None)
             hall_param = kwargs.get('hall_param', None)

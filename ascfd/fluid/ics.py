@@ -260,12 +260,21 @@ class FluidInitialConditions:
     
     def static(self):
         ic = np.zeros_like(self.grid)
+        
+        # -> MIT LECTURE
+        B_max = 100 # Tesla
+        x_c = 0.6 * self.inp.xlim[1]
+        sigma = 0.05 * self.inp.xlim[1]
+        
+        x = np.linspace(self.inp.xlim[0], self.inp.xlim[1], self.inp.nx_with_ghosts)
+    
+        gaussian_1d = B_max * np.exp(-((x - x_c) / sigma) ** 2)
 
-        ic[self.c.RHOCOMP] = self.inp.rho_e / 100
-        ic[self.c.UCOMP] = 0
+        ic[self.c.RHOCOMP] = gaussian_1d[:, np.newaxis]
+        ic[self.c.UCOMP] = 1
         ic[self.c.VCOMP] = 0
         ic[self.c.WCOMP] = 0.0  # Initialize z-velocity to zero
-        ic[self.c.PCOMP] = self.inp.p_e / 100
+        ic[self.c.PCOMP] = 1
         
         # print("!NORM! rho_e", self.inp.rho_e)
         # print("!NORM! p_e", self.inp.p_e)

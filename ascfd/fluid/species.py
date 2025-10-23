@@ -47,10 +47,11 @@ class FluidSpecies:
         self.grid[:] = self.ics.apply_ics()
     
         # Apply boundary conditions AFTER setting initial conditions
-        return 
-        self.bcs.apply_bcs()
+        # return 
+        if self.params.type == "i":
+            self.bcs.apply_bcs()
         
-        self.check_grid(self.c)
+        # self.check_grid(self.c)
         
         
     def update(self):
@@ -66,30 +67,30 @@ class FluidSpecies:
             consU[icomp, ng:-ng, ng:-ng] -= delta
                     
         ## --LORENTZ UPDATE--
-        self._apply_lorentz_source_terms(consU)
+        # self._apply_lorentz_source_terms(consU)
         
         self.grid[:] = self.euler.cons_to_prim(consU)
         
-        if self.pelectrons:
-            ## --P ELECTRONS UPDATE + COLLISIONAL DAMPING--
-            new_particle_array = self.convert_to_particles()
+        # if self.pelectrons:
+        #     ## --P ELECTRONS UPDATE + COLLISIONAL DAMPING--
+        #     new_particle_array = self.convert_to_particles()
             
-            # Clear existing particles and properly initialize with new ones
-            self.pelectrons.active_count = 0
-            self.pelectrons.is_active.fill(False)
-            self.pelectrons.free_slots.clear()
+        #     # Clear existing particles and properly initialize with new ones
+        #     self.pelectrons.active_count = 0
+        #     self.pelectrons.is_active.fill(False)
+        #     self.pelectrons.free_slots.clear()
         
-            # Add particles from converted array
-            n_new_particles = new_particle_array.shape[1]
-            for i in range(n_new_particles):
-                if i < self.pelectrons.capacity:
-                    self.pelectrons.particles[:, i] = new_particle_array[:, i]
-                    self.pelectrons.is_active[i] = True
-                    self.pelectrons.active_count += 1
+        #     # Add particles from converted array
+        #     n_new_particles = new_particle_array.shape[1]
+        #     for i in range(n_new_particles):
+        #         if i < self.pelectrons.capacity:
+        #             self.pelectrons.particles[:, i] = new_particle_array[:, i]
+        #             self.pelectrons.is_active[i] = True
+        #             self.pelectrons.active_count += 1
             
-            new_particles = self.pelectrons.update()
-            self.pelectrons.update_cross_section_grid()
-            sigma = self.pelectrons.cross_section_grid
+        #     new_particles = self.pelectrons.update()
+        #     self.pelectrons.update_cross_section_grid()
+        #     sigma = self.pelectrons.cross_section_grid
             
             # self._apply_damping_source_terms(sigma, consU)
 
@@ -104,8 +105,8 @@ class FluidSpecies:
 
         self.fields.update_E()
 
-        if self.pelectrons:
-            return new_particles
+        # if self.pelectrons:
+        #     return new_particles
     
 
     # def _apply_damping_source_terms(self, sigma, consU_new):

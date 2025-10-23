@@ -52,10 +52,10 @@ class FluidFlux:
         hall_param = kwargs.get('hall_param', None)
         
         #get density 
-        if self.inp.e_system == "euler2d" or self.params.type == "i":
+        if self.inp.i_system == "euler2d" and self.params.type == "i":
             density = a_grid[self.c.RHOCOMP]
             a = np.sqrt(self.c.gamma * a_grid[self.c.PCOMP] / density)
-        elif self.inp.e_system == "quasineutral":
+        elif self.inp.e_system == "quasineutral" and self.params.type == "e":
             density = self.inp.m_e * a_grid[self.c.NCOMP]
             # TODO: VERIFY RUSANOV SOUND SPEED CALC
             a = np.sqrt(a_grid[self.c.TCOMP] / density)
@@ -71,17 +71,11 @@ class FluidFlux:
         numFluxX_minus = np.zeros_like(a_grid)
         numFluxY_plus = np.zeros_like(a_grid)
         numFluxY_minus = np.zeros_like(a_grid)
-        
-        u = self.simulation.get_species_velocity("e", "u")
-        v = self.simulation.get_species_velocity("e", "v")
-        
-        u = np.pad(u, pad_width=((2, 2), (2, 2)), mode='edge')
-        v = np.pad(v, pad_width=((2, 2), (2, 2)), mode='edge')
 
         for i in range(a_Nghost - 1, a_Nx + a_Nghost):
             for j in range(a_Nghost - 1, a_Ny + a_Nghost):
                 
-                if self.inp.e_system in ["euler2d", "mhd2d"] or self.params.type == "i":
+                if self.inp.e_system in ["euler2d", "mhd2d"] or (self.inp.i_system == "euler2d" and self.params.type == "i"):
                     sMaxX = max(
                         np.abs(a_grid[self.c.UCOMP, i, j]) + a[i, j],
                         np.abs(a_grid[self.c.UCOMP, i+1, j]) + a[i+1, j]
@@ -90,25 +84,19 @@ class FluidFlux:
                         np.abs(a_grid[self.c.VCOMP, i, j]) + a[i, j],
                         np.abs(a_grid[self.c.VCOMP, i, j+1]) + a[i, j+1]
                     )
-                elif self.inp.e_system == "quasineutral":
-                    sMaxX = max(
-                    np.abs(u[i, j]) + a[i, j],
-                    np.abs(u[i+1, j]) + a[i+1, j]
-                    )
-                    sMaxY = max(
-                        np.abs(v[i, j]) + a[i, j],
-                        np.abs(v[i, j+1]) + a[i, j+1]
-                    )
+                elif self.inp.e_system == "quasineutral" and self.params.type == "e":
+                    sMaxX = 0
+                    sMaxY = 0
+                    
                 else:
                     raise AssertionError("[FLUX] SYSTEM FOR RUSANOV NOT SUPPORTED")
 
-
                 # compute flux components for each variable
                 for icomp in range(self.c.NUMQ):
-                    numFluxX_plus[icomp, i, j] = 0.5 * (fx[icomp, i+1, j] + fx[icomp, i, j]) #- 0.5 * sMaxX * (consU[icomp, i+1, j] - consU[icomp, i, j])
-                    numFluxX_minus[icomp, i, j] = 0.5 * (fx[icomp, i, j] + fx[icomp, i-1, j]) #- 0.5 * sMaxX * (consU[icomp, i, j] - consU[icomp, i-1, j])
-                    numFluxY_plus[icomp, i, j] = 0.5 * (fy[icomp, i, j+1] + fy[icomp, i, j]) #- 0.5 * sMaxY * (consU[icomp, i, j+1] - consU[icomp, i, j])
-                    numFluxY_minus[icomp, i, j] = 0.5 * (fy[icomp, i, j] + fy[icomp, i, j-1]) #- 0.5 * sMaxY * (consU[icomp, i, j] - consU[icomp, i, j-1])
+                    numFluxX_plus[icomp, i, j] = 0.5 * (fx[icomp, i+1, j] + fx[icomp, i, j]) - 0.5 * sMaxX * (consU[icomp, i+1, j] - consU[icomp, i, j])
+                    numFluxX_minus[icomp, i, j] = 0.5 * (fx[icomp, i, j] + fx[icomp, i-1, j]) - 0.5 * sMaxX * (consU[icomp, i, j] - consU[icomp, i-1, j])
+                    numFluxY_plus[icomp, i, j] = 0.5 * (fy[icomp, i, j+1] + fy[icomp, i, j]) - 0.5 * sMaxY * (consU[icomp, i, j+1] - consU[icomp, i, j])
+                    numFluxY_minus[icomp, i, j] = 0.5 * (fy[icomp, i, j] + fy[icomp, i, j-1]) - 0.5 * sMaxY * (consU[icomp, i, j] - consU[icomp, i, j-1])
 
         return consU, numFluxX_plus, numFluxX_minus, numFluxY_plus, numFluxY_minus
     

@@ -32,27 +32,10 @@ class FieldInitialConditions:
         sigma = 0.05 * self.inp.xlim[1]
         
         x = np.linspace(self.inp.xlim[0], self.inp.xlim[1], self.inp.nx)
-        
-        # Debug prints
-        print(f"x range: {x.min()} to {x.max()}")
-        print(f"x_c: {x_c}")
-        print(f"sigma: {sigma}")
-        print(f"x shape: {x.shape}")
-        print(f"ic_grid[:,:,1] shape: {ic_grid[:, :, 1].shape}")
-        
-        # Calculate the Gaussian
+    
         gaussian_1d = B_max * np.exp(-((x - x_c) / sigma) ** 2)
-        print(f"Gaussian 1D max: {gaussian_1d.max()}")
-        print(f"Gaussian 1D at x_c: {B_max * np.exp(-((x_c - x_c) / sigma) ** 2)}")
         
-        # Broadcast to 2D
-        print(np.shape(ic_grid))
-        print(np.shape(gaussian_1d))
         ic_grid[:, :, 1] = gaussian_1d[:, np.newaxis]
-        
-        print(f"ic_grid max after assignment: {ic_grid.max()}")
-        
-        print("B INIT MAX", ic_grid.max())
         
         return ic_grid
     
