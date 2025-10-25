@@ -209,9 +209,9 @@ class Simulation:
             n_e = self.get_species_number_density("e")
             q_e = -self.inp.q
             
-            u = self.electrons.grid[self.electrons.c.JXCOMP, ng:-ng, ng:-ng] / (n_e * q_e)
-            v = self.electrons.grid[self.electrons.c.JYCOMP, ng:-ng, ng:-ng] / (n_e * q_e)
-            w = self.electrons.grid[self.electrons.c.JZCOMP, ng:-ng, ng:-ng] / (n_e * q_e)
+            u = self.electrons.grid[self.electrons.c.UCOMP, ng:-ng, ng:-ng] / (n_e * q_e)
+            v = self.electrons.grid[self.electrons.c.VCOMP, ng:-ng, ng:-ng] / (n_e * q_e)
+            w = self.electrons.grid[self.electrons.c.WCOMP, ng:-ng, ng:-ng] / (n_e * q_e)
             vel = np.sqrt(u**2 + v**2 + w**2)
         
             value = {"u": u, "v": v, "w": w}.get(direction, vel)

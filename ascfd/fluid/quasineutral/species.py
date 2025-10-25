@@ -26,6 +26,7 @@ class QNFluidSpecies(FluidSpecies):
         ng = self.inp.ng
         U = self.grid
         
+        e = self.c.e
         q_e = self.params.charge
         m_e = self.params.mass
         n_e = U[self.c.NCOMP, ng:-ng, ng:-ng]
@@ -36,6 +37,8 @@ class QNFluidSpecies(FluidSpecies):
         k_B = self.c.k_B
         eps_0 = self.c.eps_0
         
+        B = self.fields.B[:, :, 1]
+        
         p_e = n_e * k_B * T_e
         grad_p_e_perp = np.gradient(p_e, self.inp.dx, 0)[0]
         
@@ -44,14 +47,22 @@ class QNFluidSpecies(FluidSpecies):
         plasma_param = 4 * np.pi * n_e * l_D**3 
         couloumb_ln = np.log(plasma_param) # coulomb logarithm - ln(lambda_C) = ln(lambda) - robert fitzpatrick 2016 UT notes eq (3.124)
         # TODO: does the above line up with MIT collision notes eq (64) ish?
-        
         Z_star = n_i / n_e # effective charge number only for singly charged ions - mikellides eq (21)
-        
         nu_ei = (n_e * Z_star * q_e**4 * couloumb_ln) / (3 * (2*np.pi)**(3/2) * eps_0**2 * np.sqrt(m_e) * (k_B * T_e)**(3/2))
-        nu_en = self.simulation.get_collision_frequency("en")
-        nu_anom = 0 # TODO (much later)
-        # nu_e = nu_ei + nu_en + nu_anom # TODO: SHOULLD WE STILL USE NU_EI FROM MIKELLIDES
-        nu_e = nu_en + nu_anom
+        
+        # nu_en = self.simulation.get_collision_frequency("en")
+        # nu_en = 1e7
+        # nu_anom = 0 
+        # nu_e = nu_en + nu_anom
+        
+        # --- LANDMARK ---
+        N = self.simulation.get_species_number_density("n")
+        k_m = 2.5e-13
+        nu_w = 1e7
+        beta = 0.1 # TODO outside = 1
+        
+        nu_e = (N * k_m) + nu_w + (beta * e * B / m_e) / 16
+        # --- --------- ---
         
         omega_ce = -q_e * np.abs(self.fields.B[:, :, 1]) / m_e # cyclotron frequency - marks eq (2.3)
         hall_param = omega_ce / nu_e # hall parameter - marks eq (2.5), alternatively combine the two to get q_e * B / m_e * nu_e per (pg 50 inline)
@@ -70,7 +81,7 @@ class QNFluidSpecies(FluidSpecies):
             "l_D": l_D,
             "plasma_param": plasma_param,
             "couloumb_ln": couloumb_ln,
-            "nu_en": nu_en,
+            # "nu_en": nu_en,
             "nu_e": nu_e,
             "omega_ce": omega_ce,
             "hall_param": hall_param,
@@ -98,35 +109,15 @@ class QNFluidSpecies(FluidSpecies):
                 
                 self.bcs.apply_bcs()
                 
-                # ACTUAL TODO: add other source terms later
+            elif icomp == self.c.UCOMP:
+                # --- LANDMARK --- 
+                mu_e = (e / m_e) * nu_e / (nu_e**2 + (e * self.fields.B[:, :, 1] / m_e)**2)
                 
-                # TODO: complete implement based on mikellides 2012 eq. (25)
-                # do necessary conversion between E and n * k_B * T_e?
-                # EDIT FLUX DEFINED IN EULER?
+                n_T_e = n_e * T_e
+                n_u_e = mu_e * n_e * self.E_perp - mu_e * np.gradient(n_T_e, self.inp.dx, axis=0)
+                self.E_perp = eta * (1 + hall_param**2) * (n_u_e * q_e)
                 
-                # U[icomp, ng:-ng, ng:-ng] -= delta
-                # add heat flux source terms
-                
-            elif icomp == self.c.JXCOMP:
-                # j_e = q_e * n_e * u_e
-                
-                # j_e_perp = (1/(1 + hall_param**2) * (q_e**2 * n_e)/(m_e * nu_e)) * (self.E_perp + grad_p_e_perp/(q_e*n_e)) # perpendicular electron current - marks eqs (2.29-2.31)
-                j_e_perp = ((q_e * n_e * nu_e)/(omega_ce * self.fields.B[:, :, 1])) * (self.E_perp + grad_p_e_perp/(q_e*n_e)) # perpendicular electron current - marks eqs (2.29-2.31) 
-                j_e_perp = (1 / (1+hall_param**2) * (q_e**2 * n_e)/(m_e * nu_e)) * (self.E_perp) #TODO: TEMP + grad_p_e_perp/(q_e*n_e))
-                
-                # j_e_perp_clipped = np.clip(j_e_perp, a_min=None, a_max=1e12)
-                # j_i_perp = self.simulation.get_species_current_density("i")[ng:-ng, ng:-ng] # TODO completely 1d, for now
-                # TODO ^ ALSO SLICING NG 1) HERE AND 2) ON SIMLUATION GET_DENSITY IS KINDA SUS...
-            
-                # j_e_perp = (mu_e / (1 + hall_param**2)) * (-q_e * n_e * self.E_perp + grad_p_e_perp) # textbook eq (7.5-11)
-                # j_e_perp_clipped = np.clip(j_e_perp, a_min=-1e12, a_max=1e12)
-                # j_e_perp_clipped = np.clip(j_e_perp, a_min=None, a_max=1e6)
-                # TODO: fix improper dx with ghost cells later, if its a problem
-                self.E_perp = eta * (1 + hall_param**2) * j_e_perp # - (grad_p_e_perp/(q_e * n_e)) + eta_ei * j_i_perp # mikellides eqs (24a-24b)
-                
-                
-                U[icomp, ng:-ng, ng:-ng] = j_e_perp
-                # U[icomp, ng:-ng, ng:-ng] = 1
+                U[icomp, ng:-ng, ng:-ng] = n_u_e
                 
         self.check_grid()
         

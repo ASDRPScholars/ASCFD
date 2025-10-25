@@ -8,6 +8,10 @@ class FluidConstants:
         # Default ratio of specific heats (gamma)
         self.gamma = 1.4
         self.g = 9.81
+        self.e = 1.602e-19
+        self.m_e = 9.10938e-31
+        self.m_i = 2.18e-25
+        self.m_n = 2.18e-25
         
         # Initialize plasma normalization for Hall thruster simulations
         # Using electron parameters as reference
@@ -52,9 +56,9 @@ class FluidConstants:
             
             #primitive variables (Density, X-Velocity, Y-Velocity, Z-Velocity, Pressure)
             self.NCOMP = 0 # Number Density
-            self.JXCOMP = 1 # X-component of velocity
-            self.JYCOMP = 2 # Y-component of velocity
-            self.JZCOMP = 3 # Z-component of velocity (azimuthal/out-of-plane)
+            self.UCOMP = 1 # X-component of velocity
+            self.VCOMP = 2 # Y-component of velocity
+            self.WCOMP = 3 # Z-component of velocity (azimuthal/out-of-plane)
             self.TCOMP = 4 # Temperature
 
             # number of variables in the system

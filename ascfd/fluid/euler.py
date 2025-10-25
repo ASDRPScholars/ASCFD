@@ -145,7 +145,7 @@ class FluidEuler:
             hall_param = kwargs.get('hall_param', None)
             
             n_e = a_prim[self.c.NCOMP]
-            j_e = a_prim[self.c.JXCOMP] # x-velocity
+            j_e = a_prim[self.c.UCOMP] # x-velocity
             T_e = a_prim[self.c.TCOMP]
             k_B = self.inp.k_B
             
@@ -180,7 +180,7 @@ class FluidEuler:
             # print("!@! 5/2*j_e*k_B*T_e - Q_e_perp", energy_flux)
             
             flux_x[self.c.TCOMP] = 2/(3*k_B) * energy_flux # thermal energy density (3/2 * n_e * k_B * T_e) equation - rearrange mikellides eq (25), or marks eq (4.8)
-            flux_x[self.c.TCOMP] = 0
+            # flux_x[self.c.TCOMP] = 0
             # TODO: flux_y[self.c.ECOMP] = ...
             
 
