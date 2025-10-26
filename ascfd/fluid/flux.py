@@ -39,8 +39,9 @@ class FluidFlux:
     def getFlux(self, a_grid, a_Nx, a_Ny, a_Nghost, **kwargs):
         nu_e = kwargs.get('nu_e', None)
         hall_param = kwargs.get('hall_param', None)
+        mu_e = kwargs.get('mu_e', None)
         
-        flux_method = self.flux_method(a_grid, a_Nx, a_Ny, a_Nghost, nu_e=nu_e, hall_param=hall_param) if kwargs is not None \
+        flux_method = self.flux_method(a_grid, a_Nx, a_Ny, a_Nghost, nu_e=nu_e, hall_param=hall_param, mu_e=mu_e) if kwargs is not None \
                  else self.flux_method(a_grid, a_Nx, a_Ny, a_Nghost)
         
         return flux_method
@@ -50,6 +51,7 @@ class FluidFlux:
         
         nu_e = kwargs.get('nu_e', None)
         hall_param = kwargs.get('hall_param', None)
+        mu_e = kwargs.get('mu_e', None)
         
         #get density 
         if self.inp.i_system == "euler2d" and self.params.type == "i":
@@ -65,7 +67,7 @@ class FluidFlux:
         U = a_grid
         consU = self.euler.prim_to_cons(U)
 
-        fx, fy = self.euler.flux(U, nu_e=nu_e, hall_param=hall_param) if kwargs is not None else self.euler.flux(U) # analytical flux
+        fx, fy = self.euler.flux(U, nu_e=nu_e, hall_param=hall_param, mu_e=mu_e) if kwargs is not None else self.euler.flux(U) # analytical flux
 
         numFluxX_plus = np.zeros_like(a_grid)
         numFluxX_minus = np.zeros_like(a_grid)

@@ -74,7 +74,7 @@ class QNFluidSpecies(FluidSpecies):
         eta_ei = (m_e * nu_ei) / (q_e**2 * n_e) # eta, electron-ion resistivity - mikellides eq (23)
         
         mu_e = -q_e/(m_e * nu_e) # total electron mobility - textbook pg 68
-        _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(U, self.inp.nx, self.inp.ny, self.inp.ng, nu_e=nu_e, hall_param=hall_param, omega_ce=omega_ce)
+        _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(U, self.inp.nx, self.inp.ny, self.inp.ng, nu_e=nu_e, hall_param=hall_param, omega_ce=omega_ce, mu_e=mu_e)
         
         self.var_grids.update({
             "n_i": n_i,
@@ -108,7 +108,7 @@ class QNFluidSpecies(FluidSpecies):
                 delta = (self.dt / self.inp.dx) * (right_flux[icomp, ng:-ng, ng:-ng] - left_flux[icomp, ng:-ng, ng:-ng]) + \
                         (self.dt / self.inp.dy) * (top_flux[icomp, ng:-ng, ng:-ng] - bottom_flux[icomp, ng:-ng, ng:-ng])
                     
-                U[icomp, ng:-ng, ng:-ng] -= 0 #delta
+                U[icomp, ng:-ng, ng:-ng] -= delta
                 
                 self.bcs.apply_bcs()
                 

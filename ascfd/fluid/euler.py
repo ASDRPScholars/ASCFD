@@ -140,46 +140,34 @@ class FluidEuler:
             
         #TODO: DO PROPERLY
         elif self.inp.e_system == "quasineutral" and self.params.type == "e":
-            
+        
             nu_e = kwargs.get('nu_e', None)
             hall_param = kwargs.get('hall_param', None)
+            mu_e = kwargs.get('mu_e', None)
             
-            n_e = a_prim[self.c.NCOMP]
-            j_e = a_prim[self.c.UCOMP] # x-velocity
-            T_e = a_prim[self.c.TCOMP]
+            ng = self.inp.ng
+            
+            n_e = a_prim[self.c.NCOMP, ng:-ng, ng:-ng]
+            j_e = a_prim[self.c.UCOMP, ng:-ng, ng:-ng] # x-velocity
+            T_e = a_prim[self.c.TCOMP, ng:-ng, ng:-ng]
             k_B = self.inp.k_B
+            
+            eps_e = 3/2 * k_B * T_e
             
             q_e = self.inp.q
             m_e = self.inp.m_e
             
-            p_e = n_e * k_B * T_e # NOTE: CONFIRMED ON TEXTBOOK PG 48
+            p_e = n_e * k_B * T_e # NOTE: CONFIRMED ON TEXTBOOK PG 48 - and guillaume - all are ideal gas
             u_e = j_e / (q_e * n_e)
+            print("mu_e", np.shape(mu_e))
+            print("eps_e", np.shape(eps_e))
+            print("nu_e", np.shape(nu_e))
+            energy_flux = (5/3 * n_e * nu_e * eps_e) - (10/9 * mu_e * n_e * eps_e * np.gradient(eps_e, self.inp.dx, axis=0))
             
-            # omega_ce = hall_param * nu_e
+            temp_flux = 2/(3*k_B*n_e) * energy_flux
+            temp_flux = np.pad(temp_flux, ((ng, ng), (ng, ng)), mode="edge")
             
-            # nu_e = np.pad(nu_e, pad_width=((2, 2), (2, 2)), mode='edge')
-            # omega_ce = np.pad(omega_ce, pad_width=((2, 2), (2, 2)), mode='edge')
-
-            # # RESEARCH TODO: THERE ARE PROBLEMS WITH DERIVING HEAT FLUX FROM FOURIER LAW OF CONDUCTION THOUGH
-            
-            # kappa_e_perp = 4.7 * (nu_e * n_e * T_e) / (m_e * omega_ce**2) # thermal conductivity coefficient - marks eq (6.18)
-            
-            # # BIG TODO TODO: CROSS CHECK WITH MIKELLIDES EQ (25) - DO WE ADD Q TO THERMAL ENERGY
-            # print(np.shape(T_e), np.shape(j_e), np.shape(kappa_e_perp), np.shape(np.gradient(T_e, self.inp.dx)))
-            
-            # Q_e_perp = -kappa_e_perp * np.gradient(T_e, self.inp.dx, 0)[0]
-            
-            # energy_flux = (5/2*j_e*k_B*T_e - Q_e_perp)
-            
-            energy_flux = ((3/2)*k_B*T_e + p_e) * u_e
-            
-            # np.set_printoptions(threshold=sys.maxsize)
-            # print("!@! j_e", j_e)
-            # print("!@! T_e", T_e)
-            # print("!@! Q_e_perp", Q_e_perp)
-            # print("!@! 5/2*j_e*k_B*T_e - Q_e_perp", energy_flux)
-            
-            flux_x[self.c.TCOMP] = 2/(3*k_B) * energy_flux # thermal energy density (3/2 * n_e * k_B * T_e) equation - rearrange mikellides eq (25), or marks eq (4.8)
+            flux_x[self.c.TCOMP] = temp_flux # thermal energy density (3/2 * n_e * k_B * T_e) equation - rearrange mikellides eq (25), or marks eq (4.8)
             # flux_x[self.c.TCOMP] = 0
             # TODO: flux_y[self.c.ECOMP] = ...
             
