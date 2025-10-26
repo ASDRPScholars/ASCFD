@@ -87,7 +87,7 @@ class FluidFlux:
                         np.abs(a_grid[self.c.VCOMP, i, j+1]) + a[i, j+1]
                     )
                 elif self.inp.e_system == "quasineutral" and self.params.type == "e":
-                    sMaxX = 0
+                    sMaxX = 0 
                     sMaxY = 0
                     
                 else:

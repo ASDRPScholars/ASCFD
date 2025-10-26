@@ -148,7 +148,7 @@ class FluidEuler:
             ng = self.inp.ng
             
             n_e = a_prim[self.c.NCOMP, ng:-ng, ng:-ng]
-            j_e = a_prim[self.c.UCOMP, ng:-ng, ng:-ng] # x-velocity
+            v_e = a_prim[self.c.UCOMP, ng:-ng, ng:-ng] # x-velocity
             T_e = a_prim[self.c.TCOMP, ng:-ng, ng:-ng]
             k_B = self.inp.k_B
             
@@ -158,11 +158,11 @@ class FluidEuler:
             m_e = self.inp.m_e
             
             p_e = n_e * k_B * T_e # NOTE: CONFIRMED ON TEXTBOOK PG 48 - and guillaume - all are ideal gas
-            u_e = j_e / (q_e * n_e)
+            # u_e = j_e / (q_e * n_e)
             print("mu_e", np.shape(mu_e))
             print("eps_e", np.shape(eps_e))
             print("nu_e", np.shape(nu_e))
-            energy_flux = (5/3 * n_e * nu_e * eps_e) - (10/9 * mu_e * n_e * eps_e * np.gradient(eps_e, self.inp.dx, axis=0))
+            energy_flux = (5/3 * n_e * v_e * eps_e) - (10/9 * mu_e * n_e * eps_e * np.gradient(eps_e, self.inp.dx, axis=0))
             
             temp_flux = 2/(3*k_B*n_e) * energy_flux
             temp_flux = np.pad(temp_flux, ((ng, ng), (ng, ng)), mode="edge")

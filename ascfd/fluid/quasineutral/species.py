@@ -30,6 +30,7 @@ class QNFluidSpecies(FluidSpecies):
         q_e = self.params.charge
         m_e = self.params.mass
         n_e = U[self.c.NCOMP, ng:-ng, ng:-ng]
+        v_e = U[self.c.UCOMP, ng:-ng, ng:-ng]
         T_e = U[self.c.TCOMP, ng:-ng, ng:-ng]
         n_i = self.simulation.get_species_number_density("i")
         n_n = self.simulation.get_species_number_density("n")
@@ -38,7 +39,7 @@ class QNFluidSpecies(FluidSpecies):
         eps_0 = self.c.eps_0
         
         # --- LANDMARK ---
-        epsilon_e = (3/2 * k_B * T_e)
+        eps_e = (3/2 * k_B * T_e) # TODO DO WE STILL HAVE TO ADD VELOCITY THOUGH
         
         B = self.fields.B[:, :, 1]
         
@@ -64,7 +65,12 @@ class QNFluidSpecies(FluidSpecies):
         nu_w = 1e7
         beta = 0.1 # TODO outside = 1
         
-        nu_e = (N * k_m) + nu_w + (beta * e * B / m_e) / 16
+        nu_e = 1e-7
+        nu = (N * k_m) + nu_w + (beta * e * B / m_e) / 16
+        
+        K = 2e-14 # TODO add lookup
+        
+        mu_e = (e / m_e) * nu / (nu**2 + (e * self.fields.B[:, :, 1] / m_e)**2)
         # --- --------- ---
         
         omega_ce = -q_e * np.abs(self.fields.B[:, :, 1]) / m_e # cyclotron frequency - marks eq (2.3)
@@ -73,7 +79,7 @@ class QNFluidSpecies(FluidSpecies):
         eta = (m_e * nu_e) / (q_e**2 * n_e) # eta, total resistivity - mikellides eq (23)
         eta_ei = (m_e * nu_ei) / (q_e**2 * n_e) # eta, electron-ion resistivity - mikellides eq (23)
         
-        mu_e = -q_e/(m_e * nu_e) # total electron mobility - textbook pg 68
+        # mu_e = -q_e/(m_e * nu_e) # total electron mobility - textbook pg 68
         _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(U, self.inp.nx, self.inp.ny, self.inp.ng, nu_e=nu_e, hall_param=hall_param, omega_ce=omega_ce, mu_e=mu_e)
         
         self.var_grids.update({
@@ -97,6 +103,7 @@ class QNFluidSpecies(FluidSpecies):
             # TODO: BECAUSE WHEN WE SET GRID, THE GHOST CELLS ACTUALLY GET INCLUDED IN GRID BOUNDS (so tehnically bounds are off by (2*ng)/n in every sim...)
             if icomp == self.c.NCOMP:
                 U[icomp, ng:-ng, ng:-ng] = n_i
+                self.bcs.apply_bcs()
             
             # elif icomp == self.c.JYCOMP:
             #     (q_e**2 * n_e)/(m_e * nu_e) * (self.E_perp + np.gradient(p_e, 0, self.inp.dy)/(q_e*n_e)) # parallel electron current - marks eqs (2.29-2.31)
@@ -105,22 +112,28 @@ class QNFluidSpecies(FluidSpecies):
             #     j_theta = hall_param * j_e_perp # azimuthal electron current - marks eqs (2.29-2.31)
                 
             elif icomp == self.c.TCOMP:
-                delta = (self.dt / self.inp.dx) * (right_flux[icomp, ng:-ng, ng:-ng] - left_flux[icomp, ng:-ng, ng:-ng]) + \
-                        (self.dt / self.inp.dy) * (top_flux[icomp, ng:-ng, ng:-ng] - bottom_flux[icomp, ng:-ng, ng:-ng])
+                delta = (self.dt / self.inp.dx) * (right_flux[icomp, ng:-ng, ng:-ng] - left_flux[icomp, ng:-ng, ng:-ng]) # + \
+                        # (self.dt / self.inp.dy) * (top_flux[icomp, ng:-ng, ng:-ng] - bottom_flux[icomp, ng:-ng, ng:-ng])
                     
                 U[icomp, ng:-ng, ng:-ng] -= delta
+                self.bcs.apply_bcs()
                 
+                joule_source = n_e * v_e * e * self.E_perp
+                neutral_coll_source = n_e * N * K
+                # wall_coll_source = nu_e * eps_e * np.exp(-U / eps_e) # TODO WHAT IS U??
+                
+                U[icomp, ng:-ng, ng:-ng] -= self.dt * (joule_source + neutral_coll_source)
                 self.bcs.apply_bcs()
                 
             elif icomp == self.c.UCOMP:
                 # --- LANDMARK --- 
-                mu_e = (e / m_e) * nu_e / (nu_e**2 + (e * self.fields.B[:, :, 1] / m_e)**2)
                 
-                n_eps_e = n_e * epsilon_e
-                n_u_e = mu_e * n_e * self.E_perp - mu_e * np.gradient(n_eps_e, self.inp.dx, axis=0)
+                n_eps_e = n_e * eps_e
+                n_u_e = mu_e * n_e * e * self.E_perp - mu_e * np.gradient(n_eps_e, self.inp.dx, axis=0)
                 self.E_perp = eta * (1 + hall_param**2) * (n_u_e * q_e)
                 
                 U[icomp, ng:-ng, ng:-ng] = n_u_e / n_e
+                self.bcs.apply_bcs()
                 
         self.check_grid()
         
