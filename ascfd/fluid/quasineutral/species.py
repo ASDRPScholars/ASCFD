@@ -33,9 +33,12 @@ class QNFluidSpecies(FluidSpecies):
         T_e = U[self.c.TCOMP, ng:-ng, ng:-ng]
         n_i = self.simulation.get_species_number_density("i")
         n_n = self.simulation.get_species_number_density("n")
-        
+       
         k_B = self.c.k_B
         eps_0 = self.c.eps_0
+        
+        # --- LANDMARK ---
+        epsilon_e = (1/2 * m_e * U[self.c.UCOMP, ng:-ng, ng:-ng]**2) + (3/2 * k_B * T_e)
         
         B = self.fields.B[:, :, 1]
         
@@ -105,7 +108,7 @@ class QNFluidSpecies(FluidSpecies):
                 delta = (self.dt / self.inp.dx) * (right_flux[icomp, ng:-ng, ng:-ng] - left_flux[icomp, ng:-ng, ng:-ng]) + \
                         (self.dt / self.inp.dy) * (top_flux[icomp, ng:-ng, ng:-ng] - bottom_flux[icomp, ng:-ng, ng:-ng])
                     
-                U[icomp, ng:-ng, ng:-ng] -= delta
+                U[icomp, ng:-ng, ng:-ng] -= 0 #delta
                 
                 self.bcs.apply_bcs()
                 
@@ -113,11 +116,12 @@ class QNFluidSpecies(FluidSpecies):
                 # --- LANDMARK --- 
                 mu_e = (e / m_e) * nu_e / (nu_e**2 + (e * self.fields.B[:, :, 1] / m_e)**2)
                 
+                n_eps_e = n_e * epsilon_e
                 n_T_e = n_e * T_e
                 n_u_e = mu_e * n_e * self.E_perp - mu_e * np.gradient(n_T_e, self.inp.dx, axis=0)
                 self.E_perp = eta * (1 + hall_param**2) * (n_u_e * q_e)
                 
-                U[icomp, ng:-ng, ng:-ng] = n_u_e
+                U[icomp, ng:-ng, ng:-ng] = n_u_e / n_e
                 
         self.check_grid()
         
