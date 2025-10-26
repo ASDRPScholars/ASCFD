@@ -38,7 +38,7 @@ class QNFluidSpecies(FluidSpecies):
         eps_0 = self.c.eps_0
         
         # --- LANDMARK ---
-        epsilon_e = (1/2 * m_e * U[self.c.UCOMP, ng:-ng, ng:-ng]**2) + (3/2 * k_B * T_e)
+        epsilon_e = (3/2 * k_B * T_e)
         
         B = self.fields.B[:, :, 1]
         
@@ -117,8 +117,7 @@ class QNFluidSpecies(FluidSpecies):
                 mu_e = (e / m_e) * nu_e / (nu_e**2 + (e * self.fields.B[:, :, 1] / m_e)**2)
                 
                 n_eps_e = n_e * epsilon_e
-                n_T_e = n_e * T_e
-                n_u_e = mu_e * n_e * self.E_perp - mu_e * np.gradient(n_T_e, self.inp.dx, axis=0)
+                n_u_e = mu_e * n_e * self.E_perp - mu_e * np.gradient(n_eps_e, self.inp.dx, axis=0)
                 self.E_perp = eta * (1 + hall_param**2) * (n_u_e * q_e)
                 
                 U[icomp, ng:-ng, ng:-ng] = n_u_e / n_e
