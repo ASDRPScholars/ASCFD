@@ -443,20 +443,22 @@ class ParticleSpecies:
     
         new_particles = []
         
-        if self.params.type in ["e", "i"] and self.collision_data is not None:
-            print(f"!C! BEFORE COLLISION PROCESSING: x_positions = {self.particles[self.pc.XCOMP, :10]}")
+        if self.params.type in ["e", "i"] and self.collision_data is not None and self.inp.collision_type == "dsmc":
             # TODO: READD COLLISIONS
             new_particles = self.process_collisions()
-            print(f"!C! AFTER COLLISION PROCESSING: x_positions = {self.particles[self.pc.XCOMP, :10]}")
-            # print("FROM PARTICLE.UPDATE() - new_particles is", new_particles)
             
-            # Batch add new particles from collisions for better performance
             if new_particles:
                 self.add_particles(new_particles)
                 
-                # print("!!ADD PARTICLE!! FOR", self.params.type, len(new_particles))
-
-        # particle per cell enforcement
+        elif self.params.type in ["i"] and self.inp.collision_type == "rate_coeffs":
+            n_e = self.simulation.get_species_number_density("e")
+            n_n = self.simulation.get_species_number_density("n")
+            k_iz = self.simulation.get_ionization_rate_coeff()
+            
+            ion_rate = n_e * n_n * k_iz # LANDMARK short paper
+            print("a")
+        
+        # TODO turn on?
         if self.params.type != "e":
             pass
             # print(f"!PPC_BEFORE! BEFORE PPC: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")

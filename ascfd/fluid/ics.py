@@ -292,7 +292,7 @@ class FluidInitialConditions:
         ic[self.c.UCOMP] = 1.34e6
         ic[self.c.VCOMP] = 0
         ic[self.c.WCOMP] = 0
-        ic[self.c.TCOMP] = 4
+        ic[self.c.TCOMP] = 4 * self.inp.k_B
         
         print("[ics] INIT WITH:", ic[self.c.NCOMP])
         

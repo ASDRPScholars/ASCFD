@@ -75,6 +75,7 @@ class Inputs:
         self.flux = self.get_config_value(config, "Method", "flux")
         self.bcs_lo = self.get_config_value(config, "Method", "bcs_lo", type_func=self.parse_bcs)
         self.bcs_hi = self.get_config_value(config, "Method", "bcs_hi", type_func=self.parse_bcs)
+        self.collision_type = self.get_config_value(config, "Method", "collision_type", mandatory=False, default="rate_coeffs")
 
         # Params
         self.propellant = self.get_config_value(config, "Parameters", "propellant", type_func = str)

@@ -178,7 +178,7 @@ class Simulation:
         return np.maximum(nu_grid, 1e-12)
     
     
-    def get_k_ionization(self):
+    def get_ionization_rate_coeff(self):
         k_iz_grid = np.zeros_like(self.inp.internal_grid)
         
         T_e = self.get_species_temperature("e")
@@ -189,19 +189,16 @@ class Simulation:
         kinetic_e = 1/2 * m_e * v_e**2 
         kinetic_e /= 1.60218e-19 # J -> eV
         energy_e = kinetic_e + (T_e * k_B) # kinetic + thermal
-        energy_e = int(round(energy_e))
-        
-        if energy_e < 0 or not isinstance(energy_e, int):
-            assert ValueError("[IONIZE] NEGATIVE TOTAL ENERGY - CANNOT TABLUATE RATE COEFF")
 
-        df = pd.read_csv('rates/xe_kiz_K.csv')
+        df = pd.read_csv('ascfd/rates/xe_kiz_K.csv')
         
         for i in range (self.inp.nx):
             for j in range (self.inp.ny):
-                row = df.loc[df['epsilon_eV'] == energy_e[i, j]]
+                row = df.loc[df['epsilon_eV'] == round(energy_e[i, j])]
                 k_iz_grid[i, j] = row['k_iz']
         
         print("got all k_iz")
+        return k_iz_grid
     
     def get_species_number_density(self, species):
         # TODO: test does this work
