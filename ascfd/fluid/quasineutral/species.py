@@ -119,18 +119,18 @@ class QNFluidSpecies(FluidSpecies):
                 self.bcs.apply_bcs()
                 
                 joule_source = n_e * v_e * e * self.E_perp
-                neutral_coll_source = n_e * N * K
+                # neutral_coll_source = n_e * N * K
                 # wall_coll_source = nu_e * eps_e * np.exp(-U / eps_e) # TODO WHAT IS U??
                 
-                # U[icomp, ng:-ng, ng:-ng] -= self.dt #* (joule_source + neutral_coll_source)
-                # self.bcs.apply_bcs()
+                U[icomp, ng:-ng, ng:-ng] -= self.dt * (joule_source) #+ neutral_coll_source)
+                self.bcs.apply_bcs()
                 
             elif icomp == self.c.UCOMP:
                 # --- LANDMARK --- 
                 
                 n_eps_e = n_e * eps_e
                 n_u_e = mu_e * n_e * e * self.E_perp - mu_e * np.gradient(n_eps_e, self.inp.dx, axis=0)
-                self.E_perp = eta * (1 + hall_param**2) * (n_u_e * q_e)
+                # self.E_perp = eta * (1 + hall_param**2) * (n_u_e * q_e)
                 
                 U[icomp, ng:-ng, ng:-ng] = n_u_e / n_e
                 self.bcs.apply_bcs()
