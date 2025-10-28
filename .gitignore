@@ -8,7 +8,6 @@ myEnv/
 *.pdf
 *.html
 *.json
-*.csv
 *.pyc
 *.DS_Store
 *.so

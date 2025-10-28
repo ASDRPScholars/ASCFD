@@ -11,6 +11,7 @@ from ascfd.plasma_refs import PlasmaReferences
 from ascfd.cross_sections.xe import XenonCollisionData
 
 import numpy as np
+import pandas as pd
 from scipy.integrate import quad
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -151,6 +152,7 @@ class Simulation:
         return normal_inp
     
     def get_collision_frequency(self, collision_type):
+        '''DEPRECATED - NOT IN USE CURRENTLY'''
         # NOTE: a good eV/k_B range for electrons is 1-30 eV
         # TODO: THAT MEANS GRAPHS THAT SAY ENERGY (eV) BUT SHOW VALUES BETWEEN 1-30 ARE REALLY TALKING ABOUT TEMP eV/k_B (?)
         
@@ -175,6 +177,31 @@ class Simulation:
         
         return np.maximum(nu_grid, 1e-12)
     
+    
+    def get_k_ionization(self):
+        k_iz_grid = np.zeros_like(self.inp.internal_grid)
+        
+        T_e = self.get_species_temperature("e")
+        v_e = self.get_species_velocity("e")
+        m_e = self.inp.m_e
+        k_B = self.inp.k_B
+        
+        kinetic_e = 1/2 * m_e * v_e**2 
+        kinetic_e /= 1.60218e-19 # J -> eV
+        energy_e = kinetic_e + (T_e * k_B) # kinetic + thermal
+        energy_e = int(round(energy_e))
+        
+        if energy_e < 0 or not isinstance(energy_e, int):
+            assert ValueError("[IONIZE] NEGATIVE TOTAL ENERGY - CANNOT TABLUATE RATE COEFF")
+
+        df = pd.read_csv('rates/xe_kiz_K.csv')
+        
+        for i in range (self.inp.nx):
+            for j in range (self.inp.ny):
+                row = df.loc[df['epsilon_eV'] == energy_e[i, j]]
+                k_iz_grid[i, j] = row['k_iz']
+        
+        print("got all k_iz")
     
     def get_species_number_density(self, species):
         # TODO: test does this work
@@ -220,9 +247,9 @@ class Simulation:
             n_e = self.get_species_number_density("e")
             q_e = -self.inp.q
             
-            u = self.electrons.grid[self.electrons.c.UCOMP, ng:-ng, ng:-ng] / (n_e * q_e)
-            v = self.electrons.grid[self.electrons.c.VCOMP, ng:-ng, ng:-ng] / (n_e * q_e)
-            w = self.electrons.grid[self.electrons.c.WCOMP, ng:-ng, ng:-ng] / (n_e * q_e)
+            u = self.electrons.grid[self.electrons.c.UCOMP, ng:-ng, ng:-ng] #/ (n_e * q_e)
+            v = self.electrons.grid[self.electrons.c.VCOMP, ng:-ng, ng:-ng] #/ (n_e * q_e)
+            w = self.electrons.grid[self.electrons.c.WCOMP, ng:-ng, ng:-ng] #/ (n_e * q_e)
             vel = np.sqrt(u**2 + v**2 + w**2)
         
             value = {"u": u, "v": v, "w": w}.get(direction, vel)
