@@ -171,15 +171,15 @@ class Simulation:
         
         if species == "i":
             try:
-                return np.maximum(self.ions.compute_particle_density_field()[ng:-ng, ng:-ng], 1e-12)
+                return np.maximum(self.ions.compute_particle_density_field()[ng:-ng, ng:-ng], 1e16)
             except:
                 return self.ions.grid[self.ions.c.RHOCOMP, ng:-ng, ng:-ng]/self.inp.m_i
         elif species == "n":
-            return np.maximum(self.neutrals.compute_particle_density_field()[ng:-ng, ng:-ng], 1e-12)
+            return np.maximum(self.neutrals.compute_particle_density_field()[ng:-ng, ng:-ng], 1e16)
             # except:
             #     return np.maximum(self.neutrals.grid[self.neutrals.c.RHOCOMP, ng:-ng, ng:-ng]/self.inp.m_n, 1e-12)
         elif species == "e" and self.inp.e_system == "quasineutral":
-            return np.maximum(self.electrons.grid[self.electrons.c.NCOMP, ng:-ng, ng:-ng], 1e-12)
+            return np.maximum(self.electrons.grid[self.electrons.c.NCOMP, ng:-ng, ng:-ng], 1e16)
         
         
     def get_species_current_density(self, species):

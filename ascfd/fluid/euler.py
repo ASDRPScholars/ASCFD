@@ -147,12 +147,13 @@ class FluidEuler:
             
             ng = self.inp.ng
             
+            m_e = self.inp.m_e
             n_e = a_prim[self.c.NCOMP, ng:-ng, ng:-ng]
             v_e = a_prim[self.c.UCOMP, ng:-ng, ng:-ng] # x-velocity
             T_e = a_prim[self.c.TCOMP, ng:-ng, ng:-ng]
             k_B = self.inp.k_B
             
-            eps_e = 3/2 * k_B * T_e
+            eps_e = 3/2 * k_B * T_e + (1/2 * m_e * v_e**2)
             
             q_e = self.inp.q
             m_e = self.inp.m_e

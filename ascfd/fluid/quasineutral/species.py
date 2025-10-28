@@ -39,7 +39,7 @@ class QNFluidSpecies(FluidSpecies):
         eps_0 = self.c.eps_0
         
         # --- LANDMARK ---
-        eps_e = (3/2 * k_B * T_e) # TODO DO WE STILL HAVE TO ADD VELOCITY THOUGH
+        eps_e = (3/2 * k_B * T_e) + (1/2 * m_e * v_e**2) # TODO DO WE STILL HAVE TO ADD VELOCITY THOUGH
         
         B = self.fields.B[:, :, 1]
         
@@ -122,8 +122,8 @@ class QNFluidSpecies(FluidSpecies):
                 neutral_coll_source = n_e * N * K
                 # wall_coll_source = nu_e * eps_e * np.exp(-U / eps_e) # TODO WHAT IS U??
                 
-                U[icomp, ng:-ng, ng:-ng] -= self.dt * (joule_source + neutral_coll_source)
-                self.bcs.apply_bcs()
+                # U[icomp, ng:-ng, ng:-ng] -= self.dt #* (joule_source + neutral_coll_source)
+                # self.bcs.apply_bcs()
                 
             elif icomp == self.c.UCOMP:
                 # --- LANDMARK --- 
