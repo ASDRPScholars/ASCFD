@@ -39,9 +39,9 @@ class Simulation:
         self.pc = ParticleConstants()
         self.fields = Fields(self.inp)
         
-        # TODO: move density + temperature to PARTICLE ics, don't keep in multispecies params
-        xe_i_params = SpeciesParams(self.inp.q, self.inp.m_i, 5/3, "i", density=0.5, temperature=10.0)  # Xe+ ions  
-        xe_n_params = SpeciesParams(0, self.inp.m_n, 5/3, "n", density=5.0, temperature=10.0)  # Xe neutrals
+        # == INIT
+        
+        ## -- ELECTRONS:
         e_params = SpeciesParams(-self.inp.q, self.inp.m_e, 5/3, "e", density=1.0, temperature=100.0)
         
         if self.inp.e_system in ["euler2d", "mhd2d"]:
@@ -49,18 +49,9 @@ class Simulation:
         elif self.inp.e_system == "quasineutral":
             self.electrons = QNFluidSpecies(self.c, e_params, self.inp, self.fields, self)
             
-        if self.inp.i_system == "euler2d":
-            self.ions = FluidSpecies(self.p_c, xe_i_params, self.inp, self.fields, self)
-        elif self.inp.i_system == "pic":
-            self.ions = ParticleSpecies(self.pc, xe_i_params, self.inp, self.fields, self)
+        if self.inp.propellant == "xe":
             
-        if self.inp.i_ics is not None:
-            self.neutrals = ParticleSpecies(self.pc, xe_n_params, self.inp, self.fields, self)
-            self.all_species = [self.electrons, self.neutrals, self.ions]
-        else:
-            self.all_species = [self.electrons]
-            
-        if self.inp.propellant == "xe":  # electrons and ions collide with neutrals
+            ## -- COLLISIONS:
             self.collisions = XenonCollisionData({
                 'elastic': 'ascfd/cross_sections/elastic.txt',
                 'exc1': 'ascfd/cross_sections/exc1.txt',
@@ -71,19 +62,39 @@ class Simulation:
                 'ion_elastic': 'ascfd/cross_sections/ion_elastic.txt',
                 'ion_backward': 'ascfd/cross_sections/ion_backward.txt'
             })
+            
+            ## -- IONS:
+            xe_i_params = SpeciesParams(self.inp.q, self.inp.m_i, 5/3, "i", density=0.5, temperature=10.0)  # Xe+ ions  
+            
+            if self.inp.i_system == "euler2d":
+                self.ions = FluidSpecies(self.p_c, xe_i_params, self.inp, self.fields, self) # TODO p_c
+            elif self.inp.i_system == "pic":
+                self.ions = ParticleSpecies(self.pc, xe_i_params, self.inp, self.fields, self.collisions, self)
+                
+            ## -- NEUTRALS:
+            xe_n_params = SpeciesParams(0, self.inp.m_n, 5/3, "n", density=5.0, temperature=10.0)  # Xe neutrals
+            
+            if self.inp.n_system == "advection1d":
+                self.neutrals = FluidSpecies(self.c, xe_n_params, self.inp, self.fields, self)
+            elif self.inp.n_system == "pic":
+                self.neutrals = ParticleSpecies(self.pc, xe_n_params, self.inp, self.fields, self.collisions, self)
+
+            self.all_species = [self.electrons, self.neutrals, self.ions]
+                
+            
+        elif self.inp.propellant is None:
+            self.all_species = [self.electrons]
+        
         else:
-            self.collisions = None
+            raise ValueError(f"PROPELLANT TYPE NOT SUPPORTED: {self.inp.propellant}")
         
         # setup initial time to be the starting time from the inputs file.
         self.t = self.inp.t0
         self.timestep = 0
-        # self.dt = self.get_dt()
-        self.dt_physical = 1e-5
-        self.dt_norm = self.dt_physical / self.ref.dt
+        self.dt = self.inp.dt
         
-        # Set timestep for all species
         for species in self.all_species:
-            species.dt = self.dt_norm
+            species.dt = self.dt
 
         # self.pelectrons.dt = self.dt_norm
         
@@ -273,7 +284,7 @@ class Simulation:
                 with open (path, "a") as f:
                     f.write(f"\n--Timestep: {self.timestep}--")
                 
-            self.t += self.dt_physical
+            self.t += self.dt
             self.timestep += 1
             
             if self.inp.output_freq > 0 and self.timestep % self.inp.output_freq == 0:

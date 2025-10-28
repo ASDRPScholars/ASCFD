@@ -93,9 +93,9 @@ class Inputs:
         self.max_number_of_bounces = self.get_config_value(config, "Ions", "max_number_of_bounces", mandatory = False, default = 3, type_func = int)
         
         # Neutrals
-        self.n_flow_rate = self.get_config_value(config, "Ions", "n_flow_rate", mandatory = False, default = 5e-6, type_func = float)
-        self.v_n = self.get_config_value(config, "Ions", "v_n", mandatory = False, default = 150, type_func = float)
-        self.n_n = self.n_flow_rate / (self.m_n * self.ylim[1] * self.v_n)
+        self.n_system = self.get_config_value(config, "Neutrals", "system", default = "advection1d")
+        self.flux_n = self.get_config_value(config, "Neutrals", "flux_n", mandatory = False, default = 5e-6, type_func = float)
+        self.v_n = self.get_config_value(config, "Neutrals", "v_n", mandatory = False, default = 150, type_func = float)
         
         self.n_particles = self.N_ppc * self.nx_with_ghosts * self.ny_with_ghosts
         

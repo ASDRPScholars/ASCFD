@@ -24,7 +24,7 @@ class CollisionEvent:
         self.energy_change = energy_change
 
 class ParticleSpecies:
-    def __init__(self, pc: ParticleConstants, params: SpeciesParams, a_inputs: Inputs, fields: Fields, simulation):
+    def __init__(self, pc: ParticleConstants, params: SpeciesParams, a_inputs: Inputs, fields: Fields, collision_data: XenonCollisionData, simulation):
         self.pc = pc
         self.fields = fields
 
@@ -40,14 +40,11 @@ class ParticleSpecies:
         self.sigma_temp_storage = [[[] for _ in range(self.inp.ny)] for _ in range(self.inp.nx)]
         self.sigma = np.zeros((self.inp.nx, self.inp.ny))
 
+        self.collision_data = collision_data
         self.collision_count = np.zeros(3)
         
         # Track ionization positions for spatial analysis
         self.ionization_positions_x = []
-        
-        # # Pre-compute frequently used constants for optimization
-        # self.charge_to_mass_ratio = self.params.charge / self.params.mass if self.params.mass != 0 else 0.0
-        # self.acceleration_factor = self.charge_to_mass_ratio * 5e7  # Include the scaling factor
         
         # Cache for active particles to reduce recomputation
         self._active_indices_cache = None
@@ -83,54 +80,54 @@ class ParticleSpecies:
         print(f"Initialized {self.active_count} active {self.params.type} particles")
         
         # TODO: TEMP IC -
-        if self.params.type in ["n", "i"]:
-            # Create temporary array for ICs - ensure correct shape
-            temp_particles = self.particles[:, :self.active_count].copy()
-            self.ics = ParticleInitialConditions(temp_particles, self.inp, self.params)        
-            self.ics.apply_ics()
+        # if self.params.type in ["n", "i"]:
+        #     # Create temporary array for ICs - ensure correct shape
+        #     temp_particles = self.particles[:, :self.active_count].copy()
+        #     self.ics = ParticleInitialConditions(temp_particles, self.inp, self.params)        
+        #     # self.ics.apply_ics()
             
-            # Copy back the initialized data
-            self.particles[:, :self.active_count] = temp_particles
-            weight = self.estimate_initial_weight()
-            if not (np.isnan(weight) or np.isinf(weight)):
-                self.particles[self.WEIGHT, :self.active_count] = weight
-            else:
-                print(f"ERROR: Invalid initial weight for {self.params.type}: {weight}")
-                self.particles[self.WEIGHT, :self.active_count] = 1.0  # Default weight
+        #     # Copy back the initialized data
+        #     self.particles[:, :self.active_count] = temp_particles
+        #     weight = self.estimate_initial_weight()
+        #     if not (np.isnan(weight) or np.isinf(weight)):
+        #         self.particles[self.WEIGHT, :self.active_count] = weight
+        #     else:
+        #         print(f"ERROR: Invalid initial weight for {self.params.type}: {weight}")
+        #         self.particles[self.WEIGHT, :self.active_count] = 1.0  # Default weight
             
         # TODO: VERY MUCH SCUFFED TEMP IC - ALSO FIGURE OUT THIS LOGIC
-        elif self.params.type == "i":
+        # elif self.params.type == "i":
             
-            temp_particles = self.particles[:, :self.active_count].copy()
-            self.ics = ParticleInitialConditions(temp_particles, self.inp, self.params)        
-            self.ics.apply_ics()
+        #     temp_particles = self.particles[:, :self.active_count].copy()
+        #     self.ics = ParticleInitialConditions(temp_particles, self.inp, self.params)        
+        #     self.ics.apply_ics()
             
-            # Copy back the initialized data
-            self.particles[:, :self.active_count] = temp_particles
-            weight = self.estimate_initial_weight()
+        #     # Copy back the initialized data
+        #     self.particles[:, :self.active_count] = temp_particles
+        #     weight = self.estimate_initial_weight()
             
-            if not (np.isnan(weight) or np.isinf(weight)):
-                self.particles[self.WEIGHT, :self.active_count] = weight
+        #     if not (np.isnan(weight) or np.isinf(weight)):
+        #         self.particles[self.WEIGHT, :self.active_count] = weight
                 
-            pass
+        #     pass
             
-            self.active_count = 1
-            self.is_active[0] = True
+        #     self.active_count = 1
+        #     self.is_active[0] = True
             
-            # Initialize ion with valid position and velocity
-            init_x = 0.5 * self.inp.nx
-            init_y = 0.5 * self.inp.ny  # Fix: was using nx for both x and y
+        #     # Initialize ion with valid position and velocity
+        #     init_x = 0.5 * self.inp.nx
+        #     init_y = 0.5 * self.inp.ny  # Fix: was using nx for both x and y
             
-            # Validate initial values
-            if np.isnan(init_x) or np.isnan(init_y) or np.isinf(init_x) or np.isinf(init_y):
-                print(f"ERROR: Invalid initial position for ion: x={init_x}, y={init_y}")
-                init_x, init_y = 1.0, 1.0  # Safe fallback
+        #     # Validate initial values
+        #     if np.isnan(init_x) or np.isnan(init_y) or np.isinf(init_x) or np.isinf(init_y):
+        #         print(f"ERROR: Invalid initial position for ion: x={init_x}, y={init_y}")
+        #         init_x, init_y = 1.0, 1.0  # Safe fallback
             
-            self.particles[self.pc.XCOMP, 0] = init_x
-            self.particles[self.pc.YCOMP, 0] = init_y
-            self.particles[self.pc.UCOMP, 0] = 100
-            self.particles[self.pc.VCOMP, 0] = 0
-            self.particles[self.WEIGHT, 0] = 1.0  # Non-zero weight
+        #     self.particles[self.pc.XCOMP, 0] = init_x
+        #     self.particles[self.pc.YCOMP, 0] = init_y
+        #     self.particles[self.pc.UCOMP, 0] = 100
+        #     self.particles[self.pc.VCOMP, 0] = 0
+        #     self.particles[self.WEIGHT, 0] = 1.0  # Non-zero weight
             
         if self.params.type in ["i", "n"]:
             self.bcs = ParticleBoundaryConditions(self, self.inp, self.params)
@@ -145,21 +142,6 @@ class ParticleSpecies:
         # for first timestep, we need v^(-1/2), so we calculate it as v^(1/2) - dt*a
         # if self.params.type == "i":  # only for charged particles
         #     self._initialize_leapfrog_velocities()
-
-        # initialize collision system for Xenon
-        if self.params.type in ["e", "i"]:  # electrons and ions collide with neutrals
-            self.collision_data = XenonCollisionData({
-                'elastic': 'ascfd/cross_sections/elastic.txt',
-                'exc1': 'ascfd/cross_sections/exc1.txt',
-                'exc2': 'ascfd/cross_sections/exc2.txt',
-                'exc3': 'ascfd/cross_sections/exc3.txt',
-                'exc4': 'ascfd/cross_sections/exc4.txt',
-                'ionization': 'ascfd/cross_sections/ionization.txt',
-                'ion_elastic': 'ascfd/cross_sections/ion_elastic.txt',
-                'ion_backward': 'ascfd/cross_sections/ion_backward.txt'
-            })
-        else:
-            self.collision_data = None
         
         self.collision_events = []
 
@@ -370,11 +352,8 @@ class ParticleSpecies:
         
         particles_to_remove = []
         
-        # TODO TEMP if self.params.type == "n":
-        # if self.params.type == "n":
-        #     self.bcs.apply_bcs()
-            # print("!N! APPLIED BCS")
-            # print(f"!BCS! AFTER BCS: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
+        if self.params.type == "n":
+            self.bcs.apply_bcs()
             
         if self.params.type in ["i", "n"]:
             # Vectorized particle update for better performance
@@ -392,9 +371,6 @@ class ParticleSpecies:
                 # TODO: !GOODENOUGH! 
                 ax_values = self.params.charge * Ex_values * self.dt # * 50000
                 ay_values = self.params.charge * Ey_values * self.dt # * 50000
-
-                # print("ax is", ax_values)
-                # print("because Ex is", Ex_values)
                 
                 # Check for invalid fields/accelerations
                 invalid_mask = (np.isnan(Ex_values) | np.isnan(Ey_values) | 
