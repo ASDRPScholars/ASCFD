@@ -30,10 +30,12 @@ class QNFluidSpecies(FluidSpecies):
         q_e = self.params.charge
         m_e = self.params.mass
         n_e = U[self.c.NCOMP, ng:-ng, ng:-ng]
-        v_e = U[self.c.UCOMP, ng:-ng, ng:-ng]
+        v_e = self.simulation.get_species_velocity("e")
         T_e = U[self.c.TCOMP, ng:-ng, ng:-ng]
         n_i = self.simulation.get_species_number_density("i")
         n_n = self.simulation.get_species_number_density("n")
+        
+        j_i_perp = self.simulation.get_species_current_density("i")
        
         k_B = self.c.k_B
         eps_0 = self.c.eps_0
@@ -125,14 +127,21 @@ class QNFluidSpecies(FluidSpecies):
                 U[icomp, ng:-ng, ng:-ng] -= self.dt * (joule_source) #+ neutral_coll_source)
                 self.bcs.apply_bcs()
                 
-            elif icomp == self.c.UCOMP:
+            elif icomp == self.c.JXCOMP:
                 # --- LANDMARK --- 
+                j_perp = (q_e * n_e * nu_e) / (omega_ce * B) * (self.E_perp + grad_p_e_perp / (q_e * n_e))
                 
-                n_eps_e = n_e * eps_e
-                n_u_e = mu_e * n_e * e * self.E_perp - mu_e * np.gradient(n_eps_e, self.inp.dx, axis=0)
+                # n_eps_e = n_e * eps_e
+                # n_u_e = mu_e * n_e * e * self.E_perp - mu_e * np.gradient(n_eps_e, self.inp.dx, axis=0)
                 # self.E_perp = eta * (1 + hall_param**2) * (n_u_e * q_e)
+                # U[icomp, ng:-ng, ng:-ng] = n_u_e / n_e
                 
-                U[icomp, ng:-ng, ng:-ng] = n_u_e / n_e
+                print("j_i", np.shape(j_i_perp))
+                print("nu_ei", np.shape(nu_ei))
+                
+                self.E_perp = m_e * nu_e / (q_e**2 * n_e) * (1 + hall_param**2) * j_perp - (grad_p_e_perp / (q_e * n_e)) + (m_e * nu_ei)/(q_e**2 * n_e)*j_i_perp
+                
+                U[icomp, ng:-ng, ng:-ng] = j_perp
                 self.bcs.apply_bcs()
                 
         self.check_grid()

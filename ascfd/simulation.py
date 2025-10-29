@@ -220,16 +220,21 @@ class Simulation:
     def get_species_current_density(self, species):
         """Retrieve 1D (axial) current from charged species"""
         
+        ng = self.inp.ng
+        
         if species == "i":
             try:
-                return self.ions.compute_particle_density_field() * self.ions.compute_particle_x_velocity_field() * self.inp.q
+                j_i =  self.ions.compute_particle_density_field() * self.ions.compute_particle_x_velocity_field() * self.inp.q
+                return j_i[ng:-ng, ng:-ng]
             except:
-                ng = self.inp.ng
+
                 return self.ions.grid[self.ions.c.RHOCOMP, ng:-ng, ng:-ng] * self.ions.grid[self.ions.c.UCOMP, ng:-ng, ng:-ng] * -self.inp.q
     
         elif species == "e" and self.inp.e_system == "quasineutral":
-            ng = self.inp.ng
-            return self.electrons.grid[self.electrons.c.NCOMP, ng:-ng, ng:-ng] * self.electrons.grid[self.electrons.c.UCOMP, ng:-ng, ng:-ng] * -self.inp.q
+            try:
+                return self.electrons.grid[self.electrons.c.NCOMP, ng:-ng, ng:-ng] * self.electrons.grid[self.electrons.c.UCOMP, ng:-ng, ng:-ng] * -self.inp.q
+            except:
+                return self.electrons.grid[self.electrons.c.JXCOMP, ng:-ng, ng:-ng]
     
     
     def get_species_velocity(self, species, direction=None):
@@ -244,13 +249,20 @@ class Simulation:
             n_e = self.get_species_number_density("e")
             q_e = -self.inp.q
             
-            u = self.electrons.grid[self.electrons.c.UCOMP, ng:-ng, ng:-ng] #/ (n_e * q_e)
-            v = self.electrons.grid[self.electrons.c.VCOMP, ng:-ng, ng:-ng] #/ (n_e * q_e)
-            w = self.electrons.grid[self.electrons.c.WCOMP, ng:-ng, ng:-ng] #/ (n_e * q_e)
-            vel = np.sqrt(u**2 + v**2 + w**2)
-        
-            value = {"u": u, "v": v, "w": w}.get(direction, vel)
+            try:
+                u = self.electrons.grid[self.electrons.c.UCOMP, ng:-ng, ng:-ng] #/ (n_e * q_e)
+                v = self.electrons.grid[self.electrons.c.VCOMP, ng:-ng, ng:-ng] #/ (n_e * q_e)
+                w = self.electrons.grid[self.electrons.c.WCOMP, ng:-ng, ng:-ng] #/ (n_e * q_e)
+                vel = np.sqrt(u**2 + v**2 + w**2)
             
+            except:
+                u = self.electrons.grid[self.electrons.c.JXCOMP, ng:-ng, ng:-ng] / (n_e * q_e)
+                v = self.electrons.grid[self.electrons.c.JYCOMP, ng:-ng, ng:-ng] / (n_e * q_e)
+                w = self.electrons.grid[self.electrons.c.JZCOMP, ng:-ng, ng:-ng] / (n_e * q_e)
+                vel = np.sqrt(u**2 + v**2 + w**2)
+            
+                value = {"u": u, "v": v, "w": w}.get(direction, vel)
+                
             return value
         
     def get_species_temperature(self, species):
