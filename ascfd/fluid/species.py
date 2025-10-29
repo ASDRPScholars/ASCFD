@@ -103,7 +103,8 @@ class FluidSpecies:
         self.fields.clear_charge_density()
         self.fields.add_charge_density(charge_density) # -!- TOGGLE -!-
 
-        self.fields.update_E()
+        if self.inp.e_system != "quasineutral":
+            self.fields.update_E()
 
         # if self.pelectrons:
         #     return new_particles

@@ -275,6 +275,7 @@ class ParticleSpecies:
         
             # print("IONS ADDED CHARGE DENSITY:", charge_density)
         
+        if self.inp.e_system != "quasineutral":
             self.fields.update_E()
         
         # Perform periodic spatial sorting for cache locality (do this at end of update)

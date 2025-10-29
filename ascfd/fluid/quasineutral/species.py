@@ -12,8 +12,6 @@ class QNFluidSpecies(FluidSpecies):
         super().__init__(c, params, a_inputs, fields, simulation)
         
         self.var_grids = {}
-        
-        self.E_perp = 4e4 # TODO: better than 0 somehow
         self.check_grid()
         
     # TODO: DOUBLE CHECK WE'RE HANDLING GHOSTS HERE RIGHT CUZ THIS ALWAYS TRIPS ME UP
@@ -44,6 +42,7 @@ class QNFluidSpecies(FluidSpecies):
         eps_e = (3/2 * k_B * T_e) + (1/2 * m_e * v_e**2 / 1.60218e-19) # TODO DO WE STILL HAVE TO ADD VELOCITY THOUGH
         
         B = self.fields.B[:, :, 1]
+        E_perp = self.fields.E[:, :, 0]
         
         p_e = n_e * k_B * T_e
         grad_p_e_perp = np.gradient(p_e, self.inp.dx, 0)[0]
@@ -96,7 +95,7 @@ class QNFluidSpecies(FluidSpecies):
             "nu_e": nu_e,
             "omega_ce": omega_ce,
             "hall_param": hall_param,
-            "E_perp": self.E_perp
+            "E_perp": E_perp
         })
         
         for icomp in range(self.c.NUMQ):
@@ -108,7 +107,7 @@ class QNFluidSpecies(FluidSpecies):
                 self.bcs.apply_bcs()
             
             # elif icomp == self.c.JYCOMP:
-            #     (q_e**2 * n_e)/(m_e * nu_e) * (self.E_perp + np.gradient(p_e, 0, self.inp.dy)/(q_e*n_e)) # parallel electron current - marks eqs (2.29-2.31)
+            #     (q_e**2 * n_e)/(m_e * nu_e) * (E_perp + np.gradient(p_e, 0, self.inp.dy)/(q_e*n_e)) # parallel electron current - marks eqs (2.29-2.31)
                 
             # elif icomp == self.c.JZCOMP:
             #     j_theta = hall_param * j_e_perp # azimuthal electron current - marks eqs (2.29-2.31)
@@ -120,7 +119,7 @@ class QNFluidSpecies(FluidSpecies):
                 U[icomp, ng:-ng, ng:-ng] -= delta
                 self.bcs.apply_bcs()
                 
-                joule_source = n_e * v_e * e * self.E_perp
+                joule_source = n_e * v_e * e * E_perp
                 # neutral_coll_source = n_e * N * K
                 # wall_coll_source = nu_e * eps_e * np.exp(-U / eps_e) # TODO WHAT IS U??
                 
@@ -129,17 +128,19 @@ class QNFluidSpecies(FluidSpecies):
                 
             elif icomp == self.c.JXCOMP:
                 # --- LANDMARK --- 
-                j_perp = ((q_e * n_e * nu_e) / (omega_ce * B)) * (self.E_perp + (grad_p_e_perp / (q_e * n_e)))
+                j_perp = ((q_e * n_e * nu_e) / (omega_ce * B)) * (E_perp + (grad_p_e_perp / (q_e * n_e)))
                 
                 # n_eps_e = n_e * eps_e
-                # n_u_e = mu_e * n_e * e * self.E_perp - mu_e * np.gradient(n_eps_e, self.inp.dx, axis=0)
-                # self.E_perp = eta * (1 + hall_param**2) * (n_u_e * q_e)
+                # n_u_e = mu_e * n_e * e * E_perp - mu_e * np.gradient(n_eps_e, self.inp.dx, axis=0)
+                # E_perp = eta * (1 + hall_param**2) * (n_u_e * q_e)
                 # U[icomp, ng:-ng, ng:-ng] = n_u_e / n_e
                 
                 print("j_i", np.shape(j_i_perp))
                 print("nu_ei", np.shape(nu_ei))
                 
-                self.E_perp = m_e * nu_e / (q_e**2 * n_e) * (1 + hall_param**2) * j_perp - (grad_p_e_perp / (q_e * n_e)) + (m_e * nu_ei)/(q_e**2 * n_e)*j_i_perp
+                E_perp_new = m_e * nu_e / (q_e**2 * n_e) * (1 + hall_param**2) * j_perp - (grad_p_e_perp / (q_e * n_e)) + (m_e * nu_ei)/(q_e**2 * n_e)*j_i_perp
+                
+                self.fields.populate_E_field(E_perp_new)
                 
                 U[icomp, ng:-ng, ng:-ng] = j_perp
                 self.bcs.apply_bcs()

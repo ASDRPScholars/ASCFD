@@ -19,8 +19,11 @@ class FieldInitialConditions:
                 
                 
     def apply_E_ics(self):
+        return np.ones_like(self.E_field) * 1e4
+    
         if self.inp.e_system == "euler2d":
             pass
+        
         
         
     def guillaume(self):
