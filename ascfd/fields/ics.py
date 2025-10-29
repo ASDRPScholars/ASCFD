@@ -11,7 +11,7 @@ class FieldInitialConditions:
     def apply_B_ics(self):
         if self.inp.e_system in ["euler2d", "quasineutral"]:
             if self.inp.B_ics == "guillaume":
-                return np.ones_like(self.B_field) * 200
+                return np.ones_like(self.B_field) * 0.02
                 return self.guillaume()
                 print("FROM IC", self.B_field[:, :, 1])
             else:

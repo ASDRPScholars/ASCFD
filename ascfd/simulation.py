@@ -488,9 +488,9 @@ class Simulation:
             "jz_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[3], extent, "Electron Azimuthal Current"),
             "k_B*T_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[4]*self.inp.k_B, extent, "Electron Temperature (eV)"),
             
-            "Ex": lambda idx: self.plot_2d_data(axs[idx], E_data[:,:,0], extent, "Electric Field X", cmap='coolwarm'),
-            "Ey": lambda idx: self.plot_2d_data(axs[idx], E_data[:,:,1], extent, "Electric Field Y", cmap='coolwarm'),
-            "By": lambda idx: self.plot_2d_data(axs[idx], B_data[:,:,1], extent, "Magnetic Field Y", cmap='magma'),
+            "Ex": lambda idx: self.plot_2d_data(axs[idx], E_data[:,:,0], extent, "Axial Electric Field (V/m)", cmap='coolwarm'),
+            "Ey": lambda idx: self.plot_2d_data(axs[idx], E_data[:,:,1], extent, "Radial Electric Field (V/m)", cmap='coolwarm'),
+            "By": lambda idx: self.plot_2d_data(axs[idx], B_data[:,:,1], extent, "Radial Magnetic Field (T)", cmap='magma'),
             
             "phi": lambda idx: self.plot_2d_data(axs[idx], potential_data, extent, "Electric Potential", cmap='coolwarm'),
             
