@@ -67,7 +67,7 @@ class QNFluidSpecies(FluidSpecies):
         nu_w = 1e7
         beta = 0.1 # TODO outside = 1
         
-        nu_e = 1e-7
+        nu_e = 1e7
         nu = (N * k_m) + nu_w + (beta * e * B / m_e) / 16
         
         K = 2e-14 # TODO add lookup
@@ -129,7 +129,7 @@ class QNFluidSpecies(FluidSpecies):
                 
             elif icomp == self.c.JXCOMP:
                 # --- LANDMARK --- 
-                j_perp = (q_e * n_e * nu_e) / (omega_ce * B) * (self.E_perp + grad_p_e_perp / (q_e * n_e))
+                j_perp = ((q_e * n_e * nu_e) / (omega_ce * B)) * (self.E_perp + (grad_p_e_perp / (q_e * n_e)))
                 
                 # n_eps_e = n_e * eps_e
                 # n_u_e = mu_e * n_e * e * self.E_perp - mu_e * np.gradient(n_eps_e, self.inp.dx, axis=0)
