@@ -162,7 +162,7 @@ class Simulation:
         T_e = self.get_species_temperature("e")
         v_e = self.get_species_velocity("e")
         # v_e = np.sqrt((3 * self.inp.k_B * T_e)/(self.inp.m_e))
-        E_e = T_e # TODO: let's assume the cross-section graphs are talking about energy as eV/k_B... - so we don't multiply by k_B for now...
+        E_e = T_e * self.inp.k_B # TODO: let's assume the cross-section graphs are talking about energy as eV/k_B... - so we don't multiply by k_B for now...
         
         if collision_type == "en":
             for i in range (self.inp.nx):
@@ -188,7 +188,7 @@ class Simulation:
         
         kinetic_e = 1/2 * m_e * v_e**2 
         kinetic_e /= 1.60218e-19 # J -> eV
-        energy_e = kinetic_e + (T_e * k_B) # kinetic + thermal
+        energy_e = kinetic_e + (3/2 * T_e * k_B) # kinetic + thermal
 
         df = pd.read_csv('ascfd/rates/xe_kiz_K.csv')
         

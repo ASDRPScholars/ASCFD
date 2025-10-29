@@ -39,7 +39,7 @@ class QNFluidSpecies(FluidSpecies):
         eps_0 = self.c.eps_0
         
         # --- LANDMARK ---
-        eps_e = (3/2 * k_B * T_e) + (1/2 * m_e * v_e**2) # TODO DO WE STILL HAVE TO ADD VELOCITY THOUGH
+        eps_e = (3/2 * k_B * T_e) + (1/2 * m_e * v_e**2 / 1.60218e-19) # TODO DO WE STILL HAVE TO ADD VELOCITY THOUGH
         
         B = self.fields.B[:, :, 1]
         

@@ -145,6 +145,156 @@ class ParticleSpecies:
         
         self.collision_events = []
 
+    def update(self):
+        
+        print(f"!START! BEGINNING UPDATE: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
+        
+        self.num_collisions.fill(0)
+        self.ionization_positions_x.clear()
+        # Invalidate active particle cache at start of update
+        self._cache_valid = False
+        
+        particles_to_remove = []
+        
+        if self.params.type == "n":
+            self.bcs.apply_bcs()
+            
+        if self.params.type in ["i", "n"]:
+            # Vectorized particle update for better performance
+            active_indices = self._get_active_indices()
+            
+            if len(active_indices) > 0:
+                # Extract positions for all active particles at once
+                x_positions = self.particles[self.pc.XCOMP, active_indices]
+                y_positions = self.particles[self.pc.YCOMP, active_indices]
+                
+                # Batch interpolate electric fields
+                Ex_values, Ey_values = self._interpolate_electric_field_batch(x_positions, y_positions)
+                
+                # Vectorized acceleration calculation using pre-computed ratio
+                # TODO: !GOODENOUGH! 
+                ax_values = self.params.charge * Ex_values * self.dt # * 50000
+                ay_values = self.params.charge * Ey_values * self.dt # * 50000
+                
+                # Check for invalid fields/accelerations
+                invalid_mask = (np.isnan(Ex_values) | np.isnan(Ey_values) | 
+                               np.isinf(Ex_values) | np.isinf(Ey_values) |
+                               np.isnan(ax_values) | np.isnan(ay_values) |
+                               np.isinf(ax_values) | np.isinf(ay_values))
+                
+                if np.any(invalid_mask):
+                    invalid_indices = np.array(active_indices)[invalid_mask]
+                    particles_to_remove.extend(invalid_indices.tolist())
+                    print(f"WARNING: Removing {np.sum(invalid_mask)} particles with invalid fields")
+                
+                # Update velocities for valid particles
+                valid_mask = ~invalid_mask
+                valid_indices = np.array(active_indices)[valid_mask]
+                
+                if len(valid_indices) > 0:
+                    # Vectorized velocity update
+                    self.particles[self.pc.UCOMP, valid_indices] += ax_values[valid_mask]
+                    self.particles[self.pc.VCOMP, valid_indices] += ay_values[valid_mask]
+                    
+                    # Check for near-zero velocities
+                    low_vel_mask = ((self.particles[self.pc.UCOMP, valid_indices] <= 1e-1) &
+                                   (self.particles[self.pc.VCOMP, valid_indices] <= 1e-1))
+                    if np.any(low_vel_mask):
+                        low_vel_indices = valid_indices[low_vel_mask]
+                        particles_to_remove.extend(low_vel_indices.tolist())
+                    
+                    # Vectorized position update for remaining particles
+                    good_vel_mask = ~low_vel_mask
+                    good_indices = valid_indices[good_vel_mask]
+                    
+                    if True: # len(good_indices) > 0
+                        
+                        #TODO: add back good_indices mask
+                        #TODO: FIGURE OUT WHERE THE MISSING LINK IS IN NORMALIZATION
+                        self.particles[self.pc.XCOMP] += (self.dt * self.particles[self.pc.UCOMP])
+                        
+                        # TODO: ADD MULTIPLIER HERE AND SUDDENLY NEUTRAL DENSITY WORKS? (grid bound issue for sure... it's not seeing small grid bounds?) - also if you turn it off then u can see REAL particle axial advection (but sparse)
+                        self.particles[self.pc.YCOMP] += (self.dt * self.particles[self.pc.VCOMP])
+                            
+                        # Check for particles that moved outside domain
+                        print(f"!B! BEFORE BOUNDARY CHECK: x_positions = {self.particles[self.pc.XCOMP, good_indices[:5]]}")
+                        for idx in good_indices:
+                            x_pos = self.particles[self.pc.XCOMP, idx]
+                            y_pos = self.particles[self.pc.YCOMP, idx]
+                            grid_coords = self._get_grid_coordinates(x_pos, y_pos)
+                            if grid_coords is None:
+                                print(f"!REMOVE! Particle {idx} at ({x_pos:.6f}, {y_pos:.6f}) flagged for removal - outside domain")
+                                particles_to_remove.append(idx)
+                            else:
+                                print(f"!KEEP! Particle {idx} at ({x_pos:.6f}, {y_pos:.6f}) -> grid {grid_coords} - keeping")
+                            break  # Only debug first particle to avoid spam
+                        print(f"!B! AFTER BOUNDARY CHECK: x_positions = {self.particles[self.pc.XCOMP, good_indices[:5]]}")
+            
+
+        if particles_to_remove:
+            active_before = np.sum(self.is_active)
+            # print("!%! BEFORE REMOVE THERE ARE:", active_before)
+            active_indices_before_remove = self._get_active_indices()
+            # print("!%! BEFORE REMOVE X POSITIONS:", self.particles[self.pc.XCOMP, active_indices_before_remove[:5]] if active_indices_before_remove else "NO ACTIVE PARTICLES")
+            self._remove_particles(particles_to_remove)
+            # print("!%! REMOVING THESE PARTICLES:")
+            # for idx in particles_to_remove:
+            #     print(f"({self.particles[self.pc.XCOMP, idx]}, {self.particles[self.pc.YCOMP, idx]})")
+            active_after = np.sum(self.is_active)
+            # print(f"!%! AFTER REMOVE {self.params.type} THERE ARE:", active_after)
+            active_indices_after_remove = self._get_active_indices()
+            # print("!%! AFTER REMOVE X POSITIONS:", self.particles[self.pc.XCOMP, active_indices_after_remove[:5]] if active_indices_after_remove else "NO ACTIVE PARTICLES")
+    
+        new_particles = []
+        
+        if self.params.type in ["e", "i"] and self.collision_data is not None and self.inp.collision_type == "dsmc":
+            # TODO: READD COLLISIONS
+            new_particles = self.process_collisions()
+            
+            if new_particles:
+                self.add_particles(new_particles)
+                
+        elif self.params.type in ["i"] and self.inp.collision_type == "rate_coeffs":
+            n_e = self.simulation.get_species_number_density("e")
+            n_n = self.simulation.get_species_number_density("n")
+            k_iz = self.simulation.get_ionization_rate_coeff()
+            
+            ion_rate = n_e * n_n * k_iz # LANDMARK short paper
+            print("a")
+        
+        # TODO turn on?
+        if self.params.type != "e":
+            pass
+            # print(f"!PPC_BEFORE! BEFORE PPC: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
+            # self.enforce_ppc()
+            # print(f"!PPC_AFTER! AFTER PPC: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
+
+        if hasattr(self, 'get_charge_density'):
+            charge_density = self.get_charge_density()
+            self.fields.add_charge_density(charge_density)
+        
+            # print("IONS ADDED CHARGE DENSITY:", charge_density)
+        
+            self.fields.update_E()
+        
+        # Perform periodic spatial sorting for cache locality (do this at end of update)
+        self.sort_counter += 1
+        if self.sort_counter >= self.sort_frequency:
+            print(f"!SORT_BEFORE! BEFORE SPATIAL SORT: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
+            self._sort_particles_spatially()
+            print(f"!SORT_AFTER! AFTER SPATIAL SORT: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
+            self.sort_counter = 0
+
+        print("--##-- COLLISION EVENTS FOR", self.params.type)
+        print("ionization", self.collision_count[0])
+        print("excitations", self.collision_count[1])
+        print("elastic", self.collision_count[2])
+
+        self.collision_count.fill(0)
+
+        print(f"!END! END UPDATE: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
+
+        return new_particles
 
     def compute_particle_density_field(self):
         """Compute number density field from particle positions"""
@@ -340,158 +490,6 @@ class ParticleSpecies:
 
     def estimate_initial_weight(self):
         return (self.inp.n_n * self.inp.dx * self.inp.dy) / self.inp.N_ppc
-
-    def update(self):
-        
-        print(f"!START! BEGINNING UPDATE: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
-        
-        self.num_collisions.fill(0)
-        self.ionization_positions_x.clear()
-        # Invalidate active particle cache at start of update
-        self._cache_valid = False
-        
-        particles_to_remove = []
-        
-        if self.params.type == "n":
-            self.bcs.apply_bcs()
-            
-        if self.params.type in ["i", "n"]:
-            # Vectorized particle update for better performance
-            active_indices = self._get_active_indices()
-            
-            if len(active_indices) > 0:
-                # Extract positions for all active particles at once
-                x_positions = self.particles[self.pc.XCOMP, active_indices]
-                y_positions = self.particles[self.pc.YCOMP, active_indices]
-                
-                # Batch interpolate electric fields
-                Ex_values, Ey_values = self._interpolate_electric_field_batch(x_positions, y_positions)
-                
-                # Vectorized acceleration calculation using pre-computed ratio
-                # TODO: !GOODENOUGH! 
-                ax_values = self.params.charge * Ex_values * self.dt # * 50000
-                ay_values = self.params.charge * Ey_values * self.dt # * 50000
-                
-                # Check for invalid fields/accelerations
-                invalid_mask = (np.isnan(Ex_values) | np.isnan(Ey_values) | 
-                               np.isinf(Ex_values) | np.isinf(Ey_values) |
-                               np.isnan(ax_values) | np.isnan(ay_values) |
-                               np.isinf(ax_values) | np.isinf(ay_values))
-                
-                if np.any(invalid_mask):
-                    invalid_indices = np.array(active_indices)[invalid_mask]
-                    particles_to_remove.extend(invalid_indices.tolist())
-                    print(f"WARNING: Removing {np.sum(invalid_mask)} particles with invalid fields")
-                
-                # Update velocities for valid particles
-                valid_mask = ~invalid_mask
-                valid_indices = np.array(active_indices)[valid_mask]
-                
-                if len(valid_indices) > 0:
-                    # Vectorized velocity update
-                    self.particles[self.pc.UCOMP, valid_indices] += ax_values[valid_mask]
-                    self.particles[self.pc.VCOMP, valid_indices] += ay_values[valid_mask]
-                    
-                    # Check for near-zero velocities
-                    low_vel_mask = ((self.particles[self.pc.UCOMP, valid_indices] <= 1e-1) &
-                                   (self.particles[self.pc.VCOMP, valid_indices] <= 1e-1))
-                    if np.any(low_vel_mask):
-                        low_vel_indices = valid_indices[low_vel_mask]
-                        particles_to_remove.extend(low_vel_indices.tolist())
-                    
-                    # Vectorized position update for remaining particles
-                    good_vel_mask = ~low_vel_mask
-                    good_indices = valid_indices[good_vel_mask]
-                    
-                    if True: # len(good_indices) > 0
-                        
-                        #TODO: add back good_indices mask
-                        #TODO: FIGURE OUT WHERE THE MISSING LINK IS IN NORMALIZATION
-                        self.particles[self.pc.XCOMP] += (self.dt * self.particles[self.pc.UCOMP])
-                        
-                        # TODO: ADD MULTIPLIER HERE AND SUDDENLY NEUTRAL DENSITY WORKS? (grid bound issue for sure... it's not seeing small grid bounds?) - also if you turn it off then u can see REAL particle axial advection (but sparse)
-                        self.particles[self.pc.YCOMP] += (self.dt * self.particles[self.pc.VCOMP])
-                            
-                        # Check for particles that moved outside domain
-                        print(f"!B! BEFORE BOUNDARY CHECK: x_positions = {self.particles[self.pc.XCOMP, good_indices[:5]]}")
-                        for idx in good_indices:
-                            x_pos = self.particles[self.pc.XCOMP, idx]
-                            y_pos = self.particles[self.pc.YCOMP, idx]
-                            grid_coords = self._get_grid_coordinates(x_pos, y_pos)
-                            if grid_coords is None:
-                                print(f"!REMOVE! Particle {idx} at ({x_pos:.6f}, {y_pos:.6f}) flagged for removal - outside domain")
-                                particles_to_remove.append(idx)
-                            else:
-                                print(f"!KEEP! Particle {idx} at ({x_pos:.6f}, {y_pos:.6f}) -> grid {grid_coords} - keeping")
-                            break  # Only debug first particle to avoid spam
-                        print(f"!B! AFTER BOUNDARY CHECK: x_positions = {self.particles[self.pc.XCOMP, good_indices[:5]]}")
-            
-
-        if particles_to_remove:
-            active_before = np.sum(self.is_active)
-            # print("!%! BEFORE REMOVE THERE ARE:", active_before)
-            active_indices_before_remove = self._get_active_indices()
-            # print("!%! BEFORE REMOVE X POSITIONS:", self.particles[self.pc.XCOMP, active_indices_before_remove[:5]] if active_indices_before_remove else "NO ACTIVE PARTICLES")
-            self._remove_particles(particles_to_remove)
-            # print("!%! REMOVING THESE PARTICLES:")
-            # for idx in particles_to_remove:
-            #     print(f"({self.particles[self.pc.XCOMP, idx]}, {self.particles[self.pc.YCOMP, idx]})")
-            active_after = np.sum(self.is_active)
-            # print(f"!%! AFTER REMOVE {self.params.type} THERE ARE:", active_after)
-            active_indices_after_remove = self._get_active_indices()
-            # print("!%! AFTER REMOVE X POSITIONS:", self.particles[self.pc.XCOMP, active_indices_after_remove[:5]] if active_indices_after_remove else "NO ACTIVE PARTICLES")
-    
-        new_particles = []
-        
-        if self.params.type in ["e", "i"] and self.collision_data is not None and self.inp.collision_type == "dsmc":
-            # TODO: READD COLLISIONS
-            new_particles = self.process_collisions()
-            
-            if new_particles:
-                self.add_particles(new_particles)
-                
-        elif self.params.type in ["i"] and self.inp.collision_type == "rate_coeffs":
-            n_e = self.simulation.get_species_number_density("e")
-            n_n = self.simulation.get_species_number_density("n")
-            k_iz = self.simulation.get_ionization_rate_coeff()
-            
-            ion_rate = n_e * n_n * k_iz # LANDMARK short paper
-            print("a")
-        
-        # TODO turn on?
-        if self.params.type != "e":
-            pass
-            # print(f"!PPC_BEFORE! BEFORE PPC: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
-            # self.enforce_ppc()
-            # print(f"!PPC_AFTER! AFTER PPC: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
-
-        if hasattr(self, 'get_charge_density'):
-            charge_density = self.get_charge_density()
-            self.fields.add_charge_density(charge_density)
-        
-            # print("IONS ADDED CHARGE DENSITY:", charge_density)
-        
-            self.fields.update_E()
-        
-        # Perform periodic spatial sorting for cache locality (do this at end of update)
-        self.sort_counter += 1
-        if self.sort_counter >= self.sort_frequency:
-            print(f"!SORT_BEFORE! BEFORE SPATIAL SORT: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
-            self._sort_particles_spatially()
-            print(f"!SORT_AFTER! AFTER SPATIAL SORT: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
-            self.sort_counter = 0
-
-        print("--##-- COLLISION EVENTS FOR", self.params.type)
-        print("ionization", self.collision_count[0])
-        print("excitations", self.collision_count[1])
-        print("elastic", self.collision_count[2])
-
-        self.collision_count.fill(0)
-
-        print(f"!END! END UPDATE: first active particles = {self.particles[self.pc.XCOMP, self._get_active_indices()[:3]] if self._get_active_indices() else 'NONE'}")
-
-        return new_particles
-
 
     def process_collisions(self):
         # print("!#@! PROCESS COLLISIONS cALLED FOR", self.params.type)
