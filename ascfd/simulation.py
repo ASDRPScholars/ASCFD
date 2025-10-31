@@ -194,8 +194,12 @@ class Simulation:
         
         for i in range (self.inp.nx):
             for j in range (self.inp.ny):
-                row = df.loc[df['epsilon_eV'] == round(energy_e[i, j])]
-                k_iz_grid[i, j] = row['k_iz']
+                int_energy_e = round(energy_e[i, j])
+                row = df.loc[df['epsilon_eV'] == int_energy_e]
+                if isinstance(row['k_iz'], int):
+                    k_iz_grid[i, j] = row['k_iz']
+                else:
+                    print("could not tabulate k_iz")
         
         print("got all k_iz")
         return k_iz_grid

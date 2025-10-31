@@ -259,7 +259,7 @@ class ParticleSpecies:
             n_n = self.simulation.get_species_number_density("n")
             k_iz = self.simulation.get_ionization_rate_coeff()
             
-            ion_rate = n_e * n_n * k_iz # LANDMARK short paper
+            # TODO toggle: ion_rate = n_e * n_n * k_iz # LANDMARK short paper
             print("a")
         
         # TODO turn on?
