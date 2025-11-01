@@ -151,6 +151,14 @@ class Simulation:
         
         return normal_inp
     
+    
+    def get_species_flux(self, species):
+        n = self.get_species_number_density(species)
+        v = self.get_species_velocity(species)
+            
+        return n*v
+        
+    
     def get_collision_frequency(self, collision_type):
         '''DEPRECATED - NOT IN USE CURRENTLY'''
         # NOTE: a good eV/k_B range for electrons is 1-30 eV
@@ -295,46 +303,43 @@ class Simulation:
 
     def run(self):
         while (self.t < self.inp.t_finish) and self.timestep < self.inp.nt:
-            print("do we enter run loop?")
             print("\033[1m" + f"Timestep: {self.timestep}, Current time: {self.t}" + "\033[0m")
             
-            if self.inp.timeStepper == "RK1":
-                new_particles = []
-                
-                for species in self.all_species:
-                    new_particles_from_species = species.update()
-                    if new_particles_from_species:
-                        new_particles.extend(new_particles_from_species)
-                
-                print("NUMBER OF NEW PARTICLES:", len(new_particles))
-                
-                # Add all new particles at once (more efficient than per-particle loop)
-                if new_particles:
-                    # Add to ions and fluid electrons as before
-                    for particle in new_particles:
-                        self.ions.add_particle(particle)
-                    # Add all particles to fluid electrons at once
-                    self.electrons.add_particles(new_particles)   
+            if self.inp.e_system == "quasineutral":
+                self.neutrals.update()
+                self.ions.update()
+                self.electrons.update()
                 
             else:
-                raise ValueError(f"Unknown time stepper: {self.inp.timeStepper}")
-            
+                if self.inp.timeStepper == "RK1":
+                    new_particles = []
+                    
+                    for species in self.all_species:
+                        new_particles_from_species = species.update()
+                        if new_particles_from_species:
+                            new_particles.extend(new_particles_from_species)
+                    
+                    print("NUMBER OF NEW PARTICLES:", len(new_particles))
+                    
+                    if new_particles:
+                        for particle in new_particles:
+                            self.ions.add_particle(particle)
+                        self.electrons.add_particles(new_particles)   
+                    
+                else:
+                    raise ValueError(f"Unknown time stepper: {self.inp.timeStepper}")
+                
             for entry_name in os.listdir("output/debug"):
                 path = os.path.join("output/debug", entry_name)
                 with open (path, "a") as f:
                     f.write(f"\n--Timestep: {self.timestep}--")
-                
+                    
             self.t += self.dt
             self.timestep += 1
-            
+                
             if self.inp.output_freq > 0 and self.timestep % self.inp.output_freq == 0:
                 self.output()
-        
-        # if self.inp.output_freq >= 0:
-        #     self.output()
-            
-        # # !TEMP!
-        # self.output()        
+           
         print(f"\nSimulation completed at time {self.t} after {self.timestep} timesteps")
 
         if self.inp.make_movie:

@@ -31,12 +31,13 @@ class FieldInitialConditions:
         
         # -> MIT LECTURE
         B_max = self.inp.B_max # Tesla
-        x_c = 0.7 * self.inp.xlim[1]
-        sigma = 0.5 * self.inp.xlim[1]
+        l = 0.5 * self.inp.xlim[1]
+        sigma = np.ones_like(ic_grid) * 1.8
+        sigma[0:self.inp.nx/2] = 1.1
         
         x = np.linspace(self.inp.xlim[0], self.inp.xlim[1], self.inp.nx)
     
-        gaussian_1d = B_max * np.exp(-((x - x_c) / sigma) ** 2)
+        gaussian_1d = B_max * np.exp(-(x-l)**2 / (2 * sigma**2))
         
         ic_grid[:, :, 1] = gaussian_1d[:, np.newaxis]
         
