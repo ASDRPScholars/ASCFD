@@ -31,7 +31,7 @@ class FieldInitialConditions:
         
         # -> MIT LECTURE
         B_max = self.inp.B_max # Tesla
-        x_c = 0.9 * self.inp.xlim[1]
+        x_c = 0.7 * self.inp.xlim[1]
         sigma = 0.5 * self.inp.xlim[1]
         
         x = np.linspace(self.inp.xlim[0], self.inp.xlim[1], self.inp.nx)
