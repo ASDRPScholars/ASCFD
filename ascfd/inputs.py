@@ -31,6 +31,8 @@ class Inputs:
         self.nx_with_ghosts = self.nx + 2 * self.ng
         self.ny_with_ghosts = self.ny + 2 * self.ng
         
+        self.L_x = int(self.nx/2)
+        
         self.dx = (self.xlim[1] - self.xlim[0]) / (self.nx - 1)
         self.dy = (self.ylim[1] - self.ylim[0]) / (self.ny - 1)
         
