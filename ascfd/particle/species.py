@@ -331,42 +331,43 @@ class ParticleSpecies:
         return density_field
     
     
-    def compute_particle_x_velocity_field(self):
-        """Compute number density field from particle positions"""
-        if not hasattr(self, 'particles') or not hasattr(self, 'is_active'):
-            return np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
-        
-        velocity_field = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
-        count_field = np.zeros((self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
-        
+    def get_x_velocity_field(self):
+        """Compute x-velocity field from particle velocities, defaults to 0 where no particles"""
+        velocity_field = np.zeros((self.inp.nx, self.inp.ny))
+
         active_indices = self._get_active_indices()
-        
-        if len(active_indices) > 0:
-            # Vectorized density computation
-            x_positions = self.particles[self.pc.XCOMP, active_indices]
-            y_positions = self.particles[self.pc.YCOMP, active_indices]
-            x_vel = self.particles[self.pc.UCOMP, active_indices]
-            
-            # Vectorized grid index calculation
-            ix_values = ((x_positions - self.inp.grid_x[0]) / self.inp.dx).astype(int)
-            iy_values = ((y_positions - self.inp.grid_y[0]) / self.inp.dy).astype(int)
-            
-            # Bounds check
-            valid_mask = ((ix_values >= 0) & (ix_values < self.inp.nx_with_ghosts) & 
-                         (iy_values >= 0) & (iy_values < self.inp.ny_with_ghosts))
-            
-            if np.any(valid_mask):
-                ix_valid = ix_values[valid_mask]
-                iy_valid = iy_values[valid_mask]
-                x_vel_valid = x_vel[valid_mask]
-                
-                # Use np.add.at for efficient accumulation
-                np.add.at(velocity_field, (ix_valid, iy_valid), x_vel_valid)
-                np.add.at(count_field, (ix_valid, iy_valid), 1)
-                
-                nonzero_mask = count_field > 0
-                velocity_field[nonzero_mask] /= count_field[nonzero_mask]
-        
+        if len(active_indices) == 0:
+            return velocity_field
+
+        # Extract particle data
+        x_positions = self.particles[self.pc.XCOMP, active_indices]
+        y_positions = self.particles[self.pc.YCOMP, active_indices]
+        x_vel = self.particles[self.pc.UCOMP, active_indices]
+
+        # Grid indices
+        ix_values = ((x_positions - self.inp.grid_x[0]) / self.inp.dx).astype(int)
+        iy_values = ((y_positions - self.inp.grid_y[0]) / self.inp.dy).astype(int)
+
+        # Bounds check
+        valid_mask = ((ix_values >= 0) & (ix_values < self.inp.nx) &
+                     (iy_values >= 0) & (iy_values < self.inp.ny))
+
+        if not np.any(valid_mask):
+            return velocity_field
+
+        ix_valid = ix_values[valid_mask]
+        iy_valid = iy_values[valid_mask]
+        x_vel_valid = x_vel[valid_mask]
+
+        # Accumulate velocities and counts
+        count_field = np.zeros_like(velocity_field)
+        np.add.at(velocity_field, (ix_valid, iy_valid), x_vel_valid)
+        np.add.at(count_field, (ix_valid, iy_valid), 1)
+
+        # Average where particles exist (elsewhere remains 0)
+        nonzero_mask = count_field > 0
+        velocity_field[nonzero_mask] /= count_field[nonzero_mask]
+
         return velocity_field
 
 

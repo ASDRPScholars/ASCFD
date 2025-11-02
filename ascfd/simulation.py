@@ -253,9 +253,9 @@ class Simulation:
         # TODO: complete implementation for particles
         
         if species == "i":
-            pass
+            return self.ions.get_x_velocity_field()
         elif species == "n":
-            pass
+            return self.neutrals.get_x_velocity_field()
         elif species == "e" and self.inp.e_system == "quasineutral":
             ng = self.inp.ng
             n_e = self.get_species_number_density("e")
