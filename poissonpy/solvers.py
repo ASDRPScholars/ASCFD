@@ -3,8 +3,10 @@ import sympy as sp
 import scipy.sparse.linalg
 import types
 import matplotlib.pyplot as plt
+import os
 
-from . import functional, helpers
+from poissonpy import functional, helpers
+import matplotlib as mpl
 
 # inner region conditions 
 # laplacian diag matrix construction
@@ -295,3 +297,82 @@ class Poisson2DRegion:
         solution_grid[self.region_pos] = x
         solution_grid = solution_grid.reshape(self.Y, self.X)
         return solution_grid
+
+
+def test_poisson_solver():
+    """
+    Test function that plots the result of the Poisson solver with specified
+    boundary conditions on a 200x200 mesh.
+
+    Boundary conditions:
+    - left: Neumann (gradient = 0)
+    - right: Neumann (gradient = 0)
+    - top: Dirichlet (value = 300)
+    - bottom: Dirichlet (value = 0)
+    """
+    nx, ny = 200, 200
+
+    rect = [(0, 0), (1, 1)]  # unit square
+
+    def top_boundary(x, y):
+        return np.where(x <= 0.5, 300 * (1 - 2*x), 0)
+
+    def bottom_boundary(x, y):
+        return np.where(x <= 0.5, 300 * (1 - 2*x), 0)
+
+    # Define boundary conditions
+    boundary = {
+        "left": (300, "dirichlet"),                    # Left edge (zero gradient)
+        "right": (0, "dirichlet"),                   # Right edge (zero gradient)
+        "top": (top_boundary, "dirichlet"),         # Top edge (linear drop profile)
+        "bottom": (bottom_boundary, "dirichlet")      # Bottom edge (linear drop profile)
+    }
+
+    rhs = 0
+
+    solver = Poisson2DRectangle(rect=rect, interior=rhs, boundary=boundary, X=nx, Y=ny)
+    solution = solver.solve()
+
+    Ex = -np.gradient(solution, solver.dx, axis=1)  # axis=1 is x-direction
+
+    # Plot results
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+
+    # Contour line plot
+    contour = axes[0].contour(solver.x_grid, solver.y_grid, solution, levels=20, colors='black', linewidths=0.8)
+    axes[0].clabel(contour, inline=True, fontsize=8)
+    axes[0].set_xlabel('x')
+    axes[0].set_ylabel('y')
+    axes[0].set_title('Potential (Contour Lines)')
+    axes[0].set_aspect('equal')
+
+    # Potential surface plot
+    im1 = axes[1].imshow(solution, extent=[rect[0][0], rect[1][0], rect[0][1], rect[1][1]],
+                        origin='lower', cmap=mpl.cm.Blues, aspect='equal')
+    axes[1].set_xlabel('x')
+    axes[1].set_ylabel('y')
+    axes[1].set_title('Potential')
+    plt.colorbar(im1, ax=axes[1], label='V')
+
+    #  Ex plot
+    im2 = axes[2].imshow(Ex, extent=[rect[0][0], rect[1][0], rect[0][1], rect[1][1]],
+                        origin='lower', cmap=mpl.cm.Reds, aspect='equal')
+    axes[2].set_xlabel('x')
+    axes[2].set_ylabel('y')
+    axes[2].set_title('Electric Field Ex = -dV/dx')
+    plt.colorbar(im2, ax=axes[2], label='Ex (V/m)')
+
+    # create output directory if it doesn't exist
+    output_dir = os.path.join(os.path.dirname(__file__), '..', 'output', 'poisson')
+    os.makedirs(output_dir, exist_ok=True)
+
+    output_path = os.path.join(output_dir, 'poisson_test_result.pdf')
+    plt.tight_layout()
+    plt.savefig(output_path, bbox_inches='tight')
+    print(f"Plot saved to '{output_path}'")
+    plt.show()
+
+    return solution, solver
+
+if __name__ == '__main__':
+    test_poisson_solver()
