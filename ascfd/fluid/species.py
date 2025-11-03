@@ -60,7 +60,16 @@ class FluidSpecies:
                 
         ### THERMAL SHEATH BOUNDARIES
         
-        T_e = 2/(3 * k_B) * (consU[self.c.ECOMP] - (1/2 * m_e * consU[self.c.UCOMP]**2))
+        KE = 0.5 * consU[self.c.UCOMP]**2 / consU[self.c.RHOCOMP]  # per unit mass
+        # Or if UCOMP is momentum:
+        KE = 0.5 * consU[self.c.UCOMP]**2 / consU[self.c.RHOCOMP]
+
+        # Internal energy
+        internal_energy = consU[self.c.ECOMP] - 0.5 * consU[self.c.UCOMP]**2 / consU[self.c.RHOCOMP]
+
+        # Temperature (for gamma = 5/3)
+        T_e = (2.0/3.0) * internal_energy * m_e / (consU[self.c.RHOCOMP] * k_B)
+
         v_th = np.sqrt(2 * k_B * T_e / m_e)
         
         phi_th = consU[self.c.RHOCOMP] * v_th / (2 * np.sqrt(np.pi))
@@ -81,39 +90,39 @@ class FluidSpecies:
             0.0  # Block inflow
         )
         
-        # # TOP
+        # TOP
         
-        # top_convect_flux = top_flux[self.c.RHOCOMP, :, ng]
-        # top_outflow_mask = top_convect_flux < 0
+        top_convect_flux = top_flux[self.c.RHOCOMP, :, ng]
+        top_outflow_mask = top_convect_flux < 0
         
-        # top_flux[self.c.RHOCOMP, :, ng] = np.where(
-        #     top_outflow_mask,
-        #     top_convect_flux + phi_th[:, ng],  # Add thermal mass flux
-        #     0.0  # Block inflow
-        # )
+        top_flux[self.c.RHOCOMP, :, ng] = np.where(
+            top_outflow_mask,
+            top_convect_flux + phi_th[:, ng],  # Add thermal mass flux
+            0.0  # Block inflow
+        )
 
-        # top_flux[self.c.ECOMP, :, ng] = np.where(
-        #     top_outflow_mask,
-        #     top_flux[self.c.ECOMP, :, ng] + Q_th[:, ng],  # Add thermal energy flux
-        #     0.0  # Block inflow
-        # )
+        top_flux[self.c.ECOMP, :, ng] = np.where(
+            top_outflow_mask,
+            top_flux[self.c.ECOMP, :, ng] + Q_th[:, ng],  # Add thermal energy flux
+            0.0  # Block inflow
+        )
         
-        # # BOTTOM
+        # BOTTOM
         
-        # bottom_convect_flux = bottom_flux[self.c.RHOCOMP, :, self.inp.ny + ng]
-        # bottom_outflow_mask = bottom_convect_flux < 0
+        bottom_convect_flux = bottom_flux[self.c.RHOCOMP, :, self.inp.ny + ng]
+        bottom_outflow_mask = bottom_convect_flux < 0
         
-        # bottom_flux[self.c.RHOCOMP, :, self.inp.ny + ng] = np.where(
-        #     bottom_outflow_mask,
-        #     bottom_convect_flux + phi_th[:, self.inp.ny + ng],  # Add thermal mass flux
-        #     0.0  # Block inflow
-        # )
+        bottom_flux[self.c.RHOCOMP, :, self.inp.ny + ng] = np.where(
+            bottom_outflow_mask,
+            bottom_convect_flux + phi_th[:, self.inp.ny + ng],  # Add thermal mass flux
+            0.0  # Block inflow
+        )
 
-        # bottom_flux[self.c.ECOMP, :, self.inp.ny + ng] = np.where(
-        #     bottom_outflow_mask,
-        #     bottom_flux[self.c.ECOMP, :, self.inp.ny + ng] + Q_th[:, self.inp.ny + ng],  # Add thermal energy flux
-        #     0.0  # Block inflow
-        # )
+        bottom_flux[self.c.ECOMP, :, self.inp.ny + ng] = np.where(
+            bottom_outflow_mask,
+            bottom_flux[self.c.ECOMP, :, self.inp.ny + ng] + Q_th[:, self.inp.ny + ng],  # Add thermal energy flux
+            0.0  # Block inflow
+        )
 
         
         for i in range(ng, self.inp.nx + ng):
