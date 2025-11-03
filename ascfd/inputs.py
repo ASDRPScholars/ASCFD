@@ -26,7 +26,6 @@ class Inputs:
         self.xlim = self.get_config_value(config, "Mesh", "xlim", type_func=self.parse_bounds)
         self.ylim = self.get_config_value(config, "Mesh", "ylim", type_func=self.parse_bounds)
 
-
         ## computed mesh properties
         self.nx_with_ghosts = self.nx + 2 * self.ng
         self.ny_with_ghosts = self.ny + 2 * self.ng

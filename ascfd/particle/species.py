@@ -32,6 +32,8 @@ class ParticleSpecies:
         self.params = params
         self.dt = None
         self.simulation = simulation 
+        
+        self.ics = ParticleInitialConditions(self.inp, self.params)
 
         self.WEIGHT = self.pc.NUMQ
         
@@ -132,8 +134,6 @@ class ParticleSpecies:
         if self.params.type in ["i", "n"]:
             self.bcs = ParticleBoundaryConditions(self, self.inp, self.params)
         else:
-            print("P ELECTRONS INITED WITH", self.active_count, "particles")
-            print("P ELECTRONS CAPACITY", self.capacity)
             self.particles = self.simulation.electrons.convert_to_particles()
             self.active_count = self.particles.shape[1]
             self.is_active[:self.active_count] = True
@@ -256,8 +256,14 @@ class ParticleSpecies:
                 
         elif self.params.type in ["i"] and self.inp.collision_type == "rate_coeffs":
             n_e = self.simulation.get_species_number_density("e")
-            n_n = self.simulation.get_species_number_density("n")
+            N = self.simulation.get_species_number_density("n")
             k_iz = self.simulation.get_coeffs("k_iz")
+            
+            n_iz = n_e * N * k_iz
+            
+            iz_particles = self.ics.apply_ics(ic="random")
+            
+            self.add_particles(iz_particles)
             
             # TODO toggle: ion_rate = n_e * n_n * k_iz # LANDMARK short paper
             print("a")

@@ -44,7 +44,7 @@ class Simulation:
         # == INIT
         
         ## -- ELECTRONS:
-        e_params = SpeciesParams(-self.inp.q, self.inp.m_e, 5/3, "e", density=1.0, temperature=100.0)
+        e_params = SpeciesParams(-self.inp.q, self.inp.m_e, 5/3, "e", temperature=100.0)
         
         if self.inp.e_system in ["euler2d", "mhd2d"]:
             self.electrons = FluidSpecies(self.c, e_params, self.inp, self.fields, self)
@@ -66,7 +66,7 @@ class Simulation:
             })
             
             ## -- IONS:
-            xe_i_params = SpeciesParams(self.inp.q, self.inp.m_i, 5/3, "i", density=0.5, temperature=10.0)  # Xe+ ions  
+            xe_i_params = SpeciesParams(self.inp.q, self.inp.m_i, 5/3, "i", temperature=0.043)  # 500K - hagelaar - Xe+ ions  
             
             if self.inp.i_system == "euler2d":
                 self.ions = FluidSpecies(self.p_c, xe_i_params, self.inp, self.fields, self) # TODO p_c
@@ -74,7 +74,7 @@ class Simulation:
                 self.ions = ParticleSpecies(self.pc, xe_i_params, self.inp, self.fields, self.collisions, self)
                 
             ## -- NEUTRALS:
-            xe_n_params = SpeciesParams(0, self.inp.m_n, 5/3, "n", density=5.0, temperature=10.0)  # Xe neutrals
+            xe_n_params = SpeciesParams(0, self.inp.m_n, 5/3, "n", temperature=0.043)  # 500K - hagelaar - Xe neutrals
             
             if self.inp.n_system == "advection1d":
                 self.neutrals = FluidSpecies(self.c, xe_n_params, self.inp, self.fields, self)
@@ -209,6 +209,9 @@ class Simulation:
             print("got all k")
             
         return k_grid
+    
+    
+    
     
     
     def get_species_number_density(self, species):
