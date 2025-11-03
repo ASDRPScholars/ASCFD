@@ -36,8 +36,8 @@ class FieldInitialConditions:
         
         x = np.linspace(self.inp.xlim[0], self.inp.xlim[1], self.inp.nx)
         
-        sigma = np.ones_like(x) * 1.8
-        sigma[0:self.inp.L_x] = 1.1
+        sigma = np.ones_like(x) * 0.018
+        sigma[0:self.inp.L_x] = 0.011
     
         gaussian_1d = B_max * np.exp(-(x-l)**2 / (2 * sigma**2))
         
