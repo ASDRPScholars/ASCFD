@@ -13,6 +13,7 @@ from ascfd.cross_sections.xe import XenonCollisionData
 import numpy as np
 import pandas as pd
 from scipy.integrate import quad
+from scipy.interpolate import CubicSpline
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import os
@@ -107,7 +108,7 @@ class Simulation:
             path = os.path.join("output/debug", entry_name)
             with open (path, "w"):
                 pass
-        
+
         
     def _phys_to_normal(self) -> Inputs:
         print("CALLED PHYS TO NORMAL")
@@ -186,30 +187,29 @@ class Simulation:
         return np.maximum(nu_grid, 1e-12)
     
     
-    def get_coeffs(self, type, energy_e=None):
+    def get_coeffs(self, column_type, energy_e=None):
         k_grid = np.zeros_like(self.inp.internal_grid)
         
-        if energy_e:
+        if energy_e is not None:
             energy_e = energy_e
         else:
             energy_e = self.get_species_energy("e")
         
         df = pd.read_csv('ascfd/rates/xe_kiz_K.csv')
         
-        column = "k_iz" if (type == "k_iz" or "rate") else "K"
+        column = column_type
         
         for i in range (self.inp.nx):
             for j in range (self.inp.ny):
                 int_energy_e = round(energy_e[i, j])
                 row = df.loc[df['epsilon_eV'] == int_energy_e]
-                if isinstance(row[column], int):
-                    k_grid[i, j] = row[column]
-                else:
-                    print("could not tabulate k_iz")
+
+                k_grid[i, j] = row[column].iloc[0]
             
             print("got all k")
             
         return k_grid
+    
     
     def get_species_number_density(self, species):
         # TODO: test does this work
@@ -272,7 +272,7 @@ class Simulation:
                 w = self.electrons.grid[self.electrons.c.JZCOMP, ng:-ng, ng:-ng] / (n_e * q_e)
                 vel = np.sqrt(u**2 + v**2 + w**2)
             
-                value = {"u": u, "v": v, "w": w}.get(direction, vel)
+            value = {"u": u, "v": v, "w": w}.get(direction, vel)
                 
             return value
         

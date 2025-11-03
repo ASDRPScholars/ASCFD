@@ -19,7 +19,19 @@ class QNFluidSpecies(FluidSpecies):
     
     def update(self):
         """Update electron fluid with ion continuity, Ohm's law momentum, and Euler energy flux."""
-
+        
+        # TODO check
+        def f(U: np.ndarray, type):
+            """Find k+1/2 (1) or k-1/2 (-1) cell interfaces."""
+            
+            _faces = 0.5 * (U[:-1, :] + U[1:, :])
+            faces = np.concatenate((U[[0], :], _faces, U[[-1], :]), axis=0)
+            
+            if type == +1/2:
+                return faces[1:, :]
+            elif type == -1/2:
+                return faces[:-1, :]
+            
         # CONSTANTS
         dx = self.inp.dx
         dt = self.dt
@@ -42,8 +54,8 @@ class QNFluidSpecies(FluidSpecies):
         V_a = self.inp.V_anode # TODO or get from grid?
         V_c = self.inp.V_cathode
         
-        energy_a = 3
-        energy_c = 3
+        energy_e_a = 3.0 
+        energy_e_c = 3.0
         
         ###
         B = self.fields.B[:, :, 1]
@@ -68,9 +80,7 @@ class QNFluidSpecies(FluidSpecies):
         V = np.linspace(V_a, V_c, self.inp.nx)[:, np.newaxis] * np.ones((self.inp.nx, self.inp.ny))
         V_star = V.copy()
         
-        energy_e = 3.0 * np.ones_like(self.inp.internal_grid)  # [eV] - initial mean energy ~3 eV
-        energy_e_a = 3.0  # [eV] at anode
-        energy_e_c = 5.0
+        energy_e = self.simulation.get_species_energy("e")
 
         # TERMS
         c_1_plus = flux_i_plus
@@ -91,8 +101,8 @@ class QNFluidSpecies(FluidSpecies):
         
         u_e_plus = mu_perp * (dV_star_dx + 2/(3*e) * (np.log(n_e_plus/n_0) - 1) * deps_dx)
         
-        ### DISCHARGE CURRENT (scalar!)
-        I_plus = \
+        ### DISCHARGE CURRENT (scalar)
+        _I_plus = \
             e * (
                 V_a - V_c - \
                 2/(3*e) * energy_e_a * np.log(n_e_a_plus / n_0) + \
@@ -100,6 +110,8 @@ class QNFluidSpecies(FluidSpecies):
                 np.trapz(c_1_plus/(mu_perp * n_e_plus), None, self.inp.dx) - \
                 2/(3*e) * np.trapz(c_3_plus/(mu_perp * n_e_plus), None, self.inp.dx) * (energy_e_c - energy_e_a)
                 ) / np.trapz((beta/(mu_perp * n_e_plus)), None, self.inp.dx)
+            
+        I_plus = _I_plus[50] # TODO HOW DO THEY DO IT? THEY DON'T MIDLINE AVERAGE?
 
         ### ######### ########
 
@@ -108,7 +120,8 @@ class QNFluidSpecies(FluidSpecies):
         dW_deps = nu_e * np.exp(-20/energy_e) * (20/energy_e + 1)
         
         K = self.simulation.get_coeffs("K", energy_e)
-        dK_deps = np.gradient(K, energy_e, axis=0)
+        dK_deps = self.simulation.get_coeffs("dK_deps", energy_e)
+        # dK_deps = np.gradient(K, dx, axis=0) / np.gradient(energy_e, dx, axis=0) # chain rule - dK/deps = dK/dx * dx/depx
         
         X_plus = c_1_plus - 1/e * beta * I_plus
         
@@ -126,22 +139,22 @@ class QNFluidSpecies(FluidSpecies):
             c_5_plus * energy_e * dK_deps - \
             c_4_plus * W + c_4_plus * energy_e * dW_deps
             
-        # construct for matrix
-        _A = np.pad(A.flatten()[1:, ], 2, mode='constant', constant_values=0)
+        # flatten + pad bcs for matrix
+        _A = np.pad(A.flatten()[1:], 2, mode='constant', constant_values=0)
         _B = np.pad(B.flatten(), 2, mode='constant', constant_values=1) # bcs
-        _C = np.pad(C.flatten()[:, -1], 2, mode='constant', constant_values=0)
-        _D = np.pad(D.flatten(), 2, mode="constant", constant_values=(energy_a, energy_c))
+        _C = np.pad(C.flatten()[:-1], 2, mode='constant', constant_values=0)
+        _D = np.pad(D.flatten(), 2, mode="constant", constant_values=(energy_e_a, energy_e_c))
         
         lower_diagonal = np.diag(_A, k=-1)
         main_diagonal = np.diag(_B)
         upper_diagonal = np.diag(_C, k=1)
         
         a = lower_diagonal + main_diagonal + upper_diagonal
-        b = D
+        b = _D
         
         _energy_e_plus = linalg.solve(a, b, assume_a='tridiagonal')
         
-        energy_e_plus = np.reshape(_energy_e_plus, np.shape(energy_e))
+        energy_e_plus = np.reshape(_energy_e_plus[2:-2], np.shape(energy_e))
         
         ### ###### #######
 
@@ -152,23 +165,20 @@ class QNFluidSpecies(FluidSpecies):
         
         ### ######## ######
         
-        E = -np.diff(V_plus, 1, 0)
+        ### FINAL UPDATE!
+        
+        ng = self.inp.ng
+        
+        E = -np.gradient(V_plus, dx, axis=0)
         self.fields.populate_E_field(E)
 
-        self.grid[self.c.NCOMP] = n_e_plus
-        self.grid[self.c.UCOMP] = u_e_plus
-        self.grid[self.c.ECOMP] = energy_e_plus
+        self.grid[self.c.NCOMP, ng:-ng, ng:-ng] = n_e_plus
+        self.grid[self.c.UCOMP, ng:-ng, ng:-ng] = u_e_plus
+        self.grid[self.c.ECOMP, ng:-ng, ng:-ng] = energy_e_plus
         
         ###
-        # TODO check
-        def f(U: np.ndarray, type):
-            """Find k+1/2 (1) or k-1/2 (-1) cell interfaces."""
-            
-            faces = 0.5 * (U[:-1, :] + U[1:, :])
-            if type == +1/2:
-                return faces
-            elif type == -1/2:
-                return np.pad(faces, ((1, 0), (0, 0)), mode="edge")[0:-1]
+        
+        self.bcs.apply_bcs()
         
     
     def check_grid(self):
