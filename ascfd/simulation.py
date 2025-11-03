@@ -186,31 +186,30 @@ class Simulation:
         return np.maximum(nu_grid, 1e-12)
     
     
-    def get_ionization_rate_coeff(self):
-        k_iz_grid = np.zeros_like(self.inp.internal_grid)
+    def get_coeffs(self, type, energy_e=None):
+        k_grid = np.zeros_like(self.inp.internal_grid)
         
-        T_e = self.get_species_temperature("e")
-        v_e = self.get_species_velocity("e")
-        m_e = self.inp.m_e
-        k_B = self.inp.k_B
+        if energy_e:
+            energy_e = energy_e
+        else:
+            energy_e = self.get_species_energy("e")
         
-        kinetic_e = 1/2 * m_e * v_e**2 
-        kinetic_e /= 1.60218e-19 # J -> eV
-        energy_e = kinetic_e + (3/2 * T_e * k_B) # kinetic + thermal
-
         df = pd.read_csv('ascfd/rates/xe_kiz_K.csv')
+        
+        column = "k_iz" if (type == "k_iz" or "rate") else "K"
         
         for i in range (self.inp.nx):
             for j in range (self.inp.ny):
                 int_energy_e = round(energy_e[i, j])
                 row = df.loc[df['epsilon_eV'] == int_energy_e]
-                if isinstance(row['k_iz'], int):
-                    k_iz_grid[i, j] = row['k_iz']
+                if isinstance(row[column], int):
+                    k_grid[i, j] = row[column]
                 else:
                     print("could not tabulate k_iz")
-        
-        print("got all k_iz")
-        return k_iz_grid
+            
+            print("got all k")
+            
+        return k_grid
     
     def get_species_number_density(self, species):
         # TODO: test does this work
@@ -277,7 +276,7 @@ class Simulation:
                 
             return value
         
-    def get_species_temperature(self, species):
+    def get_species_energy(self, species):
         # TODO: complete implementation for particles
         
         if species == "i":
@@ -286,7 +285,7 @@ class Simulation:
             pass
         elif species == "e" and self.inp.e_system == "quasineutral":
             ng = self.inp.ng
-            return self.electrons.grid[self.electrons.c.TCOMP, ng:-ng, ng:-ng]
+            return self.electrons.grid[self.electrons.c.ECOMP, ng:-ng, ng:-ng]
         
     # TODO: scale back to real dimensions without messing up other grid bounds?
     # def _normal_to_phys(self):

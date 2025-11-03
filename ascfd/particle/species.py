@@ -257,7 +257,7 @@ class ParticleSpecies:
         elif self.params.type in ["i"] and self.inp.collision_type == "rate_coeffs":
             n_e = self.simulation.get_species_number_density("e")
             n_n = self.simulation.get_species_number_density("n")
-            k_iz = self.simulation.get_ionization_rate_coeff()
+            k_iz = self.simulation.get_coeffs("k_iz")
             
             # TODO toggle: ion_rate = n_e * n_n * k_iz # LANDMARK short paper
             print("a")

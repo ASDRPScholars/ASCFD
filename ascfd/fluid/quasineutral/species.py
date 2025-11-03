@@ -21,7 +21,6 @@ class QNFluidSpecies(FluidSpecies):
         """Update electron fluid with ion continuity, Ohm's law momentum, and Euler energy flux."""
 
         # CONSTANTS
-        
         dx = self.inp.dx
         dt = self.dt
         r_1d = np.linspace(self.inp.ylim[0], self.inp.ylim[1], self.inp.ny, endpoint=False)
@@ -30,6 +29,9 @@ class QNFluidSpecies(FluidSpecies):
         
         e = self.c.e 
         m_e = self.inp.m_e
+        
+        nu_e = np.ones_like(self.inp.internal_grid) * 1e7
+        nu_e[0:self.inp.L_x] = 4e6
         
         nu_w = np.zeros_like(self.inp.internal_grid)
         nu_w[0:self.inp.L_x] = 1e7
@@ -61,7 +63,7 @@ class QNFluidSpecies(FluidSpecies):
         nu = n_n_plus * k_m + nu_w + (beta/16) * (e*B / m_e)
         mu_perp = (e / m_e) * nu / (nu**2 + (e*B / m_e)**2) # TODO is perp only?
         
-        ###
+        ### 
         
         V = np.linspace(V_a, V_c, self.inp.nx)[:, np.newaxis] * np.ones((self.inp.nx, self.inp.ny))
         V_star = V.copy()
@@ -78,12 +80,14 @@ class QNFluidSpecies(FluidSpecies):
         c_4_plus = n_e_plus
         c_5_plus = n_n_plus * n_e_plus
 
-        # c_6: Use gradient for robust differentiation (maintains array size)
+        # c_6: use np.grad for partial x's
         dV_dx = np.gradient(V, self.inp.dx, axis=0)
         dV_star_dx = np.gradient(V_star, self.inp.dx, axis=0)
         dE_dx = np.gradient(energy_e, self.inp.dx, axis=0)
 
         c_6_plus = e * mu_perp * n_e_plus * dV_dx * (dV_star_dx + (2/3) * (np.log(n_e_plus/n_0) - 1) * dE_dx)
+        
+        # #####
         
         ### DISCHARGE CURRENT (scalar!)
         I_plus = \
@@ -95,7 +99,14 @@ class QNFluidSpecies(FluidSpecies):
                 2/(3*e) * np.trapz(c_3_plus/(mu_perp * n_e_plus), None, self.inp.dx) * (energy_e_c - energy_e_a)
                 ) / np.trapz((beta/(mu_perp * n_e_plus)), None, self.inp.dx)
 
+        ### ######### ########
+
         ### ENERGY UPDATE!
+        W = nu_e * energy_e * np.exp(-20/energy_e)
+        dW_deps = nu_e * np.exp(-20/energy_e) * (20/energy_e + 1)
+        
+        K = self.simulation.get_coeffs("K", energy_e)
+        dK_deps = np.gradient(K, energy_e, axis=0)
         
         X_plus = c_1_plus - 1/e * beta * I_plus
         
@@ -104,14 +115,14 @@ class QNFluidSpecies(FluidSpecies):
         B = (c_4_plus / dt) + \
             5/6 * (f(X_plus, +1/2) - f(X_plus, -1/2)) + \
             10/(9*e*dx) * mu_perp * n_e_plus * (f(energy_e, +1/2) + f(energy_e, -1/2)) - \
-            c_5_plus * dkappa(k) - \
-            c_4_plus * dW(k)
+            c_5_plus * dK_deps - \
+            c_4_plus * dW_deps
         C = 5/6 * f(X_plus, +1/2) - \
             10/(9*e*dx) * mu_perp * n_e_plus * f(energy_e, +1/2)
         D = 1/dt * c_4 * energy_e + \
-            c_6_plus - c_5_plus*kappa + \
-            c_5_plus * energy_e * dkappa(k) - \
-            c_4_plus * W + c_4_plus * energy_e * dW(k)
+            c_6_plus - c_5_plus*K + \
+            c_5_plus * energy_e * dK_deps - \
+            c_4_plus * W + c_4_plus * energy_e * dW_deps
             
         # construct for matrix
         _A = np.pad(A.flatten()[1:, ], 2, mode='constant', constant_values=0)
@@ -126,20 +137,21 @@ class QNFluidSpecies(FluidSpecies):
         a = lower_diagonal + main_diagonal + upper_diagonal
         b = D
         
-        energy_e_plus = linalg.solve(a, b, assume_a='tridiagonal')
+        _energy_e_plus = linalg.solve(a, b, assume_a='tridiagonal')
         
-
+        energy_e_plus = np.reshape(_energy_e_plus, np.shape(energy_e))
         
         ### ###### #######
 
-        ###
-        # Compute V_star using cumulative integral along axial direction
+        ### VOLTAGE UPDATE
         integrand = (c_1_plus - (beta * I_plus / e) - 2/(3*e) * c_3_plus) / (mu_perp * n_e_plus * r * B)
         V_star_plus = np.cumsum(integrand * self.inp.dx, axis=0) + (energy_e - energy_e_c)
         V_plus = V_star_plus + 2/(3*e) * energy_e_plus * np.log(n_e_plus / n_0)
         
         E = -np.diff(V_plus, 1, 0)
         self.fields.populate_E_field(E)
+        
+        ### ######## ######
         
         # TODO check
         def f(U: np.ndarray, type):
