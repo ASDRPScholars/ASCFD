@@ -83,11 +83,13 @@ class QNFluidSpecies(FluidSpecies):
         # c_6: use np.grad for partial x's
         dV_dx = np.gradient(V, self.inp.dx, axis=0)
         dV_star_dx = np.gradient(V_star, self.inp.dx, axis=0)
-        dE_dx = np.gradient(energy_e, self.inp.dx, axis=0)
+        deps_dx = np.gradient(energy_e, self.inp.dx, axis=0)
 
-        c_6_plus = e * mu_perp * n_e_plus * dV_dx * (dV_star_dx + (2/3) * (np.log(n_e_plus/n_0) - 1) * dE_dx)
+        c_6_plus = e * mu_perp * n_e_plus * dV_dx * (dV_star_dx + (2/3) * (np.log(n_e_plus/n_0) - 1) * deps_dx)
         
         # #####
+        
+        u_e_plus = mu_perp * (dV_star_dx + 2/(3*e) * (np.log(n_e_plus/n_0) - 1) * deps_dx)
         
         ### DISCHARGE CURRENT (scalar!)
         I_plus = \
@@ -148,11 +150,16 @@ class QNFluidSpecies(FluidSpecies):
         V_star_plus = np.cumsum(integrand * self.inp.dx, axis=0) + (energy_e - energy_e_c)
         V_plus = V_star_plus + 2/(3*e) * energy_e_plus * np.log(n_e_plus / n_0)
         
-        E = -np.diff(V_plus, 1, 0)
-        self.fields.populate_E_field(E)
-        
         ### ######## ######
         
+        E = -np.diff(V_plus, 1, 0)
+        self.fields.populate_E_field(E)
+
+        self.grid[self.c.NCOMP] = n_e_plus
+        self.grid[self.c.UCOMP] = u_e_plus
+        self.grid[self.c.ECOMP] = energy_e_plus
+        
+        ###
         # TODO check
         def f(U: np.ndarray, type):
             """Find k+1/2 (1) or k-1/2 (-1) cell interfaces."""
