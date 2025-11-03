@@ -490,6 +490,7 @@ class Simulation:
             "mv_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[0] * plot_data[2], extent, "Electron Radial Momentum"),
             "mw_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[0] * plot_data[3], extent, "Electron Azimuthal Momentum"),
             "p_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[4], extent, "Electron Pressure"),
+            "eps_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[4], extent, "Electron Mean Energy"),
             
             "jx_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[1], extent, "Electron Axial Current", cmap='winter'),
             "jy_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[2], extent, "Electron Radial Current"),

@@ -289,7 +289,7 @@ class FluidInitialConditions:
         
         # BASED ON MIT NOTES:
         ic[self.c.NCOMP] = 1e17
-        ic[self.c.UCOMP] = 9
+        ic[self.c.UCOMP] = 0
         ic[self.c.VCOMP] = 0
         ic[self.c.WCOMP] = 0
         ic[self.c.ECOMP] = 3
