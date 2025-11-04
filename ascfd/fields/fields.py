@@ -24,16 +24,10 @@ class Fields:
         
         self.ics = FieldInitialConditions(self.E, self.B, self.inp)
         
-        self.B = self.ics.apply_B_ics()
+        # self.B = self.ics.apply_B_ics()
         self.ics.apply_E_ics()
         
         self.ref = PlasmaReferences()
-        
-        plt.figure()
-        im = plt.imshow(self.B[:, :, 1])
-        plt.title("apply_B_ics() magnetic field")
-        plt.colorbar(im)
-        plt.show()
         
         self.charge_density = np.zeros((self.inp.nx, self.inp.ny))
         self.potential = np.zeros((self.inp.nx, self.inp.ny))
@@ -73,7 +67,13 @@ class Fields:
         
                 
     def add_charge_density(self, species_charge_density):
-        self.charge_density[:] += species_charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
+        # Handle 1D case where ny=1
+        if self.inp.ny == 1:
+            # For 1D: slice in x-direction, take the middle slice in y (avoid ghost cells in both dims)
+            self.charge_density[:] += species_charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:self.inp.ng+self.inp.ny]
+        else:
+            # For 2D: slice in both directions
+            self.charge_density[:] += species_charge_density[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
     
     def clear_charge_density(self):
         self.charge_density[:] = 0
@@ -105,29 +105,34 @@ class Fields:
                 V_cathode = self.inp.V_cathode + rf_voltage
 
         boundary = {
-            "left": (0, "neumann_x"), # BECOMES BOTTOM
-            "right": (0, "neumann_x"), # BECOMES TOP
-            "top": (V_anode, "dirichlet"), # BECOMES LEFT
-            "bottom": (V_cathode, "dirichlet") # BECOMES RIGHT
+            "left": (V_anode, "dirichlet"), # BECOMES BOTTOM
+            "right": (V_cathode, "dirichlet"), # BECOMES TOP
+            "top": (0, "neumann_y"), # BECOMES LEFT
+            "bottom": (0, "neumann_y") # BECOMES RIGHT
         }
 
-        solver = solvers.Poisson2DRectangle(rect=rect, interior=rhs, boundary=boundary, X=self.inp.ny, Y=self.inp.nx)
+        solver = solvers.Poisson2DRectangle(rect=rect, interior=rhs, boundary=boundary, X=self.inp.nx, Y=self.inp.ny)
 
-        self.potential[:] = solver.solve()
+        self.potential[:] = solver.solve().T # TODO this may screw things up - if it does change X back to ny and Y back to nx
 
             
     def _compute_electric_field(self):
         """Compute E = -grad(phi) using central differences with ghost cells"""
-        
-        phi = self.potential  # shape (200, 200)
-        
-        dx, dy = self.dx, self.dy
-        
-        dphi_dy, dphi_dx = np.gradient(phi, dy, dx)  # Mind the order: (rows, cols) → (y, x)
 
-        #TODO: GET RID OF MULTIPLIER
-        self.E[:, :, 1] = -dphi_dx#/1000  # Ey
-        self.E[:, :, 0] = -dphi_dy#/1000  # Ex
+        phi = self.potential
+
+        dx, dy = self.dx, self.dy
+
+        if self.inp.ny == 1:
+            # 1D case: only compute Ex (derivative in x-direction)
+            dphi_dx = np.gradient(phi, dx, axis=0)  # derivative along x-axis
+            self.E[:, :, 0] = -dphi_dx  # Ex
+            self.E[:, :, 1] = 0  # Ey = 0 in 1D
+        else:
+            # 2D case: compute both Ex and Ey
+            dphi_dy, dphi_dx = np.gradient(phi, dy, dx)  # Mind the order: (rows, cols) → (y, x)
+            self.E[:, :, 1] = -dphi_dx  # Ey
+            self.E[:, :, 0] = -dphi_dy  # Ex
 
     
     def check_E_field(self):

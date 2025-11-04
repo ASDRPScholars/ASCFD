@@ -29,9 +29,9 @@ class Poisson2DRectangle:
 
         self.x = np.linspace(self.x1, self.x2, self.X)
         self.y = np.linspace(self.y1, self.y2, self.Y)
-        
-        self.dx = self.x[1] - self.x[0]
-        self.dy = self.y[1] - self.y[0]
+
+        self.dx = self.x[1] - self.x[0] if self.X > 1 else (self.x2 - self.x1)
+        self.dy = self.y[1] - self.y[0] if self.Y > 1 else (self.y2 - self.y1)
 
         self._x_grid, self._y_grid = np.meshgrid(self.x, self.y)
         self.xs = self.x_grid.flatten()
@@ -56,28 +56,47 @@ class Poisson2DRectangle:
         return self._y_grid
 
     def build_linear_system(self):
-        # Interior points (excluding boundary rows/cols)
-        self.interior_ids = np.arange(self.X + 1, 2 * self.X - 1) + self.X * np.expand_dims(np.arange(self.Y - 2), 1)
-        self.interior_ids = self.interior_ids.flatten()
+        # Handle 1D case (Y=1)
+        if self.Y == 1:
+            # For 1D: only left and right boundaries exist
+            self.interior_ids = np.arange(1, self.X - 1)
+            boundary_ids = {
+                "left": np.array([0]),
+                "right": np.array([self.X - 1]),
+                "top": np.array([], dtype=int),
+                "bottom": np.array([], dtype=int)
+            }
+        else:
+            # 2D case
+            # Interior points (excluding boundary rows/cols)
+            self.interior_ids = np.arange(self.X + 1, 2 * self.X - 1) + self.X * np.expand_dims(np.arange(self.Y - 2), 1)
+            self.interior_ids = self.interior_ids.flatten()
 
-        # Boundary edges (excluding corners)
-        boundary_ids = {
-            "left": self.X * np.arange(1, self.Y - 1),
-            "right": self.X * np.arange(1, self.Y - 1) + (self.X - 1),
-            "top": np.arange(1, self.X - 1),
-            "bottom": np.arange(self.X * self.Y - self.X + 1, self.X * self.Y - 1)
-        }
+            # Boundary edges (excluding corners)
+            boundary_ids = {
+                "left": self.X * np.arange(1, self.Y - 1),
+                "right": self.X * np.arange(1, self.Y - 1) + (self.X - 1),
+                "top": np.arange(1, self.X - 1),
+                "bottom": np.arange(self.X * self.Y - self.X + 1, self.X * self.Y - 1)
+            }
 
         # Explicitly include corner points
-        corner_ids = {
-            "top_left": 0,
-            "top_right": self.X - 1,
-            "bottom_left": self.X * (self.Y - 1),
-            "bottom_right": self.X * self.Y - 1
-        }
+        if self.Y == 1:
+            # For 1D, corners are just the left and right endpoints (already in boundary_ids)
+            corner_ids = {}
+        else:
+            corner_ids = {
+                "top_left": 0,
+                "top_right": self.X - 1,
+                "bottom_left": self.X * (self.Y - 1),
+                "bottom_right": self.X * self.Y - 1
+            }
 
         # Combine all IDs
-        all_boundary_ids = list(boundary_ids.values()) + [np.array(list(corner_ids.values()))]
+        if corner_ids:
+            all_boundary_ids = list(boundary_ids.values()) + [np.array(list(corner_ids.values()))]
+        else:
+            all_boundary_ids = list(boundary_ids.values())
         self.all_ids = np.concatenate([self.interior_ids] + all_boundary_ids)
         self.all_ids = np.unique(self.all_ids)
 
@@ -98,16 +117,26 @@ class Poisson2DRectangle:
         }
 
         # Build Laplacian for interior
-        n1_pos = np.searchsorted(self.all_ids, self.interior_ids - 1)
-        n2_pos = np.searchsorted(self.all_ids, self.interior_ids + 1)
-        n3_pos = np.searchsorted(self.all_ids, self.interior_ids - self.X)
-        n4_pos = np.searchsorted(self.all_ids, self.interior_ids + self.X)
+        if self.Y == 1:
+            # 1D case: only x-derivatives
+            n1_pos = np.searchsorted(self.all_ids, self.interior_ids - 1)  # left neighbor
+            n2_pos = np.searchsorted(self.all_ids, self.interior_ids + 1)  # right neighbor
 
-        A[self.interior_pos, n1_pos] = 1 / (self.dx**2)
-        A[self.interior_pos, n2_pos] = 1 / (self.dx**2)
-        A[self.interior_pos, n3_pos] = 1 / (self.dy**2)
-        A[self.interior_pos, n4_pos] = 1 / (self.dy**2)
-        A[self.interior_pos, self.interior_pos] = -2 / (self.dx**2) - 2 / (self.dy**2)
+            A[self.interior_pos, n1_pos] = 1 / (self.dx**2)
+            A[self.interior_pos, n2_pos] = 1 / (self.dx**2)
+            A[self.interior_pos, self.interior_pos] = -2 / (self.dx**2)
+        else:
+            # 2D case: both x and y derivatives
+            n1_pos = np.searchsorted(self.all_ids, self.interior_ids - 1)
+            n2_pos = np.searchsorted(self.all_ids, self.interior_ids + 1)
+            n3_pos = np.searchsorted(self.all_ids, self.interior_ids - self.X)
+            n4_pos = np.searchsorted(self.all_ids, self.interior_ids + self.X)
+
+            A[self.interior_pos, n1_pos] = 1 / (self.dx**2)
+            A[self.interior_pos, n2_pos] = 1 / (self.dx**2)
+            A[self.interior_pos, n3_pos] = 1 / (self.dy**2)
+            A[self.interior_pos, n4_pos] = 1 / (self.dy**2)
+            A[self.interior_pos, self.interior_pos] = -2 / (self.dx**2) - 2 / (self.dy**2)
 
         # Fill in source term
         if isinstance(self.interior, types.FunctionType):
@@ -130,6 +159,10 @@ class Poisson2DRectangle:
         for bd, (bd_func, mode) in self.boundary.items():
             bd_pos = boundary_pos[bd]
             bd_ids = boundary_ids[bd]
+
+            # Skip empty boundaries (e.g., top/bottom in 1D case)
+            if len(bd_ids) == 0:
+                continue
 
             if isinstance(bd_func, types.FunctionType):
                 b[bd_pos] = bd_func(self.xs[bd_ids], self.ys[bd_ids])
@@ -161,28 +194,29 @@ class Poisson2DRectangle:
                     A[bd_pos, bd_pos] = 1 / self.dy
                     A[bd_pos, n_pos] = -1 / self.dy
 
+        # Corner Neumann conditions (only for 2D case)
+        if self.Y > 1:
+            corner_neumann = {
+                "top_right": self.X - 1,
+                "bottom_right": self.X * self.Y - 1,
+                "top_left": 0,
+                "bottom_left": self.X * (self.Y - 1)
+            }
 
-        corner_neumann = {
-            "top_right": self.X - 1,
-            "bottom_right": self.X * self.Y - 1,
-            "top_left": 0,
-            "bottom_left": self.X * (self.Y - 1)
-        }
+            for name, cid in corner_neumann.items():
+                pos = np.searchsorted(self.all_ids, cid)
 
-        for name, cid in corner_neumann.items():
-            pos = np.searchsorted(self.all_ids, cid)
-            
-            if 'right' in name:
-                neighbor_id = cid - 1  # one step left
-            else:  # left corners
-                neighbor_id = cid + 1  # one step right
-            
-            neighbor_pos = np.searchsorted(self.all_ids, neighbor_id)
+                if 'right' in name:
+                    neighbor_id = cid - 1  # one step left
+                else:  # left corners
+                    neighbor_id = cid + 1  # one step right
 
-            A[pos, pos] = 1 / self.dx
-            A[pos, neighbor_pos] = -1 / self.dx
-            b[pos] = 0  # zero gradient
-    
+                neighbor_pos = np.searchsorted(self.all_ids, neighbor_id)
+
+                A[pos, pos] = 1 / self.dx
+                A[pos, neighbor_pos] = -1 / self.dx
+                b[pos] = 0  # zero gradient
+
         return A.tocsr(), b
 
 
