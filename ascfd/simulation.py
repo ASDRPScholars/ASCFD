@@ -221,6 +221,19 @@ class Simulation:
         
         if species == "i":
             try:
+                n_e = np.ones_like(self.inp.internal_grid) * 0.5e18
+                x_cm = np.linspace(0, 2.5, self.inp.L_x)  # 0 to 2.5 cm
+
+                # Combine rising Gaussian and falling exponential
+                rise = 3e18 + 2.5e18 * np.exp(-((x_cm - 1.0) / 0.4)**2)  # Gaussian peak at 1 cm
+                fall = 0.5e18 + 5e18 * np.exp(-(x_cm - 1.0) / 0.8)       # Exponential decay
+
+                # Take maximum to get the profile shape
+                density_profile = np.maximum(rise, fall)
+                density_profile = np.clip(density_profile, 0.5e18, 5.5e18)
+
+                n_e[0:self.inp.L_x, :] = density_profile[:, np.newaxis]
+                return n_e
                 return np.maximum(self.ions.compute_particle_density_field()[ng:-ng, ng:-ng], 1e16)
             except:
                 return self.ions.grid[self.ions.c.RHOCOMP, ng:-ng, ng:-ng]/self.inp.m_i
@@ -256,6 +269,7 @@ class Simulation:
         # TODO: complete implementation for particles
         
         if species == "i":
+            
             return self.ions.get_x_velocity_field()
         elif species == "n":
             return self.neutrals.get_x_velocity_field()
