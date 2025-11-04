@@ -20,6 +20,15 @@ class FluidEuler:
             E = (a_prim[self.c.PCOMP] / ((self.c.gamma - 1) * a_prim[self.c.RHOCOMP]) + 
                  0.5 * (a_prim[self.c.UCOMP]**2 + a_prim[self.c.VCOMP]**2 + 0)) # TODO: a_prim[self.c.WCOMP]**2))
             cons[self.c.ECOMP] = E * a_prim[self.c.RHOCOMP]
+            
+        elif self.c.system == "euler1d":
+            cons[self.c.RHOCOMP] = a_prim[self.c.RHOCOMP] # density stays the same
+            cons[self.c.MUCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.UCOMP] # momentum components x, y, z
+            cons[self.c.MVCOMP] = a_prim[self.c.RHOCOMP] * a_prim[self.c.VCOMP]
+             # compute total energy including z-velocity
+            E = (a_prim[self.c.PCOMP] / ((self.c.gamma - 1) * a_prim[self.c.RHOCOMP]) + 
+                 0.5 * (a_prim[self.c.UCOMP]**2)) # TODO: a_prim[self.c.WCOMP]**2))
+            cons[self.c.ECOMP] = E * a_prim[self.c.RHOCOMP]
 
         elif self.c.system == "mhd2d":
             cons[self.c.RHOCOMP] = a_prim[self.c.RHOCOMP]
@@ -44,6 +53,34 @@ class FluidEuler:
         prim = np.zeros_like(a_cons)
             
         if self.c.system == "euler2d":
+            # copy density
+            prim[self.c.RHOCOMP] = a_cons[self.c.RHOCOMP]
+            
+            # compute velocity components including z-velocity
+            prim[self.c.UCOMP] = a_cons[self.c.MUCOMP] / a_cons[self.c.RHOCOMP]
+            prim[self.c.VCOMP] = a_cons[self.c.MVCOMP] / a_cons[self.c.RHOCOMP]
+            prim[self.c.WCOMP] = a_cons[self.c.MWCOMP] / a_cons[self.c.RHOCOMP] # z-velocity (2.5D)
+            
+            # No artificial velocity cap - let physics handle saturation
+            
+            # compute pressure using kinetic energy including z-component
+            kinetic_energy = 0.5 * (prim[self.c.UCOMP]**2 + prim[self.c.VCOMP]**2 + 0) #TODO: prim[self.c.WCOMP]**2)
+            
+            # Check for negative internal energy (common cause of NaN)
+            internal_energy = a_cons[self.c.ECOMP] - a_cons[self.c.RHOCOMP] * kinetic_energy
+            if np.any(internal_energy <= 0):
+                print(f"!WARNING! Negative internal energy detected!")
+                print(f"Total energy: min={np.min(a_cons[self.c.ECOMP]):.3e}")
+                print(f"Kinetic energy: max={np.max(a_cons[self.c.RHOCOMP] * kinetic_energy):.3e}")
+                print(f"Max z-velocity: {np.max(np.abs(prim[self.c.WCOMP])):.3e}")
+                print(f"Negative internal energy cells: {np.sum(internal_energy <= 0)}")
+                
+                # Floor to small positive value to prevent NaN
+                internal_energy = np.maximum(internal_energy, 1e-12 * np.abs(a_cons[self.c.ECOMP]))
+            
+            prim[self.c.PCOMP] = (self.c.gamma - 1) * internal_energy
+            
+        elif self.c.system == "euler2d":
             # copy density
             prim[self.c.RHOCOMP] = a_cons[self.c.RHOCOMP]
             

@@ -89,6 +89,8 @@ class FluidInitialConditions:
         ic_grid[self.c.RHOCOMP] = 2.54e14 * self.inp.m_e
         ic_grid[self.c.PCOMP] = n_e * k_B * T_e
         
+        return ic_grid
+        
             
     def diagonal_advection_2d(self, a_x, a_y, a_var, t=0):
         """
