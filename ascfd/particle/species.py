@@ -34,6 +34,9 @@ class ParticleSpecies:
 
         self.WEIGHT = self.pc.NUMQ
         
+        self.ics = ParticleInitialConditions(self.inp, self.params)     
+        self.bcs = ParticleBoundaryConditions(self, self.inp, self.params)
+        
         self.num_collisions = np.zeros((self.inp.nx, self.inp.ny))
         self.cross_section_grid = np.zeros((self.inp.nx, self.inp.ny))
         self.sigma_temp_storage = [[[] for _ in range(self.inp.ny)] for _ in range(self.inp.nx)]
@@ -80,53 +83,14 @@ class ParticleSpecies:
             self.active_count = min(self.inp.n_particles, self.capacity)
             self.is_active[:self.active_count] = True
             print(f"Initialized {self.active_count} active {self.params.type} particles")
-            
-        if self.params.type == "n":
-            # Create temporary array for ICs - ensure correct shape
-            temp_particles = self.particles[:, :self.active_count].copy()
-            print(f"Creating ICs for neutrals with shape: {temp_particles.shape}")
-            self.ics = ParticleInitialConditions(temp_particles, self.inp, self.params)        
-            self.ics.apply_ics()
-            
-            # Validate initialized data before copying back
-            if np.any(np.isnan(temp_particles)) or np.any(np.isinf(temp_particles)):
-                print(f"ERROR: NaN/inf values in {self.params.type} initial conditions!")
-                nan_mask = np.isnan(temp_particles) | np.isinf(temp_particles)
-                temp_particles[nan_mask] = 0.0
-            
-            # Copy back the initialized data
-            self.particles[:, :self.active_count] = temp_particles
-            weight = self.estimate_initial_weight()
-            if not (np.isnan(weight) or np.isinf(weight)):
-                self.particles[self.WEIGHT, :self.active_count] = weight
-            else:
-                print(f"ERROR: Invalid initial weight for {self.params.type}: {weight}")
-                self.particles[self.WEIGHT, :self.active_count] = 1.0  # Default weight
-            
-        if self.params.type == "i":
+        elif self.params.type == "i":
             self.active_count = 1
             self.is_active[0] = True
+           
+        ic_particles = self.ics.apply_ics(weight=71.988692938)
+        self.add_particles(ic_particles)
             
-            # Initialize ion with valid position and velocity
-            init_x = 0.5 * self.inp.nx
-            init_y = 0.5 * self.inp.ny  # Fix: was using nx for both x and y
-            
-            # Validate initial values
-            if np.isnan(init_x) or np.isnan(init_y) or np.isinf(init_x) or np.isinf(init_y):
-                print(f"ERROR: Invalid initial position for ion: x={init_x}, y={init_y}")
-                init_x, init_y = 1.0, 1.0  # Safe fallback
-            
-            self.particles[self.pc.XCOMP, 0] = init_x
-            self.particles[self.pc.YCOMP, 0] = init_y
-            self.particles[self.pc.UCOMP, 0] = 100
-            self.particles[self.pc.VCOMP, 0] = 0
-            self.particles[self.WEIGHT, 0] = 1.0  # Non-zero weight
-            
-        if self.params.type in ["i", "n"]:
-            self.bcs = ParticleBoundaryConditions(self, self.inp, self.params)
-        else:
-            print("P ELECTRONS INITED WITH", self.active_count, "particles")
-            print("P ELECTRONS CAPACITY", self.capacity)
+        if self.params.type == "e":
             self.particles = self.simulation.electrons.convert_to_particles()
             self.active_count = self.particles.shape[1]
             self.is_active[:self.active_count] = True

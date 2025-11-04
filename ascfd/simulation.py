@@ -35,9 +35,9 @@ class Simulation:
         self.fields = Fields(self.inp)
         
         # TODO: move density + temperature to PARTICLE ics, don't keep in multispecies params
-        xe_i_params = SpeciesParams(self.inp.q, self.inp.m_i, 5/3, "i", density=0.5, temperature=10.0)  # Xe+ ions  
-        xe_n_params = SpeciesParams(0, self.inp.m_n, 5/3, "n", density=5.0, temperature=10.0)  # Xe neutrals
-        e_params = SpeciesParams(-self.inp.q, self.inp.m_e, 5/3, "e", density=1.0, temperature=100.0)
+        xe_i_params = SpeciesParams(self.inp.q, self.inp.m_i, 5/3, "i", density=0.5, temperature=300.0) # TODO kelvin or eV # Xe+ ions  
+        xe_n_params = SpeciesParams(0, self.inp.m_n, 5/3, "n", density=5.0, temperature=0)  # Xe neutrals
+        e_params = SpeciesParams(-self.inp.q, self.inp.m_e, 5/3, "e", density=1.0, temperature=30000.0) # TODO kelvin or eV
         
         self.electrons = FluidSpecies(e_params, self.inp, self.fields, self)
         
