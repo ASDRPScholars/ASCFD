@@ -38,8 +38,8 @@ class Fields:
         self.charge_density = np.zeros((self.inp.nx, self.inp.ny))
         self.potential = np.zeros((self.inp.nx, self.inp.ny))
 
-        self.dx = (self.inp.xlim[1] - self.inp.xlim[0]) / (self.inp.nx - 1)
-        self.dy = (self.inp.ylim[1] - self.inp.ylim[0]) / (self.inp.ny - 1)
+        self.dx = self.inp.dx
+        self.dy = self.inp.dy
         
         self.eps0 = 8.854e-12  # TODO: CHECK — Permittivity of free space
         # self.eps0 = 1e-50

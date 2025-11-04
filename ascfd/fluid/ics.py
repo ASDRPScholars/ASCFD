@@ -15,6 +15,9 @@ class FluidInitialConditions:
     def apply_ics(self):
         if self.inp.system == "euler2d":
             if hasattr(self.inp, "fluid_ics"):
+                if self.inp.fluid_ics == "rf":
+                    return self.rf()
+                
                 if self.inp.fluid_ics == "diagonal_advection":
                     print("applying diag advection")
                     f = self.diagonal_advection_2d
@@ -76,7 +79,16 @@ class FluidInitialConditions:
         
     #     return ic_grid
     
-    
+    def rf(self):
+        ic_grid = np.zeros_like(self.grid)
+        
+        n_e = 2.54e14 * self.inp.m_e
+        k_B = self.c.k_B
+        T_e = 30000
+        
+        ic_grid[self.c.RHOCOMP] = 2.54e14 * self.inp.m_e
+        ic_grid[self.c.PCOMP] = n_e * k_B * T_e
+        
             
     def diagonal_advection_2d(self, a_x, a_y, a_var, t=0):
         """

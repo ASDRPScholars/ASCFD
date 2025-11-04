@@ -31,8 +31,8 @@ class Inputs:
         self.nx_with_ghosts = self.nx + 2 * self.ng
         self.ny_with_ghosts = self.ny + 2 * self.ng
         
-        self.dx = (self.xlim[1] - self.xlim[0]) / (self.nx - 1)
-        self.dy = (self.ylim[1] - self.ylim[0]) / (self.ny - 1)
+        self.dx = (self.xlim[1] - self.xlim[0]) / (self.nx)
+        self.dy = (self.ylim[1] - self.ylim[0]) / (self.ny)
         
         self.grid_x = np.linspace(self.xlim[0] - self.dx * self.ng, self.xlim[1] + self.dx * self.ng, self.nx + 2 * self.ng)
         self.grid_y = np.linspace(self.ylim[0] - self.dy * self.ng, self.ylim[1] + self.dy * self.ng, self.ny + 2 * self.ng)
@@ -99,11 +99,16 @@ class Inputs:
         
         # Electric Field
         self.B_ics = self.get_config_value(config, "Fields", "B_ics")
-        
+
         # TODO
         self.B_max = self.get_config_value(config, "Fields", "B_max", type_func = float)
         self.V_anode = self.get_config_value(config, "Fields", "V_anode", type_func = int)
         self.V_cathode = self.get_config_value(config, "Fields", "V_cathode", type_func = int)
+
+        # RF Discharge parameters (optional)
+        self.rf_frequency = self.get_config_value(config, "Fields", "rf_frequency", type_func = float, mandatory=False, default=None)  # Hz
+        self.rf_amplitude = self.get_config_value(config, "Fields", "rf_amplitude", type_func = float, mandatory=False, default=None)  # V
+        self.rf_boundary = self.get_config_value(config, "Fields", "rf_boundary", type_func = str, mandatory=False, default=None)  # which boundary oscillates
 
         # Output
         self.output_freq = self.get_config_value(
