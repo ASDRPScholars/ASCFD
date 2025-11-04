@@ -39,6 +39,8 @@ class QNFluidSpecies(FluidSpecies):
         r = r_1d[np.newaxis, :]
         k_m = 2.5e-13
         
+        ng = self.inp.ng
+        
         e = self.c.e 
         m_e = self.inp.m_e
         
@@ -140,10 +142,10 @@ class QNFluidSpecies(FluidSpecies):
             c_4_plus * W + c_4_plus * energy_e * dW_deps
             
         # flatten + pad bcs for matrix
-        _A = np.pad(A.flatten()[1:], 2, mode='constant', constant_values=0)
-        _B = np.pad(B.flatten(), 2, mode='constant', constant_values=1) # bcs
-        _C = np.pad(C.flatten()[:-1], 2, mode='constant', constant_values=0)
-        _D = np.pad(D.flatten(), 2, mode="constant", constant_values=(energy_e_a, energy_e_c))
+        _A = np.pad(A[1:, 20], 2, mode='constant', constant_values=0)
+        _B = np.pad(B[:, 20], 2, mode='constant', constant_values=1) # bcs
+        _C = np.pad(C[:-1, 20], 2, mode='constant', constant_values=0)
+        _D = np.pad(D[:, 20], 2, mode="constant", constant_values=(energy_e_a, energy_e_c))
         
         lower_diagonal = np.diag(_A, k=-1)
         main_diagonal = np.diag(_B)
@@ -154,7 +156,7 @@ class QNFluidSpecies(FluidSpecies):
         
         _energy_e_plus = linalg.solve(a, b, assume_a='tridiagonal')
         
-        energy_e_plus = np.reshape(_energy_e_plus[2:-2], np.shape(energy_e)) / e
+        energy_e_plus = _energy_e_plus[ng:-ng, np.newaxis] * np.ones((self.inp.nx, self.inp.ny))
         
         ### ###### #######
 
