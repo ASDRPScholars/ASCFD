@@ -1,6 +1,7 @@
 from ascfd.particle.constants import ParticleConstants
 from ascfd.inputs import Inputs
 from ascfd.plasma_refs import PlasmaReferences
+
 import numpy as np
 
 class ParticleInitialConditions:
@@ -16,10 +17,7 @@ class ParticleInitialConditions:
         if self.inp.particle_ics == "origin":
             self.particles[:] = self.origin()
         if self.inp.particle_ics == "random":
-            ic_particles = self.random(weight)
-            print("!IC! IC PARTICLES", ic_particles)
-            self.particles[:] = ic_particles
-            print("!IC! SELF.PARTICLES", self.particles)
+            return self.random(weight)
         if self.inp.particle_ics == "random_left_wall":
             self.particles[:] = self.random_left_wall()
     
@@ -44,7 +42,7 @@ class ParticleInitialConditions:
     
         for i in range(self.inp.nx):
             for j in range(self.inp.ny):
-                for np in range(self.inp.n_ppc):
+                for n_p in range(self.inp.n_ppc):
                     random_x, random_y = np.random.uniform(i*dx, (i+1)*dx), np.random.uniform(j*dx, (j+1)*dy)
                     vx, vy, vz = self.sample_maxwellian_velocity()
 
@@ -56,7 +54,7 @@ class ParticleInitialConditions:
                     ic_particles[self.pc.VCOMP, n] = vy
                     
                     if weight is not None:
-                        ic_particles[self.pc.WEIGHT, n] = weight[i, j]
+                        ic_particles[self.pc.WEIGHT, n] = weight
                         
                     elif self.params == "n":
                         ic_particles[self.pc.WEIGHT, n] = self.inp.n_n / (self.inp.nx * self.inp.ny)

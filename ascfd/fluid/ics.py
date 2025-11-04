@@ -13,57 +13,57 @@ class FluidInitialConditions:
         self.mesh_x, self.mesh_y = np.meshgrid(self.inp.grid_x, self.inp.grid_y)
         
     def apply_ics(self):
+        
+        if self.inp.system == "euler1d":
+            if self.inp.fluid_ics == "rf1d":
+                return self.rf()
+                
         if self.inp.system == "euler2d":
-            if hasattr(self.inp, "fluid_ics"):
-                if self.inp.fluid_ics == "rf":
-                    return self.rf()
                 
-                if self.inp.fluid_ics == "diagonal_advection":
-                    print("applying diag advection")
-                    f = self.diagonal_advection_2d
-                    
-                    new_grid = np.zeros_like(self.grid)
-                    
-                    for var in range(self.c.NUMQ):
-                        print(var)
-                        new_grid[var] = f(self.mesh_x, self.mesh_y, var)
-                        
-                    return new_grid
+            if self.inp.fluid_ics == "diagonal_advection":
+                print("applying diag advection")
+                f = self.diagonal_advection_2d
                 
-                elif self.inp.fluid_ics == "poisson_validation":
-                    print("applying diag advection")
-                    f = self.poisson_validation_charge_density
+                new_grid = np.zeros_like(self.grid)
+                
+                for var in range(self.c.NUMQ):
+                    print(var)
+                    new_grid[var] = f(self.mesh_x, self.mesh_y, var)
                     
-                    new_grid = np.zeros_like(self.grid)
+                return new_grid
+            
+            elif self.inp.fluid_ics == "poisson_validation":
+                print("applying diag advection")
+                f = self.poisson_validation_charge_density
+                
+                new_grid = np.zeros_like(self.grid)
+                
+                for var in range(self.c.NUMQ):
+                    print(var)
+                    new_grid[var] = f(self.mesh_x, self.mesh_y, var)
                     
-                    for var in range(self.c.NUMQ):
-                        print(var)
-                        new_grid[var] = f(self.mesh_x, self.mesh_y, var)
-                        
-                    return new_grid
+                return new_grid
 
-                elif self.inp.fluid_ics == "tame_static":
-                    return self.tame_static()
-                
-                elif self.inp.fluid_ics == "e_cloud_test":
-                    return self.e_cloud_test()
-                    
-                elif self.inp.fluid_ics == "kelvin_helmholtz":
-                    self.grid = self.kelvin_helmholtz_2d()
-                elif self.inp.fluid_ics == "double_mach_reflection":
-                    self.grid = self.double_mach_reflection_2d()
-                elif self.inp.fluid_ics == "riemann_problem":
-                    self.grid = self.riemann_2d()
-
-                else:
-                    raise RuntimeError("[FLUID] ICS not valid.")
-            else:
+            elif self.inp.fluid_ics == "tame_static":
                 return self.tame_static()
+            
+            elif self.inp.fluid_ics == "e_cloud_test":
+                return self.e_cloud_test()
+                
+            elif self.inp.fluid_ics == "kelvin_helmholtz":
+                self.grid = self.kelvin_helmholtz_2d()
+            elif self.inp.fluid_ics == "double_mach_reflection":
+                self.grid = self.double_mach_reflection_2d()
+            elif self.inp.fluid_ics == "riemann_problem":
+                self.grid = self.riemann_2d()
+
+            else:
+                raise RuntimeError("[FLUID] ICS not valid.")
            
         elif self.inp.system == "mhd2d":
             if self.inp.fluid_ics == "orszag_tang":
                 self.grid = self.orszag_tang_2d()
-           
+            
         else:
             raise RuntimeError("[FLUID] ICS not valid.")
         

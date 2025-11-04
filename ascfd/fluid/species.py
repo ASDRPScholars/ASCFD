@@ -25,7 +25,7 @@ class FluidSpecies:
         self.c = FluidConstants(a_inputs)
         self.pc = ParticleConstants()
         self.euler = FluidEuler(self.c)
-        self.flux = FluidFlux(self.c, a_inputs.flux)
+        self.flux = FluidFlux(a_inputs, self.c, a_inputs.flux)
         
         self.ref = PlasmaReferences()
         
@@ -47,7 +47,7 @@ class FluidSpecies:
         # Apply boundary conditions AFTER setting initial conditions
         self.bcs.apply_bcs()
         
-        self.check_grid(self.c)
+        # self.check_grid(self.c)
         
         
     def update(self):
@@ -56,8 +56,11 @@ class FluidSpecies:
         m_e = self.inp.m_e
         consU = self.euler.prim_to_cons(self.grid)
 
-        _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
-                
+        if self.inp.system != "euler1d":
+            _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
+        else:
+            _, right_flux, left_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
+        
         ### THERMAL SHEATH BOUNDARIES
         
         KE = 0.5 * consU[self.c.UCOMP]**2 / consU[self.c.RHOCOMP]  # per unit mass
@@ -90,48 +93,52 @@ class FluidSpecies:
             0.0  # Block inflow
         )
         
+        if self.inp.system != "euler1d":
+        
         # TOP
-        
-        top_convect_flux = top_flux[self.c.RHOCOMP, :, ng]
-        top_outflow_mask = top_convect_flux < 0
-        
-        top_flux[self.c.RHOCOMP, :, ng] = np.where(
-            top_outflow_mask,
-            top_convect_flux + phi_th[:, ng],  # Add thermal mass flux
-            0.0  # Block inflow
-        )
+            top_convect_flux = top_flux[self.c.RHOCOMP, :, ng]
+            top_outflow_mask = top_convect_flux < 0
+            
+            top_flux[self.c.RHOCOMP, :, ng] = np.where(
+                top_outflow_mask,
+                top_convect_flux + phi_th[:, ng],  # Add thermal mass flux
+                0.0  # Block inflow
+            )
 
-        top_flux[self.c.ECOMP, :, ng] = np.where(
-            top_outflow_mask,
-            top_flux[self.c.ECOMP, :, ng] + Q_th[:, ng],  # Add thermal energy flux
-            0.0  # Block inflow
-        )
-        
-        # BOTTOM
-        
-        bottom_convect_flux = bottom_flux[self.c.RHOCOMP, :, self.inp.ny + ng]
-        bottom_outflow_mask = bottom_convect_flux < 0
-        
-        bottom_flux[self.c.RHOCOMP, :, self.inp.ny + ng] = np.where(
-            bottom_outflow_mask,
-            bottom_convect_flux + phi_th[:, self.inp.ny + ng],  # Add thermal mass flux
-            0.0  # Block inflow
-        )
+            top_flux[self.c.ECOMP, :, ng] = np.where(
+                top_outflow_mask,
+                top_flux[self.c.ECOMP, :, ng] + Q_th[:, ng],  # Add thermal energy flux
+                0.0  # Block inflow
+            )
+            
+            # BOTTOM
+            
+            bottom_convect_flux = bottom_flux[self.c.RHOCOMP, :, self.inp.ny + ng]
+            bottom_outflow_mask = bottom_convect_flux < 0
+            
+            bottom_flux[self.c.RHOCOMP, :, self.inp.ny + ng] = np.where(
+                bottom_outflow_mask,
+                bottom_convect_flux + phi_th[:, self.inp.ny + ng],  # Add thermal mass flux
+                0.0  # Block inflow
+            )
 
-        bottom_flux[self.c.ECOMP, :, self.inp.ny + ng] = np.where(
-            bottom_outflow_mask,
-            bottom_flux[self.c.ECOMP, :, self.inp.ny + ng] + Q_th[:, self.inp.ny + ng],  # Add thermal energy flux
-            0.0  # Block inflow
-        )
+            bottom_flux[self.c.ECOMP, :, self.inp.ny + ng] = np.where(
+                bottom_outflow_mask,
+                bottom_flux[self.c.ECOMP, :, self.inp.ny + ng] + Q_th[:, self.inp.ny + ng],  # Add thermal energy flux
+                0.0  # Block inflow
+            )
 
         
         for i in range(ng, self.inp.nx + ng):
             for j in range(ng, self.inp.ny + ng):
                 for icomp in range(self.c.NUMQ):
                     
-                    delta = (
-                        (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
-                        (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
+                    if self.inp.system != "euler1d":
+                        delta = (
+                            (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
+                            (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
+                    else:
+                        delta = (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j])
                         
                     consU[icomp, i, j] = consU[icomp, i, j] - delta
                     
@@ -172,7 +179,7 @@ class FluidSpecies:
         self.fields.clear_charge_density()
         self.fields.add_charge_density(charge_density) # -!- TOGGLE -!-
 
-        self.fields.update_E()
+        self.fields.update_E(t=self.simulation.t)
 
         if self.pelectrons:
             return new_particles

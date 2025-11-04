@@ -211,6 +211,17 @@ class Simulation:
             max_speed_x = np.max(np.abs(u) + a)
             max_speed_y = np.max(np.abs(v) + a)
             max_speed = max(max_speed_x, max_speed_y) # More robust estimate
+            
+        if self.inp.system == "euler1d":
+            density = self.electrons.grid[self.c.RHOCOMP]
+            pressure = self.electrons.grid[self.c.PCOMP]
+            u = self.electrons.grid[self.c.UCOMP]
+
+            pressure = np.maximum(pressure, 1e-12)
+            density = np.maximum(density, 1e-12)
+            
+            a = np.sqrt(self.c.gamma * pressure / density) # Sound speed
+            max_speed = np.max(np.abs(u) + a)
         
         elif self.inp.system == "mhd2d":
             density = self.electrons.grid[self.c.RHOCOMP]
@@ -260,7 +271,7 @@ class Simulation:
             """
             Helper function to plot 2D data on a given axis.
             """
-        
+
             im = ax.imshow(data.T, extent=extent, origin='lower', cmap=cmap)
             plt.colorbar(im, ax=ax)
             ax.set_title(title, weight='bold')
@@ -268,6 +279,20 @@ class Simulation:
             if scatter_data is not None:
                 x, y = scatter_data
                 ax.scatter(x, y, s=5, color='blue', alpha=0.2, clip_on=True)
+
+    def plot_1d_data(self, ax, x_data, y_data, title, ylabel='', scatter_data=None, color='blue'):
+        """
+        Helper function to plot 1D line data on a given axis.
+        """
+        ax.plot(x_data, y_data, color=color, linewidth=1.5)
+        ax.set_xlabel('Position (m)', weight='bold')
+        ax.set_ylabel(ylabel, weight='bold')
+        ax.set_title(title, weight='bold')
+        ax.grid(True, alpha=0.3)
+
+        if scatter_data is not None:
+            x, y = scatter_data
+            ax.scatter(x, y, s=10, color='red', alpha=0.5, zorder=5)
 
     def output(self):
         
@@ -299,8 +324,9 @@ class Simulation:
                     components = [self.electrons.grid[q, i, j] for q in range(self.c.NUMQ)]
                     f.write(f"{x:.12f}, {y:.12f}, " + ", ".join(f"{comp:.8f}" for comp in components) + "\n")
 
+        ### 2D PLOTS
         # Set up 2D field plots
-        if self.inp.system == "euler2d":
+        if self.inp.system in ["euler2d", "euler1d"]:
             fig, axs = plt.subplots(3, 4, figsize=(24, 7))
         elif self.inp.system == "mhd2d":
             fig, axs = plt.subplots(2, 4, figsize=(36, 18))
@@ -310,7 +336,7 @@ class Simulation:
         norm_data = self.electrons.normal_to_phys()[:,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng]
         i_scatter_data = (self.ions.particles[self.pc.XCOMP] * self.ref.L, self.ions.particles[self.pc.YCOMP] * self.ref.L)
         n_scatter_data = (self.neutrals.particles[self.pc.XCOMP] * self.ref.L, self.neutrals.particles[self.pc.YCOMP] * self.ref.L)
-        norm_E, norm_B, norm_potential = self.fields.normal_to_phys()
+        # norm_E, norm_B, norm_potential = self.fields.normal_to_phys()
 
         plot_vars_2d = self.inp.data_2d
         
@@ -318,11 +344,8 @@ class Simulation:
 
         # Precompute extent
         extent = [self.inp.xlim[0] * self.ref.L, self.inp.xlim[1] * self.ref.L, self.inp.ylim[0] * self.ref.L, self.inp.ylim[1] * self.ref.L]
-        print("!EXTENT!", extent)
         
         from scipy.ndimage import gaussian_filter
-        
-        print("L IS", self.ref.L)
 
         # Define plotting logic in a dictionary (like a switch-case)
         plot_map = {
@@ -336,11 +359,11 @@ class Simulation:
             "mw_e": lambda idx: self.plot_2d_data(axs[idx], norm_data[0] * norm_data[3], extent, "Electron Azimuthal Momentum"),
             "p_e": lambda idx: self.plot_2d_data(axs[idx], norm_data[4], extent, "Electron Pressure"),
             
-            "Ex": lambda idx: self.plot_2d_data(axs[idx], norm_E[:,:,0], extent, "Electric Field X", cmap='coolwarm'),
-            "Ey": lambda idx: self.plot_2d_data(axs[idx], norm_E[:,:,1], extent, "Electric Field Y", cmap='coolwarm'),
-            "By": lambda idx: self.plot_2d_data(axs[idx], norm_B[:,:,1], extent, "Magnetic Field Y", cmap='magma'),
+            "Ex": lambda idx: self.plot_2d_data(axs[idx], self.fields.E[:,:,0], extent, "Electric Field X", cmap='coolwarm'),
+            "Ey": lambda idx: self.plot_2d_data(axs[idx], self.fields.E[:,:,1], extent, "Electric Field Y", cmap='coolwarm'),
+            "By": lambda idx: self.plot_2d_data(axs[idx], self.fields.B[:,:,1], extent, "Magnetic Field Y", cmap='magma'),
             
-            "phi": lambda idx: self.plot_2d_data(axs[idx], norm_potential, extent, "Electric Potential", cmap='coolwarm'),
+            "phi": lambda idx: self.plot_2d_data(axs[idx], self.fields.potential, extent, "Electric Potential", cmap='coolwarm'),
             
             "i": lambda idx: self.plot_2d_data(axs[idx], self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Ion Density (Scatter)", cmap=mpl.cm.Blues, scatter_data=(self.ions.particles[self.pc.XCOMP] * self.ref.L, self.ions.particles[self.pc.YCOMP] * self.ref.L)),
             "n": lambda idx: self.plot_2d_data(axs[idx], self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Neutral Density (Scatter)", cmap=mpl.cm.Greys, scatter_data=(self.neutrals.particles[self.pc.XCOMP] * self.ref.L, self.neutrals.particles[self.pc.YCOMP] * self.ref.L)),
@@ -367,70 +390,74 @@ class Simulation:
             else:
                 print(f"Warning: Unknown plot variable '{var}'")
 
-        # 1D line plot (center slice)
-        iy = round(self.inp.ny / 2)
-        
-        # plot_data_1d = self.electrons.grid[0, self.inp.ng:-self.inp.ng, iy]
-        # axs1d[0].plot(plot_data_1d)
-        # axs1d[0].set_ylim(top=1.2)
-        # axs1d[0].set_title("Electron Density", weight='bold')
-        
-        # energy_1d = 0.5 * self.electrons.grid[0, self.inp.ng:-self.inp.ng, iy] * (self.electrons.grid[1, self.inp.ng:-self.inp.ng, iy] ** 2 + self.electrons.grid[2, self.inp.ng:-self.inp.ng, iy] ** 2 + self.electrons.grid[3, self.inp.ng:-self.inp.ng, iy] ** 2)
-        # axs1d[1].plot(energy_1d)
-        # axs1d[1].set_title("Electron Energy (eV)", weight='bold')
-        
-        # # Ionization frequency vs X position
-        # if hasattr(self, 'pelectrons') and hasattr(self.pelectrons, 'ionization_positions_x'):
-        #     if self.pelectrons.ionization_positions_x:
-        #         # Convert positions to grid indices and create histogram
-        #         x_positions = np.array(self.pelectrons.ionization_positions_x)
-        #         # Convert physical positions to grid coordinates
-        #         x_indices = ((x_positions - self.inp.grid_x[0]) / self.inp.dx).astype(int)
-        #         # Create histogram bins for x grid points
-        #         x_bins = np.arange(self.inp.ng, self.inp.nx - self.inp.ng + 1)
-        #         ionization_freq, _ = np.histogram(x_indices, bins=x_bins)
-                
-        #         # Smooth the data with a moving average
-        #         window_size = min(5, len(ionization_freq) // 3)  # Adaptive window size
-        #         if window_size >= 3:
-        #             from scipy.ndimage import gaussian_filter1d
-        #             ionization_freq_smooth = gaussian_filter1d(ionization_freq.astype(float), sigma=4)
-        #         else:
-        #             ionization_freq_smooth = ionization_freq
-                
-        #         axs1d[2].plot(x_bins[:-1], ionization_freq_smooth)
-        #         axs1d[2].set_title("Electron-Neutral Collision Frequency", weight='bold')
-        
-        # # Ion density 1D cross-section
-        # ion_density_data = self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-        # ion_density_1d = ion_density_data[:, iy]
-        # from scipy.ndimage import gaussian_filter1d
-        # ion_density_1d_smooth = gaussian_filter1d(ion_density_1d.astype(float), sigma=4)
-        # axs1d[3].plot(ion_density_1d_smooth)
-        # axs1d[3].set_title("Ion Density", weight='bold')
-        
-        # # Neutral density 1D cross-section  
-        # neutral_density_data = self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng, self.inp.ng:-self.inp.ng]
-        # neutral_density_1d = neutral_density_data[:, iy]
-        # neutral_density_1d_smooth = gaussian_filter1d(neutral_density_1d.astype(float), sigma=4)
-        # axs1d[4].plot(neutral_density_1d_smooth)
-        # axs1d[4].set_title("Neutral Density", weight='bold')
-
-        #     else:
-        #         axs1d[2].plot([])
-        #         axs1d[2].set_title("ionization frequency vs X (no data)", weight='bold')
-        #         axs1d[2].set_xlabel('x grid index')
-        #         axs1d[2].set_ylabel('ionizations per timestep')
-        # else:
-        #     axs1d[2].plot([])
-        #     axs1d[2].set_title("ionization frequency vs X (no particles)", weight='bold')
-        #     axs1d[2].set_xlabel('x grid index')
-        #     axs1d[2].set_ylabel('ionizations per timestep')
-
         fig.suptitle(f"Time: {self.t:.4f}, Timestep: {self.timestep}")
         fig.tight_layout()
         fig.savefig(output_plotname)
         plt.close(fig)
+
+        ### 1D PLOTS
+        
+        # Generate 1D line plots if ny=1 or for middle slice
+        if self.inp.ny == 1:
+            iy = 0  # For 1D, only one y-index
+        else:
+            iy = round(self.inp.ny / 2)  # Middle slice for 2D
+
+        # Set up 1D plots
+        n_plots = len(plot_vars_2d)
+        n_cols = 4
+        n_rows = (n_plots + n_cols - 1) // n_cols  # Ceiling division
+        fig1d, axs1d = plt.subplots(n_rows, n_cols, figsize=(20, 4*n_rows))
+        axs1d = axs1d.ravel()
+
+        # X-coordinate for 1D plots (physical units)
+        x_phys = self.inp.grid_x[self.inp.ng:-self.inp.ng] * self.ref.L
+
+        from scipy.ndimage import gaussian_filter1d
+
+        # Define 1D plotting logic
+        plot_map_1d = {
+            "rho_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, norm_data[0, :, iy], "Electron Mass Density", ylabel="$\\rho_e$ (kg/m³)"),
+            "n_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, norm_data[0, :, iy]/self.inp.m_e, "Electron Number Density", ylabel="$n_e$ (1/m³)"),
+            "u_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, norm_data[1, :, iy], "Electron Axial Velocity", ylabel="$u_e$ (m/s)"),
+            "v_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, norm_data[2, :, iy], "Electron Radial Velocity", ylabel="$v_e$ (m/s)"),
+            "w_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, norm_data[3, :, iy], "Electron Azimuthal Velocity", ylabel="$w_e$ (m/s)"),
+            "mu_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, norm_data[0, :, iy] * norm_data[1, :, iy], "Electron Axial Momentum", ylabel="$\\rho u$ (kg/(m²s))"),
+            "mv_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, norm_data[0, :, iy] * norm_data[2, :, iy], "Electron Radial Momentum", ylabel="$\\rho v$ (kg/(m²s))"),
+            "mw_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, norm_data[0, :, iy] * norm_data[3, :, iy], "Electron Azimuthal Momentum", ylabel="$\\rho w$ (kg/(m²s))"),
+            "p_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, norm_data[4, :, iy], "Electron Pressure", ylabel="$p_e$ (Pa)"),
+
+            "Ex": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, self.fields.E[:, iy, 0], "Electric Field X", ylabel="$E_x$ (V/m)", color='red'),
+            "Ey": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, self.fields.E[:, iy, 1], "Electric Field Y", ylabel="$E_y$ (V/m)", color='red'),
+            "By": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, self.fields.B[:, iy, 1], "Magnetic Field Y", ylabel="$B_y$ (T)", color='purple'),
+
+            "phi": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, self.fields.potential[:, iy], "Electric Potential", ylabel="$\\phi$ (V)", color='orange'),
+
+            "i": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, gaussian_filter1d(self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng, iy], sigma=4), "Ion Density", ylabel="$n_i$ (1/m³)", color='blue'),
+            "n": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, gaussian_filter1d(self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng, iy], sigma=4), "Neutral Density", ylabel="$n_n$ (1/m³)", color='gray'),
+            "rho_i": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, gaussian_filter1d(self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng, iy], sigma=4.5), "Ion Number Density", ylabel="$n_i$ (1/m³)", color='blue'),
+            "rho_n": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, gaussian_filter1d(self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng, iy], sigma=4.5), "Neutral Number Density", ylabel="$n_n$ (1/m³)", color='gray'),
+            "rho_q": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, gaussian_filter1d(self.fields.charge_density[:, iy], sigma=4.5), "Charge Density", ylabel="$\\rho_q$ (C/m³)", color='purple'),
+            "energy": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP, self.inp.ng:-self.inp.ng, iy], "Energy", ylabel="Energy (J/m³)"),
+            "sigma": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, gaussian_filter1d(self.electrons.pelectrons.cross_section_grid[:, iy], sigma=3), "Electron Collision Frequency", ylabel="$\\nu$ (1/s)", color='green'),
+        }
+
+        # Loop over variables and call the corresponding 1D plotting function
+        for idx, var in enumerate(plot_vars_2d):
+            if var in plot_map_1d:
+                plot_map_1d[var](idx)
+                axs1d[idx].set_xlim(self.inp.xlim[0] * self.ref.L, self.inp.xlim[1] * self.ref.L)
+            else:
+                print(f"Warning: Unknown 1D plot variable '{var}'")
+
+        # Hide unused subplots
+        for idx in range(len(plot_vars_2d), len(axs1d)):
+            axs1d[idx].axis('off')
+
+        fig1d.suptitle(f"1D Profiles - Time: {self.t:.4f}, Timestep: {self.timestep}")
+        fig1d.tight_layout()
+        fig1d.savefig(output_lineplotname)
+        plt.close(fig1d)
         
 
     def generate_movie(self):

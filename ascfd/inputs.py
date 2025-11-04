@@ -69,7 +69,7 @@ class Inputs:
         
         
         # Fluid
-        # self.fluid_ics = self.get_config_value(config, "Fluid", "fluid_ics")
+        self.fluid_ics = self.get_config_value(config, "Fluid", "fluid_ics")
         self.rho_e = self.get_config_value(config, "Fluid", "density", type_func = float)
         self.p_e = self.get_config_value(config, "Fluid", "pressure", type_func = float)
 

@@ -2,6 +2,7 @@ from ascfd.fluid.euler import FluidEuler
 # from ascfd.reconstruct import weno5_reconstruction
 from ascfd.fluid.constants import *
 from ascfd.fluid.constants import FluidConstants
+from ascfd.inputs import Inputs
 
 import numpy as np
 import sys
@@ -9,8 +10,8 @@ import sys
 
 class FluidFlux:
 
-    def __init__(self, a_constants: FluidConstants, a_type: str):
-
+    def __init__(self, a_inputs: Inputs, a_constants: FluidConstants, a_type: str):
+        self.inp = a_inputs
         self.type = a_type
         self.c = a_constants
 
@@ -38,7 +39,7 @@ class FluidFlux:
     def rusanov(self, a_grid, a_Nx, a_Ny, a_Nghost):
 
         #get density 
-        if self.c.system == "euler2d":
+        if self.c.system in ["euler2d", "euler1d"]:
             density = a_grid[self.c.RHOCOMP]
         else:
             raise RuntimeError("Density method needs to be implemented.")
@@ -62,19 +63,27 @@ class FluidFlux:
                     np.abs(a_grid[self.c.UCOMP, i, j]) + a[i, j],
                     np.abs(a_grid[self.c.UCOMP, i+1, j]) + a[i+1, j]
                 )
-                sMaxY = max(
-                    np.abs(a_grid[self.c.VCOMP, i, j]) + a[i, j],
-                    np.abs(a_grid[self.c.VCOMP, i, j+1]) + a[i, j+1]
-                )
+                
+                if self.inp.system != "euler1d":
+                    sMaxY = max(
+                        np.abs(a_grid[self.c.VCOMP, i, j]) + a[i, j],
+                        np.abs(a_grid[self.c.VCOMP, i, j+1]) + a[i, j+1]
+                    )
 
                 # compute flux components for each variable
                 for icomp in range(self.c.NUMQ):
                     numFluxX_plus[icomp, i, j] = 0.5 * (fx[icomp, i+1, j] + fx[icomp, i, j]) - 0.5 * sMaxX * (consU[icomp, i+1, j] - consU[icomp, i, j])
                     numFluxX_minus[icomp, i, j] = 0.5 * (fx[icomp, i, j] + fx[icomp, i-1, j]) - 0.5 * sMaxX * (consU[icomp, i, j] - consU[icomp, i-1, j])
-                    numFluxY_plus[icomp, i, j] = 0.5 * (fy[icomp, i, j+1] + fy[icomp, i, j]) - 0.5 * sMaxY * (consU[icomp, i, j+1] - consU[icomp, i, j])
-                    numFluxY_minus[icomp, i, j] = 0.5 * (fy[icomp, i, j] + fy[icomp, i, j-1]) - 0.5 * sMaxY * (consU[icomp, i, j] - consU[icomp, i, j-1])
+                    
+                    if self.inp.system != "euler1d":
+                        numFluxY_plus[icomp, i, j] = 0.5 * (fy[icomp, i, j+1] + fy[icomp, i, j]) - 0.5 * sMaxY * (consU[icomp, i, j+1] - consU[icomp, i, j])
+                        numFluxY_minus[icomp, i, j] = 0.5 * (fy[icomp, i, j] + fy[icomp, i, j-1]) - 0.5 * sMaxY * (consU[icomp, i, j] - consU[icomp, i, j-1])
 
-        return consU, numFluxX_plus, numFluxX_minus, numFluxY_plus, numFluxY_minus
+        if self.inp.system != "euler1d":
+            return consU, numFluxX_plus, numFluxX_minus, numFluxY_plus, numFluxY_minus
+        else:
+            return consU, numFluxX_plus, numFluxX_minus
+        
     
     def rusanov_vectorized(self, a_grid, a_Nx, a_Ny, a_Nghost):
         #get density 
