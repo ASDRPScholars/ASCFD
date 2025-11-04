@@ -46,9 +46,16 @@ class Fields:
         
         # Normalized permittivity: ε₀ = 1 in plasma units
         self.eps0_normalized = 1.0
-                
-    def update_E(self):
-        self.solve_poisson()
+
+        # RF discharge parameters
+        self.rf_enabled = (self.inp.rf_frequency is not None and
+                          self.inp.rf_amplitude is not None and
+                          self.inp.rf_boundary is not None)
+        if self.rf_enabled:
+            self.rf_omega = 2 * np.pi * self.inp.rf_frequency  # angular frequency
+
+    def update_E(self, t=0.0):
+        self.solve_poisson(t)
         self._compute_electric_field()
 
         
@@ -71,21 +78,41 @@ class Fields:
     def clear_charge_density(self):
         self.charge_density[:] = 0
     
-    def solve_poisson(self):
-        
-        rhs = - self.charge_density / self.eps0_normalized        
+    def solve_poisson(self, t=0.0):
+
+        rhs = - self.charge_density / self.eps0_normalized
         rect = ((self.inp.xlim[0], self.inp.ylim[0]), (self.inp.xlim[1], self.inp.ylim[1]))
 
         ## GRID IS ROTATED TO LINE UP WITH FLUID GRID so these are a bit jank:
+        # Calculate boundary values (potentially time-varying for RF discharge)
+        V_anode = self.inp.V_anode
+        V_cathode = self.inp.V_cathode
+
+        # Apply RF oscillation to specified boundary
+        if self.rf_enabled:
+            # φ(t) = φ_DC + φ_RF * sin(ω*t)
+            rf_voltage = self.inp.rf_amplitude * np.sin(self.rf_omega * t)
+
+            if self.inp.rf_boundary.lower() == "anode" or self.inp.rf_boundary.lower() == "top":
+                V_anode = self.inp.V_anode + rf_voltage
+            elif self.inp.rf_boundary.lower() == "cathode" or self.inp.rf_boundary.lower() == "bottom":
+                V_cathode = self.inp.V_cathode + rf_voltage
+            elif self.inp.rf_boundary.lower() == "right":
+                # For right boundary (maps to "right" in rotated coords)
+                V_anode = self.inp.V_anode + rf_voltage
+            elif self.inp.rf_boundary.lower() == "left":
+                # For left boundary (maps to "left" in rotated coords)
+                V_cathode = self.inp.V_cathode + rf_voltage
+
         boundary = {
             "left": (0, "neumann_x"), # BECOMES BOTTOM
             "right": (0, "neumann_x"), # BECOMES TOP
-            "top": (self.inp.V_anode, "dirichlet"), # BECOMES LEFT
-            "bottom": (self.inp.V_cathode, "dirichlet") # BECOMES RIGHT
+            "top": (V_anode, "dirichlet"), # BECOMES LEFT
+            "bottom": (V_cathode, "dirichlet") # BECOMES RIGHT
         }
-        
+
         solver = solvers.Poisson2DRectangle(rect=rect, interior=rhs, boundary=boundary, X=self.inp.ny, Y=self.inp.nx)
-        
+
         self.potential[:] = solver.solve()
 
             
