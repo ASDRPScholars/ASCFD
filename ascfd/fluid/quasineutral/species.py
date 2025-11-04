@@ -126,26 +126,32 @@ class QNFluidSpecies(FluidSpecies):
         # dK_deps = np.gradient(K, dx, axis=0) / np.gradient(energy_e, dx, axis=0) # chain rule - dK/deps = dK/dx * dx/depx
         
         X_plus = c_1_plus - 1/e * beta * I_plus
-        
-        A = -5/6 * f(X_plus, -1/2) - \
-            10/(9*e*dx) * mu_perp * n_e_plus * f(energy_e, -1/2)
-        B = (c_4_plus / dt) + \
-            5/6 * (f(X_plus, +1/2) - f(X_plus, -1/2)) + \
-            10/(9*e*dx) * mu_perp * n_e_plus * (f(energy_e, +1/2) + f(energy_e, -1/2)) - \
-            c_5_plus * dK_deps - \
-            c_4_plus * dW_deps
-        C = 5/6 * f(X_plus, +1/2) - \
-            10/(9*e*dx) * mu_perp * n_e_plus * f(energy_e, +1/2)
-        D = 1/dt * c_4 * energy_e + \
-            c_6_plus - c_5_plus*K + \
-            c_5_plus * energy_e * dK_deps - \
-            c_4_plus * W + c_4_plus * energy_e * dW_deps
+
+        # Corrected coefficients - note the factors of e
+        A = -5/(6*e) * f(X_plus, -1/2) - \
+            10/(9*e**2*dx) * mu_perp * n_e_plus * f(energy_e, -1/2)
+
+        B = (c_4_plus / (dt * e)) + \
+            5/(6*e) * (f(X_plus, +1/2) - f(X_plus, -1/2)) + \
+            10/(9*e**2*dx) * mu_perp * n_e_plus * (f(energy_e, +1/2) + f(energy_e, -1/2)) - \
+            c_5_plus * dK_deps / e - \
+            c_4_plus * dW_deps / e
+
+        C = 5/(6*e) * f(X_plus, +1/2) - \
+            10/(9*e**2*dx) * mu_perp * n_e_plus * f(energy_e, +1/2)
+
+        D = (1/(dt*e)) * c_4 * energy_e + \
+            c_6_plus / e - \
+            c_5_plus * K / e + \
+            c_5_plus * energy_e * dK_deps / e - \
+            c_4_plus * W / e + \
+            c_4_plus * energy_e * dW_deps / e
             
         # flatten + pad bcs for matrix
-        _A = np.pad(A[1:, 20]/e, 2, mode='constant', constant_values=0)
-        _B = np.pad(B[:, 20]/e, 2, mode='constant', constant_values=1) # bcs
-        _C = np.pad(C[:-1, 20]/e, 2, mode='constant', constant_values=0)
-        _D = np.pad(D[:, 20]/e, 2, mode="constant", constant_values=(energy_e_a, energy_e_c))
+        _A = np.pad(A[1:, 20], 2, mode='constant', constant_values=0)
+        _B = np.pad(B[:, 20], 2, mode='constant', constant_values=1)
+        _C = np.pad(C[:-1, 20], 2, mode='constant', constant_values=0)
+        _D = np.pad(D[:, 20], 2, mode="constant", constant_values=(energy_e_a, energy_e_c))
         
         lower_diagonal = np.diag(_A, k=-1)
         main_diagonal = np.diag(_B)
