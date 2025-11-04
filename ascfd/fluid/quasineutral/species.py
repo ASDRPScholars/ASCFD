@@ -142,17 +142,17 @@ class QNFluidSpecies(FluidSpecies):
             c_4_plus * W + c_4_plus * energy_e * dW_deps
             
         # flatten + pad bcs for matrix
-        _A = np.pad(A[1:, 20], 2, mode='constant', constant_values=0)
-        _B = np.pad(B[:, 20], 2, mode='constant', constant_values=1) # bcs
-        _C = np.pad(C[:-1, 20], 2, mode='constant', constant_values=0)
-        _D = np.pad(D[:, 20], 2, mode="constant", constant_values=(energy_e_a, energy_e_c))
+        _A = np.pad(A[1:, 20]/e, 2, mode='constant', constant_values=0)
+        _B = np.pad(B[:, 20]/e, 2, mode='constant', constant_values=1) # bcs
+        _C = np.pad(C[:-1, 20]/e, 2, mode='constant', constant_values=0)
+        _D = np.pad(D[:, 20]/e, 2, mode="constant", constant_values=(energy_e_a, energy_e_c))
         
         lower_diagonal = np.diag(_A, k=-1)
         main_diagonal = np.diag(_B)
         upper_diagonal = np.diag(_C, k=1)
         
         a = lower_diagonal + main_diagonal + upper_diagonal
-        b = _D
+        b = _D / e
         
         _energy_e_plus = linalg.solve(a, b, assume_a='tridiagonal')
         
