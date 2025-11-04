@@ -154,7 +154,7 @@ class QNFluidSpecies(FluidSpecies):
         
         _energy_e_plus = linalg.solve(a, b, assume_a='tridiagonal')
         
-        energy_e_plus = np.reshape(_energy_e_plus[2:-2], np.shape(energy_e))
+        energy_e_plus = np.reshape(_energy_e_plus[2:-2], np.shape(energy_e)) / e
         
         ### ###### #######
 

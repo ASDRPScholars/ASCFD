@@ -224,7 +224,7 @@ class Simulation:
             except:
                 return self.ions.grid[self.ions.c.RHOCOMP, ng:-ng, ng:-ng]/self.inp.m_i
         elif species == "n":
-            return np.maximum(self.neutrals.compute_particle_density_field()[ng:-ng, ng:-ng], 1e16)
+            return np.maximum(self.neutrals.compute_particle_density_field()[ng:-ng, ng:-ng], 5e19)
             # except:
             #     return np.maximum(self.neutrals.grid[self.neutrals.c.RHOCOMP, ng:-ng, ng:-ng]/self.inp.m_n, 1e-12)
         elif species == "e" and self.inp.e_system == "quasineutral":
