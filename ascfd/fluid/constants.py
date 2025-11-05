@@ -42,7 +42,7 @@ class FluidConstants:
 
             self.gamma = a_inputs.gammas[0] #gammas
             
-            self.k_B = 1.380649e-23
+            self.k_B = 8.617e-5
 
             self.variable_names = ["Density", "X-Velocity", "Y-Velocity", "Z-Velocity", "Pressure"]
 

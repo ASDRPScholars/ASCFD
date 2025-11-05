@@ -72,6 +72,7 @@ class Inputs:
         self.fluid_ics = self.get_config_value(config, "Fluid", "fluid_ics")
         self.rho_e = self.get_config_value(config, "Fluid", "density", type_func = float)
         self.p_e = self.get_config_value(config, "Fluid", "pressure", type_func = float)
+        self.T_e = self.get_config_value(config, "Fluid", "T_e", type_func = float)
 
         self.system = self.get_config_value(config, "Fluid", "system")
         self.gammas = self.get_config_value(config, "Fluid", "gammas", type_func=lambda s: [float(item) for item in s.strip('[]').split(',')])
@@ -85,17 +86,18 @@ class Inputs:
         # Particle
         self.particle_ics = self.get_config_value(config, "Particle", "particle_ics", mandatory = False, default=None)
         self.n_ppc = self.get_config_value(config, "Particle", "n_ppc", mandatory = False, default = 0, type_func = int)
-        self.particle_flow_type = self.get_config_value(config, "Particle", "flow_type", mandatory = False, default = None)
-        self.seeding_per_timestep = self.get_config_value(config, "Particle", "seeding_per_timestep", mandatory = False, default = 0, type_func = int)
-        self.bounce_back_multiplier = self.get_config_value(config, "Particle", "bounce_back_multiplier", mandatory = False, default = 1.0, type_func = float)
-        self.max_number_of_bounces = self.get_config_value(config, "Particle", "max_number_of_bounces", mandatory = False, default = 3, type_func = int)
+        
+        self.n_i = self.get_config_value(config, "Particle", "n_i", mandatory = False, default = 0, type_func = int)
+        self.n_n = self.get_config_value(config, "Particle", "n_n", mandatory = False, default = 0, type_func = int)
+        self.T_i = self.get_config_value(config, "Particle", "T_i", mandatory = False, default = 0, type_func = int)
+        self.T_n = self.get_config_value(config, "Particle", "T_n", mandatory = False, default = 0, type_func = int)
         
         self.n_flow_rate = self.get_config_value(config, "Particle", "n_flow_rate", mandatory = False, default = 5e-6, type_func = float)
         self.v_n = self.get_config_value(config, "Particle", "v_n", mandatory = False, default = 150, type_func = float)
         
-        self.n_n = self.n_flow_rate / (self.m_n * self.ylim[1] * self.v_n)
+        # self.n_n = self.n_flow_rate / (self.m_n * self.ylim[1] * self.v_n)
         
-        self.n_particles = self.n_ppc * self.nx_with_ghosts * self.ny_with_ghosts
+        self.n_particles = self.n_ppc * self.nx * self.ny
         
         # Electric Field
         self.B_ics = self.get_config_value(config, "Fields", "B_ics")
