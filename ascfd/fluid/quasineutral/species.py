@@ -5,6 +5,7 @@ from ascfd.fields.fields import Fields
 
 import numpy as np
 from scipy import linalg
+from scipy import integrate
 import sys
 import warnings
 
@@ -124,9 +125,9 @@ class QNFluidSpecies(FluidSpecies):
                 V_a - V_c - \
                 2/(3*e) * energy_e_a * np.log(n_e_a_plus / n_0) + \
                 2/(3*e) * energy_e_c * np.log(n_e_c_plus / n_0) + \
-                np.trapz(c_1_plus[:, 20]/(mu_perp[:, 20] * n_e_plus[:, 20]), None, self.inp.dx) - \
-                2/(3*e) * np.trapz(c_3_plus[:, 20]/(mu_perp[:, 20] * n_e_plus[:, 20]), None, self.inp.dx) * (energy_e_c - energy_e_a)
-                ) / np.trapz((beta[:, 20]/(mu_perp[:, 20] * n_e_plus[:, 20])), None, self.inp.dx)
+                integrate.trapezoid(c_1_plus[:, 20]/(mu_perp[:, 20] * n_e_plus[:, 20]), None, self.inp.dx) - \
+                2/(3*e) * integrate.trapezoid(c_3_plus[:, 20]/(mu_perp[:, 20] * n_e_plus[:, 20]), None, self.inp.dx) * (energy_e_c - energy_e_a)
+                ) / integrate.trapezoid((beta[:, 20]/(mu_perp[:, 20] * n_e_plus[:, 20])), None, self.inp.dx)
             
         I_plus = _I_plus # TODO HOW DO THEY DO IT? THEY DON'T MIDLINE AVERAGE?
 
@@ -183,7 +184,7 @@ class QNFluidSpecies(FluidSpecies):
 
         ### VOLTAGE UPDATE
         integrand = (c_1_plus - (beta * I_plus / e) - 2/(3*e) * c_3_plus) / (mu_perp * n_e_plus * r * B)
-        V_star_plus = np.cumsum(integrand * self.inp.dx, axis=0) + (energy_e - energy_e_c)
+        V_star_plus = integrate.cumulative_trapezoid(integrand * self.inp.dx, axis=0, initial=0) + (energy_e - energy_e_c)
         V_plus = V_star_plus + 2/(3*e) * energy_e_plus * np.log(n_e_plus / n_0)
         
         ### ######## ######
