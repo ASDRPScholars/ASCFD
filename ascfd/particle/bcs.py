@@ -7,6 +7,7 @@ import numpy as np
 class ParticleBoundaryConditions:
     def __init__(self, particle_species, a_inputs: Inputs, params, constants: ParticleConstants):
         self.particle_species = particle_species
+        self.particles = self.particle_species.particles
         self.inp = a_inputs
         self.params = params
         self.pc = constants
@@ -15,8 +16,26 @@ class ParticleBoundaryConditions:
     def apply_bcs(self):
         #TODO: readd boundaries that aren't at the bottom corner lol
         self.apply_inflow_lo()
-        # self.remove_particles()
+        self.clean_particles()
 
+    def clean_particles(self):
+        """
+        Remove particles that have moved outside the domain boundaries.
+
+        Particles are removed if their grid indices are outside [0, nx) or [0, ny), or if weight is 0.
+        This prevents interpolation errors and handles particle absorption at boundaries.
+        """
+        # Get grid indices for all particles
+        x_pos = self.particles[self.pc.XCOMP]
+        y_pos = self.particles[self.pc.YCOMP]
+
+        ix = self.ix(x_pos)
+        iy = self.iy(y_pos)
+
+        valid_mask = (ix >= 0) & (ix < self.inp.nx) & (iy >= 0) & (iy < self.inp.ny) & (self.particles[self.pc.WEIGHT] > 0)
+
+        # remove columns where mask is False
+        self.particles = self.particles[:, valid_mask]
         
     def apply_inflow_lo(self):
         """Apply inflow boundary condition with proper n_ppc seeding"""

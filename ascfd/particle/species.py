@@ -28,6 +28,8 @@ class ParticleSpecies:
         
     def update(self):
         self.push()
+        self.ionize()
+        self.bcs.apply_bcs()
         
     def push(self):
         """
@@ -88,20 +90,20 @@ class ParticleSpecies:
         self.particles[self.pc.UCOMP] = vx_new
         self.particles[self.pc.VCOMP] = vy_new
         self.particles[self.pc.WCOMP] = vz_new
-
-        # Apply boundary conditions
-        self.bcs.apply_bcs()
         
     def ionize(self):
         n_e = self.simulation.get_species_number_density("e")
         N = self.simulation.get_species_number_density("n")
         k_iz = self.simulation.get_coeffs("k_iz")
         
-        n_iz = n_e * N * k_iz
+        n_iz = n_e * N * k_iz * self.dt
         
         iz_particles = self.ics.apply_ics(ic="random")
         
         self.add_particles(iz_particles)
+        
+    def add_particles(self, new_particles):
+        self.particles = np.hstack(self.particles, new_particles)
 
     def field_to_particles(self, field: np.ndarray):
         """
