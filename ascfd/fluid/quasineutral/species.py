@@ -59,7 +59,7 @@ class QNFluidSpecies(FluidSpecies):
         
         energy_e_a = 3 * e # Joules
         energy_e_c = 3 * e # Joules
-        energy_e = self.simulation.get_species_energy("e")
+        energy_e = self.simulation.get_species_energy("e") * e # Joules
         
         deps_dx = np.gradient(energy_e, self.inp.dx, axis=0)
         
@@ -88,14 +88,16 @@ class QNFluidSpecies(FluidSpecies):
         V_star = self.fields.potential_star
         # V = np.linspace(V_a, V_c, self.inp.nx)[:, np.newaxis] * np.ones((self.inp.nx, self.inp.ny))
         # V_star = V.copy()
+
+        area = np.pi * (0.050**2 - 0.035**2)
         
         # INTEGRALS
         c_1_plus = flux_i_plus
         c_2_plus = r * B * mu_perp * n_e_plus
         c_3_plus = r * B * mu_perp * n_e_plus * (np.log(n_e_plus / n_0) - 1)
-        c_4 = n_e
-        c_4_plus = n_e_plus
-        c_5_plus = n_n_plus * n_e_plus
+        c_4 = n_e * area
+        c_4_plus = n_e_plus * area
+        c_5_plus = n_n_plus * n_e_plus * area
 
         # c_6: use np.grad for partial x's
         dV_dx = np.gradient(V, self.inp.dx, axis=0)
@@ -111,10 +113,10 @@ class QNFluidSpecies(FluidSpecies):
         _I_plus = \
             e * (
                 V_a - V_c - \
-                2.0/(3.0 * e) * energy_e_a * np.log(n_e_a_plus / n_0) + \
-                2.0/(3.0 * e) * energy_e_c * np.log(n_e_c_plus / n_0) + \
+                2.0/(3.0) * energy_e_a * np.log(n_e_a_plus / n_0) + \
+                2.0/(3.0) * energy_e_c * np.log(n_e_c_plus / n_0) + \
                 integrate.trapezoid(c_1_plus[:, 20]/(mu_perp[:, 20] * n_e_plus[:, 20]), None, self.inp.dx) - \
-                2.0/(3.0 * e) * integrate.trapezoid(c_3_plus[:, 20]/(mu_perp[:, 20] * n_e_plus[:, 20]), None, self.inp.dx) * (energy_e_c - energy_e_a)
+                2.0/(3.0) * integrate.trapezoid(c_3_plus[:, 20]/(mu_perp[:, 20] * n_e_plus[:, 20]), None, self.inp.dx) * (energy_e_c - energy_e_a)
                 ) / integrate.trapezoid((beta[:, 20]/(mu_perp[:, 20] * n_e_plus[:, 20])), None, self.inp.dx)
             
         I_plus = _I_plus # TODO HOW DO THEY DO IT? THEY DON'T MIDLINE AVERAGE?
@@ -132,16 +134,16 @@ class QNFluidSpecies(FluidSpecies):
         X_plus = c_1_plus - 1/e * beta * I_plus
 
         A = -5/(6) * f(X_plus, -1/2) - \
-            10/(9*e*dx) * mu_perp * n_e_plus * f(energy_e, -1/2)
+            10/(9*dx) * mu_perp * n_e_plus * f(energy_e, -1/2)
 
         B = (c_4_plus / (dt)) + \
-            10/(9*e*dx) * mu_perp * n_e_plus * (f(energy_e, +1/2) + f(energy_e, -1/2)) - \
+            10/(9*dx) * mu_perp * n_e_plus * (f(energy_e, +1/2) + f(energy_e, -1/2)) - \
             5/(6) * (f(X_plus, +1/2) - f(X_plus, -1/2)) - \
             c_5_plus * dK_deps - \
             c_4_plus * dW_deps
 
         C = 5/(6) * f(X_plus, +1/2) - \
-            10/(9*e*dx) * mu_perp * n_e_plus * f(energy_e, +1/2)
+            10/(9*dx) * mu_perp * n_e_plus * f(energy_e, +1/2)
 
         D = (1/(dt)) * c_4 * energy_e + \
             c_6_plus - \
@@ -164,22 +166,21 @@ class QNFluidSpecies(FluidSpecies):
         b = _D
         
         _energy_e_plus = linalg.solve(a, b, assume_a='tridiagonal')
+        
         energy_e_plus = _energy_e_plus[ng:-ng, np.newaxis] * np.ones((self.inp.nx, self.inp.ny))
+        
+        deps_dx_plus = np.gradient(energy_e_plus, self.inp.dx, axis=0)
         
         ### ###### #######
 
         ### VOLTAGE UPDATE
-        deps_dx_plus = np.gradient(energy_e_plus, self.inp.dx, axis=0)
         deps_dlambda = deps_dx_plus / (r * B)
-        
-        integrand = (c_1_plus - (beta * I_plus / e)) / (mu_perp * n_e_plus * r * B) - \
-            2/(3*e) * (np.log(n_e_plus / n_0) - 1) * deps_dlambda
+        integrand = (c_1_plus - (beta * I_plus / e) - 2/(3)) / (mu_perp * n_e_plus * r * B) - 2*(np.log(n_e_plus / n_0) - 1)*deps_dlambda
         dVstar_dx = integrand * r * B
-        
-        V_star_anode = V_a - 2.0/(3.0*e) * energy_e_a * np.log(n_e_a_plus / n_0)  # All in Volts
+        V_star_anode = V_a - (2.0/3.0) * energy_e_a * np.log(n_e_a_plus / n_0)  # All in Volts
         V_star_plus = integrate.cumulative_trapezoid(dVstar_dx, dx=self.inp.dx, axis=0, initial=0) + V_star_anode
         
-        V_plus = V_star_plus + 2.0/(3.0*e) * energy_e_plus * np.log(n_e_plus / n_0)
+        V_plus = V_star_plus + 2.0/(3.0) * energy_e_plus * np.log(n_e_plus / n_0)
         
         self.fields.populate_V(V_plus, V_star_plus)
         

@@ -517,7 +517,7 @@ class Simulation:
             "mv_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[0] * plot_data[2], extent, "Electron Radial Momentum"),
             "mw_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[0] * plot_data[3], extent, "Electron Azimuthal Momentum"),
             "p_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[4], extent, "Electron Pressure"),
-            "eps_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[4], extent, "Electron Mean Energy"),
+            "eps_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[4] / self.c.e, extent, "Electron Mean Energy"),
             
             "jx_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[1], extent, "Electron Axial Current", cmap='winter'),
             "jy_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[2], extent, "Electron Radial Current"),
@@ -598,7 +598,7 @@ class Simulation:
             "mu_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, plot_data[0, :, iy] * plot_data[1, :, iy], "Electron Axial Momentum", ylabel="$\\rho u$ (kg/(m²s))"),
             "mv_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, plot_data[0, :, iy] * plot_data[2, :, iy], "Electron Radial Momentum", ylabel="$\\rho v$ (kg/(m²s))"),
             "mw_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, plot_data[0, :, iy] * plot_data[3, :, iy], "Electron Azimuthal Momentum", ylabel="$\\rho w$ (kg/(m²s))"),
-            "eps_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, plot_data[4, :, iy], "Electron Mean Energy", ylabel="eV"),
+            "eps_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, plot_data[4, :, iy] / self.c.e, "Electron Mean Energy", ylabel="eV"),
 
             "Ex": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, self.fields.E[:, iy, 0], "Electric Field X", ylabel="$E_x$ (V/m)", color='red'),
             "Ey": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, self.fields.E[:, iy, 1], "Electric Field Y", ylabel="$E_y$ (V/m)", color='red'),
