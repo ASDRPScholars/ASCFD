@@ -12,11 +12,8 @@ class ParticleInitialConditions:
         self.pc = constants
         
     def apply_ics(self, weight=None):
-      
-        if ic is not None:
-            ic = ic
-        else:
-            ic = self.inp.i_ics
+        
+        ic = self.inp.i_ics
             
         if ic == "origin":
             self.species.particles[:] = self.origin()
@@ -26,22 +23,27 @@ class ParticleInitialConditions:
             self.species.particles[:] = self.random_left_wall()
         else:
             assert ValueError(f"[PARTICLE ICS] system [{ic}] not supported!")
-
+            
+    def seed(self, weight):
+        return self.random(weight=weight)
         
     def origin(self):
         ic_particles = np.ones_like(self.particles) * 0.5
         
         return ic_particles
             
-    def random(self):
+    def random(self, weight=None):
         
         dx = self.inp.dx
         dy = self.inp.dy
         
-        if self.params.type == "i":
-            weight = self.inp.n_i * dx * dy
-        elif self.params.type == "n":
-            weight = self.inp.n_n * dx * dy
+        if weight is not None:
+            weight = weight
+        else:
+            if self.params.type == "i":
+                weight = self.inp.n_i * dx * dy
+            elif self.params.type == "n":
+                weight = self.inp.n_n * dx * dy
             
         ic_particles = np.zeros_like(self.species.particles)
     

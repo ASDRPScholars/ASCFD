@@ -48,7 +48,7 @@ class ParticleBoundaryConditions:
         ny = self.inp.ny  # full domain in y
         
         # Number of computational particles to inject
-        n_inject = self.inp.N_ppc * nx * ny
+        n_inject = self.inp.n_ppc * nx * ny
         
         # Weight per particle to match desired flux
         weight = (self.inp.flux_n * self.inp.ylim[1] * self.inp.dt) / n_inject

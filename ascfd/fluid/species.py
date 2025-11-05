@@ -367,7 +367,7 @@ class FluidSpecies:
         WEIGHT = self.pc.NUMQ
         
         # TODO: DO WE ACTUALLY NEED n_ppc particle electrons??
-        n_particles = self.inp.N_ppc * self.inp.nx * self.inp.ny
+        n_particles = self.inp.n_ppc * self.inp.nx * self.inp.ny
         
         # Particle array: [x, y, vx, vy, vz, weight] = 6 components
         ic_particles = np.zeros((self.pc.NUMQ + 1, n_particles))
@@ -392,9 +392,9 @@ class FluidSpecies:
                     # # TODO: use global v_th or use this?
                     # v_th = np.sqrt(2 * p / rho)
                     
-                    weight = rho * self.inp.dx * self.inp.dy / self.inp.N_ppc
+                    weight = rho * self.inp.dx * self.inp.dy / self.inp.n_ppc
                     
-                    for n in range (self.inp.N_ppc):
+                    for n in range (self.inp.n_ppc):
                         R1, R2 = np.random.rand(2)
                         R3, R4 = np.random.rand(2)
 

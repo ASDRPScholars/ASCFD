@@ -69,6 +69,7 @@ class Inputs:
         self.e_ics = self.get_config_value(config, "Electrons", "ics")
         self.rho_e = self.get_config_value(config, "Electrons", "density", type_func = float)
         self.p_e = self.get_config_value(config, "Electrons", "pressure", type_func = float)
+        self.T_e = self.get_config_value(config, "Electrons", "T_e", type_func = float)
         self.gammas = self.get_config_value(config, "Electrons", "gammas", type_func=lambda s: [float(item) for item in s.strip('[]').split(',')])
         self.mW = self.get_config_value(config, "Electrons", "mW", type_func=lambda s: [float(item) for item in s.strip('[]').split(',')])
 
@@ -90,7 +91,7 @@ class Inputs:
         self.i_ics = self.get_config_value(config, "Ions", "ics", mandatory = False, default=None)
         self.T_i = self.get_config_value(config, "Ions", "T_i", mandatory = False, default = 0, type_func = int)
         self.n_i = self.get_config_value(config, "Ions", "n_i", mandatory = False, default = 0, type_func = int)
-        self.N_ppc = self.get_config_value(config, "Ions", "n_ppc", mandatory = False, default = 0, type_func = int)
+        self.n_ppc = self.get_config_value(config, "Ions", "n_ppc", mandatory = False, default = 0, type_func = int)
         self.particle_flow_type = self.get_config_value(config, "Ions", "flow_type", mandatory = False, default = None)
         self.seeding_per_timestep = self.get_config_value(config, "Ions", "seeding_per_timestep", mandatory = False, default = 0, type_func = int)
         self.bounce_back_multiplier = self.get_config_value(config, "Ions", "bounce_back_multiplier", mandatory = False, default = 1.0, type_func = float)
@@ -98,7 +99,7 @@ class Inputs:
         
         # self.n_n = self.n_flow_rate / (self.m_n * self.ylim[1] * self.v_n)
         
-        self.n_particles = self.N_ppc * self.nx * self.ny
+        self.n_particles = self.n_ppc * self.nx * self.ny
 
         # Neutrals
         self.n_system = self.get_config_value(config, "Neutrals", "system", default = "advection1d")
@@ -107,7 +108,7 @@ class Inputs:
         self.flux_n = self.get_config_value(config, "Neutrals", "flux_n", mandatory = False, default = 5e-6, type_func = float)
         self.v_n = self.get_config_value(config, "Neutrals", "v_n", mandatory = False, default = 150, type_func = float)
         
-        self.n_particles = self.N_ppc * self.nx_with_ghosts * self.ny_with_ghosts
+        self.n_particles = self.n_ppc * self.nx_with_ghosts * self.ny_with_ghosts
         
         # Electric Field
         self.B_ics = self.get_config_value(config, "Fields", "B_ics")

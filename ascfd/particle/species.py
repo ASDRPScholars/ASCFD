@@ -16,8 +16,6 @@ class ParticleSpecies:
         self.fields = fields
         self.dt = None
         self.simulation = simulation 
-        
-        self.ics = ParticleInitialConditions(self.inp, self.params)
 
         self.particles = np.zeros((self.pc.NUMQ + 1, self.inp.n_particles))
         
@@ -98,7 +96,7 @@ class ParticleSpecies:
         
         n_iz = n_e * N * k_iz * self.dt
         
-        iz_particles = self.ics.apply_ics(ic="random")
+        iz_particles = self.ics.seed(weight=n_iz)
         
         self.add_particles(iz_particles)
         

@@ -42,9 +42,9 @@ class Simulation:
         self.fields = Fields(self.inp)
         
         # TODO: move density + temperature to PARTICLE ics, don't keep in multispecies params
-        xe_i_params = SpeciesParams(self.inp.q, self.inp.m_i, 5/3, "i", density=self.inp.n_i, temperature=self.inp.T_i) # TODO kelvin or eV # Xe+ ions  
-        xe_n_params = SpeciesParams(0, self.inp.m_n, 5/3, "n", density=self.inp.n_n, temperature=self.inp.T_n)  # Xe neutrals
-        e_params = SpeciesParams(-self.inp.q, self.inp.m_e, 5/3, "e", density=self.inp.n_e, temperature=self.inp.T_e) # TODO kelvin or eV
+        xe_i_params = SpeciesParams(self.inp.q, self.inp.m_i, 5/3, "i", temperature=self.inp.T_i) # TODO kelvin or eV # Xe+ ions  
+        xe_n_params = SpeciesParams(0, self.inp.m_n, 5/3, "n", temperature=self.inp.T_n)  # Xe neutrals
+        e_params = SpeciesParams(-self.inp.q, self.inp.m_e, 5/3, "e", temperature=self.inp.T_e) # TODO kelvin or eV
         
         ## -- ELECTRONS:
         e_params = SpeciesParams(-self.inp.q, self.inp.m_e, 5/3, "e", temperature=100.0)
@@ -74,7 +74,7 @@ class Simulation:
             if self.inp.i_system == "euler2d":
                 self.ions = FluidSpecies(self.p_c, xe_i_params, self.inp, self.fields, self) # TODO p_c
             elif self.inp.i_system == "pic":
-                self.ions = ParticleSpecies(self.pc, xe_i_params, self.inp, self.fields, self.collisions, self)
+                self.ions = ParticleSpecies(self.inp, xe_i_params, self.pc, self.fields, self)
                 
             ## -- NEUTRALS:
             xe_n_params = SpeciesParams(0, self.inp.m_n, 5/3, "n", temperature=0.043)  # 500K - hagelaar - Xe neutrals
@@ -82,7 +82,7 @@ class Simulation:
             if self.inp.n_system == "advection1d":
                 self.neutrals = FluidSpecies(self.c, xe_n_params, self.inp, self.fields, self)
             elif self.inp.n_system == "pic":
-                self.neutrals = ParticleSpecies(self.pc, xe_n_params, self.inp, self.fields, self.collisions, self)
+                self.neutrals = ParticleSpecies(self.inp, xe_n_params, self.pc, self.fields, self)
 
             self.all_species = [self.electrons, self.neutrals, self.ions]
             self.particle_species = [self.neutrals, self.ions]
@@ -224,24 +224,11 @@ class Simulation:
         
         if species == "i":
             try:
-                n_e = np.ones_like(self.inp.internal_grid) * 0.5e18
-                x_cm = np.linspace(0, 2.5, self.inp.L_x)  # 0 to 2.5 cm
-
-                # Combine rising Gaussian and falling exponential
-                rise = 3e18 + 2.5e18 * np.exp(-((x_cm - 1.0) / 0.4)**2)  # Gaussian peak at 1 cm
-                fall = 0.5e18 + 5e18 * np.exp(-(x_cm - 1.0) / 0.8)       # Exponential decay
-
-                # Take maximum to get the profile shape
-                density_profile = np.maximum(rise, fall)
-                density_profile = np.clip(density_profile, 0.5e18, 5.5e18)
-
-                n_e[0:self.inp.L_x, :] = density_profile[:, np.newaxis]
-                return n_e
-                return np.maximum(self.ions.compute_particle_density_field()[ng:-ng, ng:-ng], 1e16)
+                return np.maximum(self.ions.get_number_density(), 1e16)
             except:
                 return self.ions.grid[self.ions.c.RHOCOMP, ng:-ng, ng:-ng]/self.inp.m_i
         elif species == "n":
-            return np.maximum(self.neutrals.compute_particle_density_field()[ng:-ng, ng:-ng], 5e19)
+            return np.maximum(self.neutrals.get_number_density(), 5e19)
             # except:
             #     return np.maximum(self.neutrals.grid[self.neutrals.c.RHOCOMP, ng:-ng, ng:-ng]/self.inp.m_n, 1e-12)
         elif species == "e" and self.inp.e_system == "quasineutral":
@@ -255,7 +242,7 @@ class Simulation:
         
         if species == "i":
             try:
-                j_i =  self.ions.compute_particle_density_field() * self.ions.compute_particle_x_velocity_field() * self.inp.q
+                j_i =  self.ions.get_number_density() * self.ions.get_velocity() * self.inp.q
                 return j_i[ng:-ng, ng:-ng]
             except:
 
@@ -273,9 +260,9 @@ class Simulation:
         
         if species == "i":
             
-            return self.ions.get_x_velocity_field()
+            return self.ions.get_velocity()
         elif species == "n":
-            return self.neutrals.get_x_velocity_field()
+            return self.neutrals.get_velocity()
         elif species == "e" and self.inp.e_system == "quasineutral":
             ng = self.inp.ng
             n_e = self.get_species_number_density("e")
@@ -497,7 +484,7 @@ class Simulation:
 
         ### 2D PLOTS
         # Set up 2D field plots
-        if self.inp.system in ["euler2d", "euler1d"]:
+        if self.inp.e_system in ["euler2d", "euler1d"]:
             fig, axs = plt.subplots(3, 4, figsize=(24, 7))
         elif self.inp.e_system == "quasineutral":
             fig, axs = plt.subplots(3, 4, figsize=(24, 7))
@@ -604,15 +591,15 @@ class Simulation:
 
         # Define 1D plotting logic
         plot_map_1d = {
-            "rho_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, norm_data[0, :, iy], "Electron Mass Density", ylabel="$\\rho_e$ (kg/m³)"),
-            "n_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, norm_data[0, :, iy]/self.inp.m_e, "Electron Number Density", ylabel="$n_e$ (1/m³)"),
-            "u_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, norm_data[1, :, iy], "Electron Axial Velocity", ylabel="$u_e$ (m/s)"),
-            "v_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, norm_data[2, :, iy], "Electron Radial Velocity", ylabel="$v_e$ (m/s)"),
-            "w_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, norm_data[3, :, iy], "Electron Azimuthal Velocity", ylabel="$w_e$ (m/s)"),
-            "mu_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, norm_data[0, :, iy] * norm_data[1, :, iy], "Electron Axial Momentum", ylabel="$\\rho u$ (kg/(m²s))"),
-            "mv_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, norm_data[0, :, iy] * norm_data[2, :, iy], "Electron Radial Momentum", ylabel="$\\rho v$ (kg/(m²s))"),
-            "mw_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, norm_data[0, :, iy] * norm_data[3, :, iy], "Electron Azimuthal Momentum", ylabel="$\\rho w$ (kg/(m²s))"),
-            "p_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, norm_data[4, :, iy], "Electron Pressure", ylabel="$p_e$ (Pa)"),
+            "rho_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, plot_data[0, :, iy], "Electron Mass Density", ylabel="$\\rho_e$ (kg/m³)"),
+            "n_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, plot_data[0, :, iy]/self.inp.m_e, "Electron Number Density", ylabel="$n_e$ (1/m³)"),
+            "u_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, plot_data[1, :, iy], "Electron Axial Velocity", ylabel="$u_e$ (m/s)"),
+            "v_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, plot_data[2, :, iy], "Electron Radial Velocity", ylabel="$v_e$ (m/s)"),
+            "w_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, plot_data[3, :, iy], "Electron Azimuthal Velocity", ylabel="$w_e$ (m/s)"),
+            "mu_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, plot_data[0, :, iy] * plot_data[1, :, iy], "Electron Axial Momentum", ylabel="$\\rho u$ (kg/(m²s))"),
+            "mv_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, plot_data[0, :, iy] * plot_data[2, :, iy], "Electron Radial Momentum", ylabel="$\\rho v$ (kg/(m²s))"),
+            "mw_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, plot_data[0, :, iy] * plot_data[3, :, iy], "Electron Azimuthal Momentum", ylabel="$\\rho w$ (kg/(m²s))"),
+            "p_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, plot_data[4, :, iy], "Electron Pressure", ylabel="$p_e$ (Pa)"),
 
             "Ex": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, self.fields.E[:, iy, 0], "Electric Field X", ylabel="$E_x$ (V/m)", color='red'),
             "Ey": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, self.fields.E[:, iy, 1], "Electric Field Y", ylabel="$E_y$ (V/m)", color='red'),
@@ -620,10 +607,10 @@ class Simulation:
 
             "phi": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, self.fields.potential[:, iy], "Electric Potential", ylabel="$\\phi$ (V)", color='orange'),
 
-            "i": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, gaussian_filter1d(self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng, iy], sigma=4), "Ion Density", ylabel="$n_i$ (1/m³)", color='blue'),
-            "n": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, gaussian_filter1d(self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng, iy], sigma=4), "Neutral Density", ylabel="$n_n$ (1/m³)", color='gray'),
-            "rho_i": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, gaussian_filter1d(self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng, iy], sigma=4.5), "Ion Number Density", ylabel="$n_i$ (1/m³)", color='blue'),
-            "rho_n": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, gaussian_filter1d(self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng, iy], sigma=4.5), "Neutral Number Density", ylabel="$n_n$ (1/m³)", color='gray'),
+            "i": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, gaussian_filter1d(self.get_species_number_density("i")[:, iy], sigma=4), "Ion Density", ylabel="$n_i$ (1/m³)", color='blue'),
+            "n": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, gaussian_filter1d(self.get_species_number_density("n")[:, iy], sigma=4), "Neutral Density", ylabel="$n_n$ (1/m³)", color='gray'),
+            "rho_i": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, gaussian_filter1d(self.get_species_number_density("i")[:, iy], sigma=4.5), "Ion Number Density", ylabel="$n_i$ (1/m³)", color='blue'),
+            "rho_n": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, gaussian_filter1d(self.get_species_number_density("n")[:, iy], sigma=4.5), "Neutral Number Density", ylabel="$n_n$ (1/m³)", color='gray'),
             "rho_q": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, gaussian_filter1d(self.fields.charge_density[:, iy], sigma=4.5), "Charge Density", ylabel="$\\rho_q$ (C/m³)", color='purple'),
             "energy": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, self.electrons.euler.prim_to_cons(self.electrons.grid)[self.c.ECOMP, self.inp.ng:-self.inp.ng, iy], "Energy", ylabel="Energy (J/m³)"),
             "sigma": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, gaussian_filter1d(self.electrons.pelectrons.cross_section_grid[:, iy], sigma=3), "Electron Collision Frequency", ylabel="$\\nu$ (1/s)", color='green'),
