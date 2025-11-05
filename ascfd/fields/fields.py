@@ -31,6 +31,7 @@ class Fields:
 
         self.charge_density = np.zeros((self.inp.nx, self.inp.ny))
         self.potential = np.zeros((self.inp.nx, self.inp.ny))
+        self.potential_star = np.zeros((self.inp.nx, self.inp.ny))
 
         self.dx = self.inp.dx
         self.dy = self.inp.dy
@@ -135,9 +136,14 @@ class Fields:
             self.E[:, :, 0] = -dphi_dy  # Ex
 
 
-    def populate_E_field(self, E_field):
+    def populate_E(self, E_field):
         self.E[:, :, 0] = E_field
         
+    def populate_V(self, V_field, V_star=None):
+        self.potential[:, :] = V_field
+        
+        if V_star is not None:
+            self.potential_star[:, :] = V_star
     
     def check_E_field(self):
         pass

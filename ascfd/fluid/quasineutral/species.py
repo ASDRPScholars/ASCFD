@@ -173,8 +173,11 @@ class QNFluidSpecies(FluidSpecies):
         ### VOLTAGE UPDATE
         deps_dlambda = deps_dx / (r * B)
         integrand = (c_1_plus - (beta * I_plus / e) - 2/(3*e) * c_3_plus) / (mu_perp * n_e_plus * r * B) * deps_dlambda
-        V_star_plus = integrate.cumulative_trapezoid(integrand * self.inp.dx, axis=0, initial=0) + (energy_e - energy_e_c)
-        V_plus = V_star_plus + 2/(3*e) * energy_e_plus * np.log(n_e_plus / n_0)
+        dVstar_dx = integrand * r * B
+        V_star_anode = V_a - (2.0/3.0) * energy_e_a * np.log(n_e_a_plus / n_0)  # All in Volts
+        V_star_plus = integrate.cumulative_trapezoid(dVstar_dx, dx=self.inp.dx, axis=0, initial=0) + V_star_anode
+        
+        V_plus = V_star_plus + 2/(3) * energy_e_plus * np.log(n_e_plus / n_0)
         
         self.fields.populate_V(V_plus, V_star_plus)
         
