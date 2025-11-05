@@ -10,12 +10,16 @@ import sys
 
 class FluidFlux:
 
-    def __init__(self, a_inputs: Inputs, a_constants: FluidConstants, a_type: str):
-        self.inp = a_inputs
-        self.type = a_type
-        self.c = a_constants
+    def __init__(self, a_constants: FluidConstants, a_inp: Inputs, a_params, simulation):
 
-        self.euler = FluidEuler(self.c) # initialize the euler solver
+        self.inp = a_inp
+        self.c = a_constants
+        self.params = a_params
+        
+        self.type = self.inp.flux
+        self.simulation = simulation
+
+        self.euler = FluidEuler(self.c, self.inp, self.params, self.simulation) # initialize the euler solver
 
         # select the flux method based on the type
         if self.type == "rusanov":
@@ -32,25 +36,39 @@ class FluidFlux:
             raise RuntimeError(f"Flux method not supported: {self.type}")
 
 
-    def getFlux(self, a_grid, a_Nx, a_Ny, a_Nghost):
-        return self.flux_method(a_grid, a_Nx, a_Ny, a_Nghost)
+    def getFlux(self, a_grid, a_Nx, a_Ny, a_Nghost, **kwargs):
+        nu_e = kwargs.get('nu_e', None)
+        hall_param = kwargs.get('hall_param', None)
+        mu_e = kwargs.get('mu_e', None)
+        
+        flux_method = self.flux_method(a_grid, a_Nx, a_Ny, a_Nghost, nu_e=nu_e, hall_param=hall_param, mu_e=mu_e) if kwargs is not None \
+                 else self.flux_method(a_grid, a_Nx, a_Ny, a_Nghost)
+        
+        return flux_method
 
 
-    def rusanov(self, a_grid, a_Nx, a_Ny, a_Nghost):
-
+    def rusanov(self, a_grid, a_Nx, a_Ny, a_Nghost, **kwargs):
+        
+        nu_e = kwargs.get('nu_e', None)
+        hall_param = kwargs.get('hall_param', None)
+        mu_e = kwargs.get('mu_e', None)
+        
         #get density 
-        if self.c.system in ["euler2d", "euler1d"]:
+
+        if self.inp.i_system in ["euler2d", "euler1d"]:
             density = a_grid[self.c.RHOCOMP]
+            a = np.sqrt(self.c.gamma * a_grid[self.c.PCOMP] / density)
+        elif self.inp.e_system == "quasineutral" and self.params.type == "e":
+            density = self.inp.m_e * a_grid[self.c.NCOMP]
+            # TODO: VERIFY RUSANOV SOUND SPEED CALC
+            a = np.sqrt(a_grid[self.c.TCOMP] / density)
         else:
             raise RuntimeError("Density method needs to be implemented.")
-            
-        a = np.sqrt(self.c.gamma * a_grid[self.c.PCOMP] / density)
-
 
         U = a_grid
         consU = self.euler.prim_to_cons(U)
 
-        fx, fy = self.euler.flux(U) # analytical flux
+        fx, fy = self.euler.flux(U, nu_e=nu_e, hall_param=hall_param, mu_e=mu_e) if kwargs is not None else self.euler.flux(U) # analytical flux
 
         numFluxX_plus = np.zeros_like(a_grid)
         numFluxX_minus = np.zeros_like(a_grid)
@@ -69,6 +87,13 @@ class FluidFlux:
                         np.abs(a_grid[self.c.VCOMP, i, j]) + a[i, j],
                         np.abs(a_grid[self.c.VCOMP, i, j+1]) + a[i, j+1]
                     )
+                
+                if self.inp.e_system == "quasineutral" and self.params.type == "e":
+                    sMaxX = 0 
+                    sMaxY = 0
+                    
+                else:
+                    raise AssertionError("[FLUX] SYSTEM FOR RUSANOV NOT SUPPORTED")
 
                 # compute flux components for each variable
                 for icomp in range(self.c.NUMQ):
@@ -87,7 +112,7 @@ class FluidFlux:
     
     def rusanov_vectorized(self, a_grid, a_Nx, a_Ny, a_Nghost):
         #get density 
-        if self.c.system == "euler2d":
+        if self.inp.e_system == "euler2d":
             density = a_grid[self.c.RHOCOMP]
         else:
             raise RuntimeError("Density method needs to be implemented.")
@@ -161,7 +186,7 @@ class FluidFlux:
     def lax_friedrichs(self, a_grid):
         a_grid.assert_variable_type("prim")
 
-        if self.c.system == "euler2d":
+        if self.inp.e_system == "euler2d":
             density = a_grid.grid[self.c.RHOCOMP] # extract density
         else:
             raise RuntimeError("Density method needs to be implemented.")
@@ -199,7 +224,7 @@ class FluidFlux:
         """
         Calculates the numerical flux using the HLLC approximate Riemann solver.
         """
-        if self.c.system != "euler2d":
+        if self.inp.e_system != "euler2d":
             raise NotImplementedError("HLLC flux is only implemented for euler2d system.")
 
         # Get primitive variables (rho, u, v, p)
@@ -467,10 +492,10 @@ class FluidFlux:
         a_grid.assert_variable_type("prim")
 
         #get density 
-        if self.c.system == "euler2d":
+        if self.inp.e_system == "euler2d":
             print("HLLD on Euler is not supported!")
             sys.exit()
-        elif self.c.system == "mhd2d":
+        elif self.inp.e_system == "mhd2d":
             density = a_grid.grid[self.c.RHOCOMP]
         else:
             raise RuntimeError("Density method needs to be implemented.")
@@ -553,9 +578,9 @@ class FluidFlux:
         a_grid.assert_variable_type("prim")
 
         #get density 
-        if self.c.system == "euler2d":
+        if self.inp.e_system == "euler2d":
             density = a_grid.grid[self.c.RHOCOMP]
-        elif self.c.system == "mhd2d":
+        elif self.inp.e_system == "mhd2d":
             density = a_grid.grid[self.c.RHOCOMP]
         else:
             raise RuntimeError("Density method needs to be implemented.")
@@ -594,7 +619,7 @@ class FluidFlux:
         Calculates the numerical flux using the HLLD approximate Riemann solver for MHD.
         Based on the formulation by Miyoshi & Kusano (2005).
         """
-        if self.c.system != "mhd2d":
+        if self.inp.e_system != "mhd2d":
             raise NotImplementedError("HLLD flux is currently only implemented for mhd2d system.")
         if self.c.NUMQ != 6:
              raise ValueError("HLLD requires 6 variables (rho, u, v, p, Bx, By) in primitive state.")

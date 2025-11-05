@@ -4,6 +4,7 @@ class ParticleConstants:
         self.YCOMP = 1
         self.UCOMP = 2  # vx
         self.VCOMP = 3  # vy
+        
         self.WCOMP = 4
         
         self.NUMQ = 5 if dimensions == 3 else 4

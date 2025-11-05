@@ -12,18 +12,21 @@ class ParticleInitialConditions:
         self.pc = constants
         
     def apply_ics(self, weight=None):
-        
-        if self.inp.particle_ics == "origin":
-            self.species.particles[:] = self.origin()
-        if self.inp.particle_ics == "random":
-            self.species.particles[:] = self.random()
-        if self.inp.particle_ics == "random_left_wall":
-            self.species.particles[:] = self.random_left_wall()
-    
-        if self.inp.particle_ics == "random_particles_no_condition":
-            self.species.particles[:] = self.random()
+      
+        if ic is not None:
+            ic = ic
+        else:
+            ic = self.inp.i_ics
             
-        print(self.particles[self.pc.XCOMP])
+        if ic == "origin":
+            self.species.particles[:] = self.origin()
+        elif ic == "random":
+            self.species.particles[:] = self.random()
+        elif ic == "random_left_wall":
+            self.species.particles[:] = self.random_left_wall()
+        else:
+            assert ValueError(f"[PARTICLE ICS] system [{ic}] not supported!")
+
         
     def origin(self):
         ic_particles = np.ones_like(self.particles) * 0.5
@@ -81,6 +84,7 @@ class ParticleInitialConditions:
             ic_particles[self.pc.YCOMP, n] = y
             ic_particles[self.pc.UCOMP, n] = vx
             ic_particles[self.pc.VCOMP, n] = vy
+            
             if self.pc.WCOMP < self.pc.NUMQ:
                 ic_particles[self.pc.WCOMP, n] = vz
 
@@ -98,9 +102,9 @@ class ParticleInitialConditions:
         R3, R4 = np.random.rand(2)
 
         # TODO: WHY MULTIPLIER WHERES THE MISSING LINK
-        vx = v_th * np.sqrt(-1 * np.log(R1)) * np.cos(2 * np.pi * R2) / self.ref.v
-        vy = v_th * np.sqrt(-1 * np.log(R1)) * np.sin(2 * np.pi * R2) / self.ref.v
-        vz = v_th * np.sqrt(-1 * np.log(R3)) * np.cos(2 * np.pi * R4) / self.ref.v  
+        vx = v_th * np.sqrt(-1 * np.log(R1)) * np.cos(2 * np.pi * R2) 
+        vy = v_th * np.sqrt(-1 * np.log(R1)) * np.sin(2 * np.pi * R2) 
+        vz = v_th * np.sqrt(-1 * np.log(R3)) * np.cos(2 * np.pi * R4) 
 
         # print(vx, vy, vz)
 

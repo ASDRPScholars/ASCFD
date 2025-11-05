@@ -24,11 +24,11 @@ class Fields:
         
         self.ics = FieldInitialConditions(self.E, self.B, self.inp)
         
-        # self.B = self.ics.apply_B_ics()
-        self.ics.apply_E_ics()
+        self.B = self.ics.apply_B_ics()
+        self.E = self.ics.apply_E_ics()
         
         self.ref = PlasmaReferences()
-        
+
         self.charge_density = np.zeros((self.inp.nx, self.inp.ny))
         self.potential = np.zeros((self.inp.nx, self.inp.ny))
 
@@ -51,7 +51,7 @@ class Fields:
     def update_E(self, t=0.0):
         self.solve_poisson(t)
         self._compute_electric_field()
-
+        
         
     def normal_to_phys(self):
         E = copy.copy(self.E)
@@ -134,6 +134,10 @@ class Fields:
             self.E[:, :, 1] = -dphi_dx  # Ey
             self.E[:, :, 0] = -dphi_dy  # Ex
 
+
+    def populate_E_field(self, E_field):
+        self.E[:, :, 0] = E_field
+        
     
     def check_E_field(self):
         pass

@@ -19,8 +19,11 @@ class FieldInitialConditions:
                 
                 
     def apply_E_ics(self):
-        if self.inp.system == "euler2d":
+        return np.ones_like(self.E_field) * 1e4
+    
+        if self.inp.e_system == "euler2d":
             pass
+        
         
         
     def guillaume(self):
@@ -28,31 +31,17 @@ class FieldInitialConditions:
         
         # -> MIT LECTURE
         B_max = self.inp.B_max # Tesla
-        x_c = 0.6 * self.inp.xlim[1]
-        sigma = 0.05 * self.inp.xlim[1]
+        l = 0.5 * self.inp.xlim[1]
+        sigma = np.ones_like(ic_grid) * 1.8
         
         x = np.linspace(self.inp.xlim[0], self.inp.xlim[1], self.inp.nx)
         
-        # Debug prints
-        print(f"x range: {x.min()} to {x.max()}")
-        print(f"x_c: {x_c}")
-        print(f"sigma: {sigma}")
-        print(f"x shape: {x.shape}")
-        print(f"ic_grid[:,:,1] shape: {ic_grid[:, :, 1].shape}")
+        sigma = np.ones_like(x) * 0.018
+        sigma[0:self.inp.L_x] = 0.011
+    
+        gaussian_1d = B_max * np.exp(-(x-l)**2 / (2 * sigma**2))
         
-        # Calculate the Gaussian
-        gaussian_1d = B_max * np.exp(-((x - x_c) / sigma) ** 2)
-        print(f"Gaussian 1D max: {gaussian_1d.max()}")
-        print(f"Gaussian 1D at x_c: {B_max * np.exp(-((x_c - x_c) / sigma) ** 2)}")
-        
-        # Broadcast to 2D
-        print(np.shape(ic_grid))
-        print(np.shape(gaussian_1d))
         ic_grid[:, :, 1] = gaussian_1d[:, np.newaxis]
-        
-        print(f"ic_grid max after assignment: {ic_grid.max()}")
-        
-        print("B INIT MAX", ic_grid.max())
         
         return ic_grid
     

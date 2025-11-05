@@ -16,6 +16,8 @@ class ParticleSpecies:
         self.fields = fields
         self.dt = None
         self.simulation = simulation 
+        
+        self.ics = ParticleInitialConditions(self.inp, self.params)
 
         self.particles = np.zeros((self.pc.NUMQ + 1, self.inp.n_particles))
         

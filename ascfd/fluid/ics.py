@@ -4,8 +4,8 @@ from ascfd.params import SpeciesParams
 import numpy as np
 
 class FluidInitialConditions:
-    def __init__(self, grid, a_inputs: Inputs, params: SpeciesParams):
-        self.c = FluidConstants(a_inputs)
+    def __init__(self, c: FluidConstants, a_inputs: Inputs, params: SpeciesParams, grid):
+        self.c = c
         self.params = params
         self.inp = a_inputs
         self.grid = grid
@@ -14,11 +14,11 @@ class FluidInitialConditions:
         
     def apply_ics(self):
         
-        if self.inp.system == "euler1d":
+        if self.inp.e_system == "euler1d":
             if self.inp.fluid_ics == "rf1d":
                 return self.rf()
                 
-        if self.inp.system == "euler2d":
+        elif self.inp.e_system == "euler2d":
                 
             if self.inp.fluid_ics == "diagonal_advection":
                 print("applying diag advection")
@@ -58,10 +58,14 @@ class FluidInitialConditions:
                 self.grid = self.riemann_2d()
 
             else:
-                raise RuntimeError("[FLUID] ICS not valid.")
+                return self.static()
+            
+        elif self.inp.e_system == "quasineutral":
+            if self.inp.e_ics == "static":
+                return self.qn_static()
            
-        elif self.inp.system == "mhd2d":
-            if self.inp.fluid_ics == "orszag_tang":
+        elif self.inp.e_system == "mhd2d":
+            if self.inp.e_ics == "orszag_tang":
                 self.grid = self.orszag_tang_2d()
             
         else:
@@ -219,7 +223,7 @@ class FluidInitialConditions:
             return np.zeros_like(a_x)
     
     # ## real tame
-    # def tame_static(self):
+    # def static(self):
     #     ic = np.zeros_like(self.grid)
     #     rho0 = 9e-11                # kg/m³  → n≈1e20 m⁻³
     #     u0 = 0.0                     # m/s
@@ -235,7 +239,7 @@ class FluidInitialConditions:
     #     return ic
     
     ## wip tame
-    # def tame_static(self):
+    # def static(self):
     #     ic = np.zeros_like(self.grid)
     #     rho0 = 9.11e-13                # kg/m³  → n≈1e20 m⁻³
     #     u0 = 0.0                     # m/s
@@ -251,7 +255,7 @@ class FluidInitialConditions:
     #     return ic
     
     #normalized
-    # def tame_static(self):
+    # def static(self):
     #     ic = np.zeros_like(self.grid)
 
     #     # Normalized values (order unity)
@@ -268,20 +272,45 @@ class FluidInitialConditions:
     #     ic[self.c.PCOMP] = p_norm
     #     return ic
     
-    def tame_static(self):
+    def static(self):
         ic = np.zeros_like(self.grid)
+        
+        # -> MIT LECTURE
+        B_max = 100 # Tesla
+        x_c = 0.6 * self.inp.xlim[1]
+        sigma = 0.05 * self.inp.xlim[1]
+        
+        x = np.linspace(self.inp.xlim[0], self.inp.xlim[1], self.inp.nx_with_ghosts)
+    
+        gaussian_1d = B_max * np.exp(-((x - x_c) / sigma) ** 2)
 
-        ic[self.c.RHOCOMP] = self.inp.rho_e / 100
-        ic[self.c.UCOMP] = 0
+        ic[self.c.RHOCOMP] = gaussian_1d[:, np.newaxis]
+        ic[self.c.UCOMP] = 1
         ic[self.c.VCOMP] = 0
         ic[self.c.WCOMP] = 0.0  # Initialize z-velocity to zero
-        ic[self.c.PCOMP] = self.inp.p_e / 100
+        ic[self.c.PCOMP] = 1
         
         # print("!NORM! rho_e", self.inp.rho_e)
         # print("!NORM! p_e", self.inp.p_e)
         
         return ic
-
+    
+    
+    def qn_static(self):
+        ic = np.zeros_like(self.grid)
+        
+        print("[ics] QN STATIC!!")
+        
+        # BASED ON MIT NOTES:
+        ic[self.c.NCOMP] = 1e17
+        ic[self.c.UCOMP] = 0
+        ic[self.c.VCOMP] = 0
+        ic[self.c.WCOMP] = 0
+        ic[self.c.ECOMP] = 3
+        
+        print("[ics] INIT WITH:", ic[self.c.NCOMP])
+        
+        return ic
     
     
     def e_cloud_test(self):
