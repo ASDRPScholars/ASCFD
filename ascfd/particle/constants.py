@@ -10,3 +10,5 @@ class ParticleConstants:
         self.NUMQ = 5 if dimensions == 3 else 4
 
         self.WEIGHT = self.NUMQ
+        
+        self.k_B = 8.617e-5

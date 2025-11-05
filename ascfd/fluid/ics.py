@@ -13,47 +13,50 @@ class FluidInitialConditions:
         self.mesh_x, self.mesh_y = np.meshgrid(self.inp.grid_x, self.inp.grid_y)
         
     def apply_ics(self):
-        if self.inp.e_system == "euler2d" or self.params.type == "i":
-            if hasattr(self.inp, "fluid_ics"):
-                if self.inp.e_ics == "diagonal_advection":
-                    print("applying diag advection")
-                    f = self.diagonal_advection_2d
-                    
-                    new_grid = np.zeros_like(self.grid)
-                    
-                    for var in range(self.c.NUMQ):
-                        print(var)
-                        new_grid[var] = f(self.mesh_x, self.mesh_y, var)
-                        
-                    return new_grid
+        
+        if self.inp.e_system == "euler1d":
+            if self.inp.fluid_ics == "rf1d":
+                return self.rf()
                 
-                elif self.inp.e_ics == "poisson_validation":
-                    print("applying diag advection")
-                    f = self.poisson_validation_charge_density
-                    
-                    new_grid = np.zeros_like(self.grid)
-                    
-                    for var in range(self.c.NUMQ):
-                        print(var)
-                        new_grid[var] = f(self.mesh_x, self.mesh_y, var)
-                        
-                    return new_grid
-
-                elif self.inp.e_ics == "static":
-                    return self.static()
+        elif self.inp.e_system == "euler2d":
                 
-                elif self.inp.e_ics == "e_cloud_test":
-                    return self.e_cloud_test()
+            if self.inp.fluid_ics == "diagonal_advection":
+                print("applying diag advection")
+                f = self.diagonal_advection_2d
+                
+                new_grid = np.zeros_like(self.grid)
+                
+                for var in range(self.c.NUMQ):
+                    print(var)
+                    new_grid[var] = f(self.mesh_x, self.mesh_y, var)
                     
-                elif self.inp.e_ics == "kelvin_helmholtz":
-                    self.grid = self.kelvin_helmholtz_2d()
-                elif self.inp.e_ics == "double_mach_reflection":
-                    self.grid = self.double_mach_reflection_2d()
-                elif self.inp.e_ics == "riemann_problem":
-                    self.grid = self.riemann_2d()
+                return new_grid
+            
+            elif self.inp.fluid_ics == "poisson_validation":
+                print("applying diag advection")
+                f = self.poisson_validation_charge_density
+                
+                new_grid = np.zeros_like(self.grid)
+                
+                for var in range(self.c.NUMQ):
+                    print(var)
+                    new_grid[var] = f(self.mesh_x, self.mesh_y, var)
+                    
+                return new_grid
 
-                else:
-                    raise RuntimeError("[FLUID] ICS not valid.")
+            elif self.inp.fluid_ics == "tame_static":
+                return self.tame_static()
+            
+            elif self.inp.fluid_ics == "e_cloud_test":
+                return self.e_cloud_test()
+                
+            elif self.inp.fluid_ics == "kelvin_helmholtz":
+                self.grid = self.kelvin_helmholtz_2d()
+            elif self.inp.fluid_ics == "double_mach_reflection":
+                self.grid = self.double_mach_reflection_2d()
+            elif self.inp.fluid_ics == "riemann_problem":
+                self.grid = self.riemann_2d()
+
             else:
                 return self.static()
             
@@ -64,7 +67,7 @@ class FluidInitialConditions:
         elif self.inp.e_system == "mhd2d":
             if self.inp.e_ics == "orszag_tang":
                 self.grid = self.orszag_tang_2d()
-           
+            
         else:
             raise RuntimeError("[FLUID] ICS not valid.")
         
@@ -80,7 +83,18 @@ class FluidInitialConditions:
         
     #     return ic_grid
     
-    
+    def rf(self):
+        ic_grid = np.zeros_like(self.grid)
+        
+        n_e = 2.54e14 * self.inp.m_e
+        k_B = self.c.k_B
+        T_e = 30000
+        
+        ic_grid[self.c.RHOCOMP] = 2.54e14 * self.inp.m_e
+        ic_grid[self.c.PCOMP] = n_e * k_B * T_e
+        
+        return ic_grid
+        
             
     def diagonal_advection_2d(self, a_x, a_y, a_var, t=0):
         """

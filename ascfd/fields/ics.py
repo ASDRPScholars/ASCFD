@@ -9,11 +9,11 @@ class FieldInitialConditions:
         
     # TODO: THIS IS WHERE WE IMPLEMENT THE MAGNETIC FIELD INITIAL CONDITION
     def apply_B_ics(self):
-        if self.inp.e_system in ["euler2d", "quasineutral"]:
-            if self.inp.B_ics == "guillaume":
-                # return np.ones_like(self.B_field) * 0.02
+        if self.inp.system != "mhd2d":
+            if self.inp.fluid_ics == "rf1d":
+                pass
+            elif self.inp.B_ics == "guillaume":
                 return self.guillaume()
-                print("FROM IC", self.B_field[:, :, 1])
             else:
                 raise RuntimeError("[FIELD] ICS not valid.")
                 

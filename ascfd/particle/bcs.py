@@ -5,12 +5,11 @@ from ascfd.plasma_refs import PlasmaReferences
 import numpy as np
 
 class ParticleBoundaryConditions:
-    def __init__(self, particle_species, a_inputs: Inputs, params):
+    def __init__(self, particle_species, a_inputs: Inputs, params, constants: ParticleConstants):
         self.particle_species = particle_species
         self.inp = a_inputs
-        self.ref = PlasmaReferences()
-        self.pc = ParticleConstants()
         self.params = params
+        self.pc = constants
         
         
     def apply_bcs(self):

@@ -55,16 +55,96 @@ class FluidSpecies:
         
         
     def update(self):
-        
         ng = self.inp.ng
+        k_B = self.c.k_B
+        m_e = self.inp.m_e
         consU = self.euler.prim_to_cons(self.grid)
-        _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
+
+        if self.inp.system != "euler1d":
+            _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
+        else:
+            _, right_flux, left_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
         
-        for icomp in range(self.c.NUMQ):
-            delta = (self.dt / self.inp.dx) * (right_flux[icomp, ng:-ng, ng:-ng] - left_flux[icomp, ng:-ng, ng:-ng]) + \
-                    (self.dt / self.inp.dy) * (top_flux[icomp, ng:-ng, ng:-ng] - bottom_flux[icomp, ng:-ng, ng:-ng])
-                
-            consU[icomp, ng:-ng, ng:-ng] -= delta
+        ### THERMAL SHEATH BOUNDARIES
+        
+        KE = 0.5 * consU[self.c.UCOMP]**2 / consU[self.c.RHOCOMP]  # per unit mass
+        # Or if UCOMP is momentum:
+        KE = 0.5 * consU[self.c.UCOMP]**2 / consU[self.c.RHOCOMP]
+
+        # Internal energy
+        internal_energy = consU[self.c.ECOMP] - 0.5 * consU[self.c.UCOMP]**2 / consU[self.c.RHOCOMP]
+
+        # Temperature (for gamma = 5/3)
+        T_e = (2.0/3.0) * internal_energy * m_e / (consU[self.c.RHOCOMP] * k_B)
+
+        v_th = np.sqrt(2 * k_B * T_e / m_e)
+        
+        phi_th = consU[self.c.RHOCOMP] * v_th / (2 * np.sqrt(np.pi))
+        Q_th = consU[self.c.RHOCOMP] * v_th / (2 * np.sqrt(np.pi)) * (2 * k_B * T_e) / (m_e)
+        
+        left_convect_flux = left_flux[self.c.RHOCOMP, ng, :]
+        left_outflow_mask = left_convect_flux > 0
+        
+        left_flux[self.c.RHOCOMP, ng, :] = np.where(
+            left_outflow_mask,
+            left_convect_flux + phi_th[ng, :],  # Add thermal mass flux
+            0.0  # Block inflow
+        )
+
+        left_flux[self.c.ECOMP, ng, :] = np.where(
+            left_outflow_mask,
+            left_flux[self.c.ECOMP, ng, :] + Q_th[ng, :],  # Add thermal energy flux
+            0.0  # Block inflow
+        )
+        
+        if self.inp.system != "euler1d":
+        
+        # TOP
+            top_convect_flux = top_flux[self.c.RHOCOMP, :, ng]
+            top_outflow_mask = top_convect_flux < 0
+            
+            top_flux[self.c.RHOCOMP, :, ng] = np.where(
+                top_outflow_mask,
+                top_convect_flux + phi_th[:, ng],  # Add thermal mass flux
+                0.0  # Block inflow
+            )
+
+            top_flux[self.c.ECOMP, :, ng] = np.where(
+                top_outflow_mask,
+                top_flux[self.c.ECOMP, :, ng] + Q_th[:, ng],  # Add thermal energy flux
+                0.0  # Block inflow
+            )
+            
+            # BOTTOM
+            
+            bottom_convect_flux = bottom_flux[self.c.RHOCOMP, :, self.inp.ny + ng]
+            bottom_outflow_mask = bottom_convect_flux < 0
+            
+            bottom_flux[self.c.RHOCOMP, :, self.inp.ny + ng] = np.where(
+                bottom_outflow_mask,
+                bottom_convect_flux + phi_th[:, self.inp.ny + ng],  # Add thermal mass flux
+                0.0  # Block inflow
+            )
+
+            bottom_flux[self.c.ECOMP, :, self.inp.ny + ng] = np.where(
+                bottom_outflow_mask,
+                bottom_flux[self.c.ECOMP, :, self.inp.ny + ng] + Q_th[:, self.inp.ny + ng],  # Add thermal energy flux
+                0.0  # Block inflow
+            )
+
+        
+        for i in range(ng, self.inp.nx + ng):
+            for j in range(ng, self.inp.ny + ng):
+                for icomp in range(self.c.NUMQ):
+                    
+                    if self.inp.system != "euler1d":
+                        delta = (
+                            (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
+                            (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
+                    else:
+                        delta = (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j])
+                        
+                    consU[icomp, i, j] = consU[icomp, i, j] - delta
                     
         ## --LORENTZ UPDATE--
         # self._apply_lorentz_source_terms(consU)
@@ -103,8 +183,7 @@ class FluidSpecies:
         self.fields.clear_charge_density()
         self.fields.add_charge_density(charge_density) # -!- TOGGLE -!-
 
-        if self.inp.e_system != "quasineutral":
-            self.fields.update_E()
+        self.fields.update_E(t=self.simulation.t)
 
         # if self.pelectrons:
         #     return new_particles

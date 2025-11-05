@@ -88,14 +88,22 @@ class Inputs:
         # Ions
         self.i_system = self.get_config_value(config, "Ions", "system")
         self.i_ics = self.get_config_value(config, "Ions", "ics", mandatory = False, default=None)
+        self.T_i = self.get_config_value(config, "Ions", "T_i", mandatory = False, default = 0, type_func = int)
+        self.n_i = self.get_config_value(config, "Ions", "n_i", mandatory = False, default = 0, type_func = int)
         self.N_ppc = self.get_config_value(config, "Ions", "n_ppc", mandatory = False, default = 0, type_func = int)
         self.particle_flow_type = self.get_config_value(config, "Ions", "flow_type", mandatory = False, default = None)
         self.seeding_per_timestep = self.get_config_value(config, "Ions", "seeding_per_timestep", mandatory = False, default = 0, type_func = int)
         self.bounce_back_multiplier = self.get_config_value(config, "Ions", "bounce_back_multiplier", mandatory = False, default = 1.0, type_func = float)
         self.max_number_of_bounces = self.get_config_value(config, "Ions", "max_number_of_bounces", mandatory = False, default = 3, type_func = int)
         
+        # self.n_n = self.n_flow_rate / (self.m_n * self.ylim[1] * self.v_n)
+        
+        self.n_particles = self.N_ppc * self.nx * self.ny
+
         # Neutrals
         self.n_system = self.get_config_value(config, "Neutrals", "system", default = "advection1d")
+        self.n_n = self.get_config_value(config, "Neutrals", "n_n", mandatory = False, default = 0, type_func = int)
+        self.T_n = self.get_config_value(config, "Neutrals", "T_n", mandatory = False, default = 0, type_func = int)
         self.flux_n = self.get_config_value(config, "Neutrals", "flux_n", mandatory = False, default = 5e-6, type_func = float)
         self.v_n = self.get_config_value(config, "Neutrals", "v_n", mandatory = False, default = 150, type_func = float)
         
@@ -110,6 +118,11 @@ class Inputs:
         self.B_max = self.get_config_value(config, "Fields", "B_max", type_func = float)
         self.V_anode = self.get_config_value(config, "Fields", "V_anode", type_func = int)
         self.V_cathode = self.get_config_value(config, "Fields", "V_cathode", type_func = int)
+
+        # RF Discharge parameters (optional)
+        self.rf_frequency = self.get_config_value(config, "Fields", "rf_frequency", type_func = float, mandatory=False, default=None)  # Hz
+        self.rf_amplitude = self.get_config_value(config, "Fields", "rf_amplitude", type_func = float, mandatory=False, default=None)  # V
+        self.rf_boundary = self.get_config_value(config, "Fields", "rf_boundary", type_func = str, mandatory=False, default=None)  # which boundary oscillates
 
         # Output
         self.output_freq = self.get_config_value(

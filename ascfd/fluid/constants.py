@@ -23,7 +23,7 @@ class FluidConstants:
         # )
 
         # Define constants and variables for the Euler 2D system
-        if system == "euler2d":
+        if a_inputs.system in ["euler2d", "euler1d"]:
             
             #primitive variables (Density, X-Velocity, Y-Velocity, Z-Velocity, Pressure)
             self.RHOCOMP = 0 # Density
@@ -75,7 +75,8 @@ class FluidConstants:
 
             self.NS = 1 
             
-        elif system == "mhd2d":
+            
+        elif a_inputs.system == "mhd2d":
             # Primitive variables (Density, u, v, p, Bx, By)
             self.RHOCOMP = 0 # Density
             self.UCOMP = 1   # X-velocity
