@@ -57,10 +57,10 @@ class QNFluidSpecies(FluidSpecies):
         V_a = self.inp.V_anode # TODO or get from grid?
         V_c = self.inp.V_cathode
         
-        energy_e = self.simulation.get_species_energy("e")
+        energy_e_a = 3 * e # Joules
+        energy_e_c = 3 * e # Joules
+        energy_e = self.simulation.get_species_energy("e") * e # Joules
         
-        energy_e_a = 3
-        energy_e_c = 3
         deps_dx = np.gradient(energy_e, self.inp.dx, axis=0)
         
         ###
@@ -113,10 +113,10 @@ class QNFluidSpecies(FluidSpecies):
         _I_plus = \
             e * (
                 V_a - V_c - \
-                2/(3*e) * energy_e_a * np.log(n_e_a_plus / n_0) + \
-                2/(3*e) * energy_e_c * np.log(n_e_c_plus / n_0) + \
+                2.0/(3.0) * energy_e_a * np.log(n_e_a_plus / n_0) + \
+                2.0/(3.0) * energy_e_c * np.log(n_e_c_plus / n_0) + \
                 integrate.trapezoid(c_1_plus[:, 20]/(mu_perp[:, 20] * n_e_plus[:, 20]), None, self.inp.dx) - \
-                2/(3*e) * integrate.trapezoid(c_3_plus[:, 20]/(mu_perp[:, 20] * n_e_plus[:, 20]), None, self.inp.dx) * (energy_e_c - energy_e_a)
+                2.0/(3.0) * integrate.trapezoid(c_3_plus[:, 20]/(mu_perp[:, 20] * n_e_plus[:, 20]), None, self.inp.dx) * (energy_e_c - energy_e_a)
                 ) / integrate.trapezoid((beta[:, 20]/(mu_perp[:, 20] * n_e_plus[:, 20])), None, self.inp.dx)
             
         I_plus = _I_plus # TODO HOW DO THEY DO IT? THEY DON'T MIDLINE AVERAGE?
@@ -134,16 +134,16 @@ class QNFluidSpecies(FluidSpecies):
         X_plus = c_1_plus - 1/e * beta * I_plus
 
         A = -5/(6) * f(X_plus, -1/2) - \
-            10/(9*e*dx) * mu_perp * n_e_plus * f(energy_e, -1/2)
+            10/(9*dx) * mu_perp * n_e_plus * f(energy_e, -1/2)
 
         B = (c_4_plus / (dt)) + \
-            10/(9*e*dx) * mu_perp * n_e_plus * (f(energy_e, +1/2) + f(energy_e, -1/2)) - \
+            10/(9*dx) * mu_perp * n_e_plus * (f(energy_e, +1/2) + f(energy_e, -1/2)) - \
             5/(6) * (f(X_plus, +1/2) - f(X_plus, -1/2)) - \
             c_5_plus * dK_deps - \
             c_4_plus * dW_deps
 
         C = 5/(6) * f(X_plus, +1/2) - \
-            10/(9*e*dx) * mu_perp * n_e_plus * f(energy_e, +1/2)
+            10/(9*dx) * mu_perp * n_e_plus * f(energy_e, +1/2)
 
         D = (1/(dt)) * c_4 * energy_e + \
             c_6_plus - \
@@ -175,7 +175,7 @@ class QNFluidSpecies(FluidSpecies):
 
         ### VOLTAGE UPDATE
         deps_dlambda = deps_dx_plus / (r * B)
-        integrand = (c_1_plus - (beta * I_plus / e) - 2/(3*e)) / (mu_perp * n_e_plus * r * B) - 2*(np.log(n_e_plus / n_0) - 1)*deps_dlambda
+        integrand = (c_1_plus - (beta * I_plus / e) - 2/(3)) / (mu_perp * n_e_plus * r * B) - 2*(np.log(n_e_plus / n_0) - 1)*deps_dlambda
         dVstar_dx = integrand * r * B
         V_star_anode = V_a - (2.0/3.0) * energy_e_a * np.log(n_e_a_plus / n_0)  # All in Volts
         V_star_plus = integrate.cumulative_trapezoid(dVstar_dx, dx=self.inp.dx, axis=0, initial=0) + V_star_anode
