@@ -22,7 +22,7 @@ class ParticleSpecies:
         self.ics = ParticleInitialConditions(self, self.inp, self.params, self.pc)
         self.bcs = ParticleBoundaryConditions(self, self.inp, self.params, self.pc)
         
-        self.ics.apply_ics()
+        # self.ics.apply_ics()
         
     def update(self):
         self.push()
@@ -92,10 +92,11 @@ class ParticleSpecies:
         
         iz_particles = self.ics.seed(weight=n_iz)
         
-        self.add_particles(iz_particles)
+        if self.params.type == "i":
+            self.add_particles(iz_particles)
         
     def add_particles(self, new_particles):
-        self.particles = np.hstack(new_particles)
+        self.particles = np.hstack([self.particles, new_particles])
 
     def field_to_particles(self, field: np.ndarray, a_particles=None):
         """
