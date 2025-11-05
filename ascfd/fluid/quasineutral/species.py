@@ -57,8 +57,11 @@ class QNFluidSpecies(FluidSpecies):
         V_a = self.inp.V_anode # TODO or get from grid?
         V_c = self.inp.V_cathode
         
-        energy_e_a = 3.0 
-        energy_e_c = 3.0
+        energy_e = self.simulation.get_species_energy("e")
+        
+        energy_e_a = np.mean(energy_e[self.inp.ng, :])
+        energy_e_c = np.mean(energy_e[-self.inp.ng, :])
+        deps_dx = np.gradient(energy_e, self.inp.dx, axis=0)
         
         ###
         B = self.fields.B[:, :, 1]
@@ -85,8 +88,6 @@ class QNFluidSpecies(FluidSpecies):
         V_star = self.fields.potential_star
         # V = np.linspace(V_a, V_c, self.inp.nx)[:, np.newaxis] * np.ones((self.inp.nx, self.inp.ny))
         # V_star = V.copy()
-        
-        energy_e = self.simulation.get_species_energy("e")
 
         area = np.pi * (0.050**2 - 0.035**2)
         
@@ -101,7 +102,6 @@ class QNFluidSpecies(FluidSpecies):
         # c_6: use np.grad for partial x's
         dV_dx = np.gradient(V, self.inp.dx, axis=0)
         dV_star_dx = np.gradient(V_star, self.inp.dx, axis=0)
-        deps_dx = np.gradient(energy_e, self.inp.dx, axis=0)
 
         c_6_plus = e * mu_perp * n_e_plus * dV_dx * (dV_star_dx + (2/3) * (np.log(n_e_plus/n_0) - 1) * deps_dx)
         
@@ -133,7 +133,6 @@ class QNFluidSpecies(FluidSpecies):
         
         X_plus = c_1_plus - 1/e * beta * I_plus
 
-        # Corrected coefficients - note the factors of e
         A = -5/(6) * f(X_plus, -1/2) - \
             10/(9*e*dx) * mu_perp * n_e_plus * f(energy_e, -1/2)
 
@@ -170,11 +169,13 @@ class QNFluidSpecies(FluidSpecies):
         
         energy_e_plus = _energy_e_plus[ng:-ng, np.newaxis] * np.ones((self.inp.nx, self.inp.ny))
         
+        deps_dx_plus = np.gradient(energy_e_plus, self.inp.dx, axis=0)
+        
         ### ###### #######
 
         ### VOLTAGE UPDATE
-        deps_dlambda = deps_dx / (r * B)
-        integrand = (c_1_plus - (beta * I_plus / e) - 2/(3*e) * c_3_plus) / (mu_perp * n_e_plus * r * B) * deps_dlambda
+        deps_dlambda = deps_dx_plus / (r * B)
+        integrand = (c_1_plus - (beta * I_plus / e) - 2/(3*e) * c_3_plus * deps_dlambda) / (mu_perp * n_e_plus * r * B)
         dVstar_dx = integrand * r * B
         V_star_anode = V_a - (2.0/3.0) * energy_e_a * np.log(n_e_a_plus / n_0)  # All in Volts
         V_star_plus = integrate.cumulative_trapezoid(dVstar_dx, dx=self.inp.dx, axis=0, initial=0) + V_star_anode
