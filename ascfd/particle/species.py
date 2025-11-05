@@ -56,27 +56,22 @@ class ParticleSpecies:
         q = self.params.charge
         m = self.params.mass
         dt = self.dt
+        ng = self.inp.ng
 
-        # Interpolate E field to particle positions
-        # Fields are stored without ghost cells, shape: [nx, ny, 3]
         Ex = self.field_to_particles(self.fields.E[:, :, 0])
         Ey = self.field_to_particles(self.fields.E[:, :, 1])
-        Ez = self.field_to_particles(self.fields.E[:, :, 2])
 
         # Compute acceleration: a = (q/m) * E
         ax = (q / m) * Ex
         ay = (q / m) * Ey
-        az = (q / m) * Ez
 
         # Get current velocities (at half-timestep: v^(n+1/2))
         vx = self.particles[self.pc.UCOMP]
         vy = self.particles[self.pc.VCOMP]
-        vz = self.particles[self.pc.WCOMP]
 
         # Update velocities: v^(n+3/2) = v^(n+1/2) + a*dt
         vx_new = vx + ax * dt
         vy_new = vy + ay * dt
-        vz_new = vz + az * dt
 
         # Update positions: x^(n+1) = x^n + v^(n+1/2)*dt
         # NOTE: We use the OLD velocity (at n+1/2) to update position
@@ -87,7 +82,6 @@ class ParticleSpecies:
         # Store new velocities (now at n+3/2)
         self.particles[self.pc.UCOMP] = vx_new
         self.particles[self.pc.VCOMP] = vy_new
-        self.particles[self.pc.WCOMP] = vz_new
         
     def ionize(self):
         n_e = self.simulation.get_species_number_density("e")
@@ -101,9 +95,9 @@ class ParticleSpecies:
         self.add_particles(iz_particles)
         
     def add_particles(self, new_particles):
-        self.particles = np.hstack(self.particles, new_particles)
+        self.particles = np.hstack(new_particles)
 
-    def field_to_particles(self, field: np.ndarray):
+    def field_to_particles(self, field: np.ndarray, a_particles=None):
         """
         Interpolate field values from cell-centered grid to particle positions.
         Uses bilinear interpolation for smooth field values.
@@ -114,18 +108,25 @@ class ParticleSpecies:
         Returns:
             interpolated_values: 1D array of field values at each particle position
         """
-       
-        if np.shape(field) != (self.inp.nx, self.inp.ny):
-            raise ValueError(f"[FIELD TO PARTICLES] Expected shape ({self.inp.nx}, {self.inp.ny}), got {np.shape(field)}. Field should not contain ghost cells.")
 
-        x_pos = self.particles[self.pc.XCOMP]
-        y_pos = self.particles[self.pc.YCOMP]
+        if a_particles is not None:
+            particles = a_particles
+        else:
+            particles = self.particles
+            
+        x_pos = particles[self.pc.XCOMP]
+        y_pos = particles[self.pc.YCOMP]
 
         x_grid = (x_pos - self.inp.xlim[0]) / self.inp.dx
         y_grid = (y_pos - self.inp.ylim[0]) / self.inp.dy
 
         ix = self.ix(x_pos).astype(int)
         iy = self.iy(y_pos).astype(int)
+
+        # Clamp indices to prevent out-of-bounds access along edges
+        nx, ny = field.shape
+        ix = np.clip(ix, 0, nx - 2)
+        iy = np.clip(iy, 0, ny - 2)
 
         wx = x_grid - ix
         wy = y_grid - iy
@@ -238,12 +239,10 @@ class ParticleSpecies:
         # Get velocities
         vx = self.particles[self.pc.UCOMP]
         vy = self.particles[self.pc.VCOMP]
-        vz = self.particles[self.pc.WCOMP]
 
         # Deposit momentum: mass * velocity * weight
         momentum_vx = self.particles_to_field(m * vx * weights)
         momentum_vy = self.particles_to_field(m * vy * weights)
-        momentum_vz = self.particles_to_field(m * vz * weights)
 
         # Deposit mass
         mass_deposited = self.particles_to_field(m * weights)
@@ -253,9 +252,8 @@ class ParticleSpecies:
         epsilon = 1e-30
         vx_mean = momentum_vx / (mass_deposited + epsilon)
         vy_mean = momentum_vy / (mass_deposited + epsilon)
-        vz_mean = momentum_vz / (mass_deposited + epsilon)
 
-        return vx_mean, vy_mean, vz_mean
+        return vx_mean, vy_mean
 
     def x(self, ix):
         """Converts grid x coordinate to physical coordinate."""
