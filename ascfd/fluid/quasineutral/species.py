@@ -88,13 +88,15 @@ class QNFluidSpecies(FluidSpecies):
         
         energy_e = self.simulation.get_species_energy("e")
 
-        # TERMS
+        area = np.pi * (0.050**2 - 0.035**2)
+        
+        # INTEGRALS
         c_1_plus = flux_i_plus
         c_2_plus = r * B * mu_perp * n_e_plus
         c_3_plus = r * B * mu_perp * n_e_plus * (np.log(n_e_plus / n_0) - 1)
-        c_4 = n_e
-        c_4_plus = n_e_plus
-        c_5_plus = n_n_plus * n_e_plus
+        c_4 = n_e * area
+        c_4_plus = n_e_plus * area
+        c_5_plus = n_n_plus * n_e_plus * area
 
         # c_6: use np.grad for partial x's
         dV_dx = np.gradient(V, self.inp.dx, axis=0)
@@ -177,7 +179,7 @@ class QNFluidSpecies(FluidSpecies):
         V_star_anode = V_a - (2.0/3.0) * energy_e_a * np.log(n_e_a_plus / n_0)  # All in Volts
         V_star_plus = integrate.cumulative_trapezoid(dVstar_dx, dx=self.inp.dx, axis=0, initial=0) + V_star_anode
         
-        V_plus = V_star_plus + 2/(3) * energy_e_plus * np.log(n_e_plus / n_0)
+        V_plus = V_star_plus + 2.0/(3.0) * energy_e_plus * np.log(n_e_plus / n_0)
         
         self.fields.populate_V(V_plus, V_star_plus)
         
