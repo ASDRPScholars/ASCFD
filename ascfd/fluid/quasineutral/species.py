@@ -65,22 +65,8 @@ class QNFluidSpecies(FluidSpecies):
         
         # SPECIES PROPERTIES
         n_n_plus = self.simulation.get_species_number_density("n") # get from particle
-        # n_e = self.simulation.get_species_number_density("e")
-        # n_e_plus = self.simulation.get_species_number_density("i") # get n_i_plus from particle
-        
-        n_e = np.ones_like(self.inp.internal_grid) * 0.5e18
-        x_cm = np.linspace(0, 2.5, self.inp.L_x)  # 0 to 2.5 cm
-
-        # Combine rising Gaussian and falling exponential
-        rise = 3e18 + 2.5e18 * np.exp(-((x_cm - 1.0) / 0.4)**2)  # Gaussian peak at 1 cm
-        fall = 0.5e18 + 5e18 * np.exp(-(x_cm - 1.0) / 0.8)       # Exponential decay
-
-        # Take maximum to get the profile shape
-        density_profile = np.maximum(rise, fall)
-        density_profile = np.clip(density_profile, 0.5e18, 5.5e18)
-
-        n_e[0:self.inp.L_x, :] = density_profile[:, np.newaxis]
-        n_e_plus = n_e
+        n_e = self.simulation.get_species_number_density("e")
+        n_e_plus = self.simulation.get_species_number_density("i") # get n_i_plus from particle
         
         n_e_a_plus = np.mean(n_e_plus[self.inp.ng, :])
         n_e_c_plus = np.mean(n_e_plus[-self.inp.ng, :])

@@ -224,15 +224,15 @@ class Simulation:
         
         if species == "i":
             try:
-                return np.maximum(self.ions.get_number_density(), 1e16)
+                return np.maximum(self.ions.get_number_density(), 100)
             except:
                 return self.ions.grid[self.ions.c.RHOCOMP, ng:-ng, ng:-ng]/self.inp.m_i
         elif species == "n":
-            return np.maximum(self.neutrals.get_number_density(), 5e19)
+            return np.maximum(self.neutrals.get_number_density(), 100)
             # except:
             #     return np.maximum(self.neutrals.grid[self.neutrals.c.RHOCOMP, ng:-ng, ng:-ng]/self.inp.m_n, 1e-12)
         elif species == "e" and self.inp.e_system == "quasineutral":
-            return np.maximum(self.electrons.grid[self.electrons.c.NCOMP, ng:-ng, ng:-ng], 1e16)
+            return np.maximum(self.electrons.grid[self.electrons.c.NCOMP, ng:-ng, ng:-ng], 100)
         
         
     def get_species_current_density(self, species):
@@ -524,8 +524,8 @@ class Simulation:
             "jz_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[3], extent, "Electron Azimuthal Current"),
             "k_B*T_e": lambda idx: self.plot_2d_data(axs[idx], plot_data[4]*self.inp.k_B, extent, "Electron Temperature (eV)"),
             
-            "Ex": lambda idx: self.plot_2d_data(axs[idx], E_data[:,:,0], extent, "Axial Electric Field (V/m)", cmap='coolwarm'),
-            "Ey": lambda idx: self.plot_2d_data(axs[idx], E_data[:,:,1], extent, "Radial Electric Field (V/m)", cmap='coolwarm'),
+            "Ex": lambda idx: self.plot_2d_data(axs[idx], E_data[:,:,0], extent, "Axial Electric Field (V/m)", cmap=mpl.cm.Reds),
+            "Ey": lambda idx: self.plot_2d_data(axs[idx], E_data[:,:,1], extent, "Radial Electric Field (V/m)", cmap=mpl.cm.Reds),
             "By": lambda idx: self.plot_2d_data(axs[idx], B_data[:,:,1], extent, "Radial Magnetic Field (T)", cmap='magma'),
             
             "phi": lambda idx: self.plot_2d_data(axs[idx], potential_data, extent, "Electric Potential", cmap='coolwarm'),
