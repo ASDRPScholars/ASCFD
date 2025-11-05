@@ -159,7 +159,7 @@ class Simulation:
     def get_species_flux(self, species):
         n = self.get_species_number_density(species)
         v = self.get_species_velocity(species)
-            
+        
         return n*v
         
     
@@ -259,10 +259,9 @@ class Simulation:
         # TODO: complete implementation for particles
         
         if species == "i":
-            
-            return self.ions.get_velocity()
+            return self.ions.get_velocity()[0] # TODO: TEMPORARY JUST GET X VEL
         elif species == "n":
-            return self.neutrals.get_velocity()
+            return self.neutrals.get_velocity()[0]
         elif species == "e" and self.inp.e_system == "quasineutral":
             ng = self.inp.ng
             n_e = self.get_species_number_density("e")

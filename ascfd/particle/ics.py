@@ -5,7 +5,7 @@ from ascfd.plasma_refs import PlasmaReferences
 import numpy as np
 
 class ParticleInitialConditions:
-    def __init__(self, species, a_inputs, species_params: Inputs, constants):
+    def __init__(self, species, a_inputs: Inputs, species_params, constants: ParticleConstants):
         self.species = species
         self.inp = a_inputs
         self.params = species_params
@@ -25,27 +25,28 @@ class ParticleInitialConditions:
             assert ValueError(f"[PARTICLE ICS] system [{ic}] not supported!")
             
     def seed(self, weight):
-        return self.random(weight=weight)
+        return self.random(a_weight=weight)
         
     def origin(self):
         ic_particles = np.ones_like(self.particles) * 0.5
         
         return ic_particles
             
-    def random(self, weight=None):
+    def random(self, a_weight=None):
         
         dx = self.inp.dx
         dy = self.inp.dy
         
-        if weight is not None:
-            weight = weight
+        if a_weight is not None:
+            ic_particles = np.zeros((self.pc.NUMQ+1, self.inp.n_particles))
         else:
+            ic_particles = np.zeros_like(self.species.particles)
+        
+        if a_weight is None:
             if self.params.type == "i":
                 weight = self.inp.n_i * dx * dy
             elif self.params.type == "n":
                 weight = self.inp.n_n * dx * dy
-            
-        ic_particles = np.zeros_like(self.species.particles)
     
         for i in range(self.inp.nx):
             for j in range(self.inp.ny):
@@ -59,11 +60,8 @@ class ParticleInitialConditions:
                     ic_particles[self.pc.YCOMP, n] = random_y
                     ic_particles[self.pc.UCOMP, n] = vx
                     ic_particles[self.pc.VCOMP, n] = vy
-                    
-                    if weight is not None:
-                        ic_particles[self.pc.WEIGHT, n] = weight
                         
-                    elif self.params == "n":
+                    if self.params == "n":
                         ic_particles[self.pc.WEIGHT, n] = self.inp.n_n / (self.inp.nx * self.inp.ny)
                         
                     elif self.params == "i":
@@ -71,6 +69,10 @@ class ParticleInitialConditions:
             
             if self.pc.WCOMP < self.pc.NUMQ:
                 ic_particles[self.pc.WCOMP, n] = vz
+                
+        if a_weight is not None:
+            weight = self.species.field_to_particles(a_weight, ic_particles)
+            ic_particles[self.pc.WEIGHT] = weight
 
         return ic_particles
     

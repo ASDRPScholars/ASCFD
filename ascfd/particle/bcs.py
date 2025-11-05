@@ -5,9 +5,9 @@ from ascfd.plasma_refs import PlasmaReferences
 import numpy as np
 
 class ParticleBoundaryConditions:
-    def __init__(self, particle_species, a_inputs: Inputs, params, constants: ParticleConstants):
-        self.particle_species = particle_species
-        self.particles = self.particle_species.particles
+    def __init__(self, a_species, a_inputs: Inputs, params, constants: ParticleConstants):
+        self.species = a_species
+        self.particles = self.species.particles
         self.inp = a_inputs
         self.params = params
         self.pc = constants
@@ -29,8 +29,8 @@ class ParticleBoundaryConditions:
         x_pos = self.particles[self.pc.XCOMP]
         y_pos = self.particles[self.pc.YCOMP]
 
-        ix = self.ix(x_pos)
-        iy = self.iy(y_pos)
+        ix = self.species.ix(x_pos)
+        iy = self.species.iy(y_pos)
 
         valid_mask = (ix >= 0) & (ix < self.inp.nx) & (iy >= 0) & (iy < self.inp.ny) & (self.particles[self.pc.WEIGHT] > 0)
 
@@ -73,7 +73,7 @@ class ParticleBoundaryConditions:
 
             particle_data[WEIGHT] = weight
             
-            self.particle_species.add_particle(particle_data)
+            self.species.add_particle(particle_data)
     
     
     def remove_particles(self):
