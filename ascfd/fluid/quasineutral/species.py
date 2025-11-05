@@ -81,8 +81,10 @@ class QNFluidSpecies(FluidSpecies):
         
         ### 
         
-        V = np.linspace(V_a, V_c, self.inp.nx)[:, np.newaxis] * np.ones((self.inp.nx, self.inp.ny))
-        V_star = V.copy()
+        V = self.fields.potential
+        V_star = self.fields.potential_star
+        # V = np.linspace(V_a, V_c, self.inp.nx)[:, np.newaxis] * np.ones((self.inp.nx, self.inp.ny))
+        # V_star = V.copy()
         
         energy_e = self.simulation.get_species_energy("e")
 
@@ -130,24 +132,24 @@ class QNFluidSpecies(FluidSpecies):
         X_plus = c_1_plus - 1/e * beta * I_plus
 
         # Corrected coefficients - note the factors of e
-        A = -5/(6*e) * f(X_plus, -1/2) - \
-            10/(9*e**2*dx) * mu_perp * n_e_plus * f(energy_e, -1/2)
+        A = -5/(6) * f(X_plus, -1/2) - \
+            10/(9*e*dx) * mu_perp * n_e_plus * f(energy_e, -1/2)
 
-        B = (c_4_plus / (dt * e)) + \
-            5/(6*e) * (f(X_plus, +1/2) - f(X_plus, -1/2)) + \
-            10/(9*e**2*dx) * mu_perp * n_e_plus * (f(energy_e, +1/2) + f(energy_e, -1/2)) - \
-            c_5_plus * dK_deps / e - \
-            c_4_plus * dW_deps / e
+        B = (c_4_plus / (dt)) + \
+            10/(9*e*dx) * mu_perp * n_e_plus * (f(energy_e, +1/2) + f(energy_e, -1/2)) - \
+            5/(6) * (f(X_plus, +1/2) - f(X_plus, -1/2)) - \
+            c_5_plus * dK_deps - \
+            c_4_plus * dW_deps
 
-        C = 5/(6*e) * f(X_plus, +1/2) - \
-            10/(9*e**2*dx) * mu_perp * n_e_plus * f(energy_e, +1/2)
+        C = 5/(6) * f(X_plus, +1/2) - \
+            10/(9*e*dx) * mu_perp * n_e_plus * f(energy_e, +1/2)
 
-        D = (1/(dt*e)) * c_4 * energy_e + \
-            c_6_plus / e - \
-            c_5_plus * K / e + \
-            c_5_plus * energy_e * dK_deps / e - \
-            c_4_plus * W / e + \
-            c_4_plus * energy_e * dW_deps / e
+        D = (1/(dt)) * c_4 * energy_e + \
+            c_6_plus - \
+            c_5_plus * K + \
+            c_5_plus * energy_e * dK_deps - \
+            c_4_plus * W + \
+            c_4_plus * energy_e * dW_deps
             
         # flatten + pad bcs for matrix
         _A = np.pad(A[1:, 20], 2, mode='constant', constant_values=0)
@@ -160,7 +162,7 @@ class QNFluidSpecies(FluidSpecies):
         upper_diagonal = np.diag(_C, k=1)
         
         a = lower_diagonal + main_diagonal + upper_diagonal
-        b = _D / e
+        b = _D
         
         _energy_e_plus = linalg.solve(a, b, assume_a='tridiagonal')
         
@@ -169,9 +171,12 @@ class QNFluidSpecies(FluidSpecies):
         ### ###### #######
 
         ### VOLTAGE UPDATE
-        integrand = (c_1_plus - (beta * I_plus / e) - 2/(3*e) * c_3_plus) / (mu_perp * n_e_plus * r * B)
+        deps_dlambda = deps_dx / (r * B)
+        integrand = (c_1_plus - (beta * I_plus / e) - 2/(3*e) * c_3_plus) / (mu_perp * n_e_plus * r * B) * deps_dlambda
         V_star_plus = integrate.cumulative_trapezoid(integrand * self.inp.dx, axis=0, initial=0) + (energy_e - energy_e_c)
         V_plus = V_star_plus + 2/(3*e) * energy_e_plus * np.log(n_e_plus / n_0)
+        
+        self.fields.populate_V(V_plus, V_star_plus)
         
         ### ######## ######
         
@@ -180,7 +185,7 @@ class QNFluidSpecies(FluidSpecies):
         ng = self.inp.ng
         
         E = -np.gradient(V_plus, dx, axis=0)
-        self.fields.populate_E_field(E)
+        self.fields.populate_E(E)
 
         self.grid[self.c.NCOMP, ng:-ng, ng:-ng] = n_e_plus
         self.grid[self.c.UCOMP, ng:-ng, ng:-ng] = u_e_plus
