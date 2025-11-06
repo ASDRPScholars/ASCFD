@@ -51,7 +51,7 @@ class ParticleInitialConditions:
         for i in range(self.inp.nx):
             for j in range(self.inp.ny):
                 for n_p in range(self.inp.n_ppc):
-                    random_x, random_y = np.random.uniform(i*dx, (i+1)*dx) + self.inp.xlim[0], np.random.uniform(j*dx, (j+1)*dy) + self.inp.ylim[0]
+                    random_x, random_y = np.random.uniform(i*dx, (i+1)*dx) + self.inp.xlim[0], np.random.uniform(j*dy, (j+1)*dy) + self.inp.ylim[0]
                     vx, vy, vz = self.sample_maxwellian_velocity()
 
                     n = (i * self.inp.ny) + j 
