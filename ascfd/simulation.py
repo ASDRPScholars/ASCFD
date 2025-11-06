@@ -193,7 +193,6 @@ class Simulation:
     def get_coeffs(self, column_type, energy_e=None):
         k_grid = np.zeros_like(self.inp.internal_grid)
         
-        return k_grid
         if energy_e is not None:
             energy_e = energy_e
         else:
