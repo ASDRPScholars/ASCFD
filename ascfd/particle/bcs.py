@@ -21,17 +21,20 @@ class ParticleBoundaryConditions:
         """
         Remove particles that have moved outside the domain boundaries.
 
-        Particles are removed if their grid indices are outside [0, nx) or [0, ny), or if weight is 0.
+        Particles are removed if their positions are outside the physical domain or if weight is 0.
         This prevents interpolation errors and handles particle absorption at boundaries.
         """
-        # Get grid indices for all particles
+        # Get physical positions for all particles
         x_pos = self.particles[self.pc.XCOMP]
         y_pos = self.particles[self.pc.YCOMP]
 
-        ix = self.species.ix(x_pos)
-        iy = self.species.iy(y_pos)
-
-        valid_mask = (ix >= 0) & (ix < self.inp.nx_with_ghosts) & (iy >= 0) & (iy < self.inp.ny_with_ghosts) & (self.particles[self.pc.WEIGHT] > 0)
+        # Check if particles are within the physical domain bounds
+        # Particles exactly on the lower boundary will be removed to prevent accumulation
+        valid_mask = (
+            (x_pos > self.inp.xlim[0]) & (x_pos < self.inp.xlim[1]) &
+            (y_pos > self.inp.ylim[0]) & (y_pos < self.inp.ylim[1]) &
+            (self.particles[self.pc.WEIGHT] > 0)
+        )
 
         # remove columns where mask is False
         self.particles = self.particles[:, valid_mask]

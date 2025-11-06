@@ -11,4 +11,5 @@ class ParticleConstants:
 
         self.WEIGHT = self.NUMQ
         
+        self.e = 1.602e-19
         self.k_B = 8.617e-5

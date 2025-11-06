@@ -187,24 +187,30 @@ class ParticleSpecies:
         wx = x_grid - ix
         wy = y_grid - iy
 
-        # Clip indices to valid range
-        ix = np.clip(ix, 0, self.inp.nx - 2)
-        iy = np.clip(iy, 0, self.inp.ny - 2)
+        # Only deposit particles that are within valid bounds
+        # Particles outside the domain should have been removed by clean_particles()
+        valid_mask = (ix >= 0) & (ix < self.inp.nx - 1) & (iy >= 0) & (iy < self.inp.ny - 1)
+
+        ix_valid = ix[valid_mask]
+        iy_valid = iy[valid_mask]
+        wx_valid = wx[valid_mask]
+        wy_valid = wy[valid_mask]
+        quantity_valid = particle_quantity[valid_mask]
 
         # Deposit to the 4 surrounding cells using bilinear weights
         # This is called "area weighting" or "cloud-in-cell" (CIC) scheme
 
         # Bottom-left cell (ix, iy)
-        np.add.at(field, (ix, iy), particle_quantity * (1 - wx) * (1 - wy))
+        np.add.at(field, (ix_valid, iy_valid), quantity_valid * (1 - wx_valid) * (1 - wy_valid))
 
         # Bottom-right cell (ix+1, iy)
-        np.add.at(field, (ix + 1, iy), particle_quantity * wx * (1 - wy))
+        np.add.at(field, (ix_valid + 1, iy_valid), quantity_valid * wx_valid * (1 - wy_valid))
 
         # Top-left cell (ix, iy+1)
-        np.add.at(field, (ix, iy + 1), particle_quantity * (1 - wx) * wy)
+        np.add.at(field, (ix_valid, iy_valid + 1), quantity_valid * (1 - wx_valid) * wy_valid)
 
         # Top-right cell (ix+1, iy+1)
-        np.add.at(field, (ix + 1, iy + 1), particle_quantity * wx * wy)
+        np.add.at(field, (ix_valid + 1, iy_valid + 1), quantity_valid * wx_valid * wy_valid)
 
         return field
 

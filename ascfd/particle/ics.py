@@ -97,7 +97,7 @@ class ParticleInitialConditions:
     def sample_maxwellian_velocity(self):
         k_B = self.pc.k_B
 
-        v_th = np.sqrt(2 * k_B * self.params.temperature / self.params.mass)
+        v_th = np.sqrt(2 * self.pc.e * self.params.temperature / self.params.mass)
 
         if self.params.temperature <= 0:
             return 0.0, 0.0, 0.0

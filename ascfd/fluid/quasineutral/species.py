@@ -69,6 +69,7 @@ class QNFluidSpecies(FluidSpecies):
         # SPECIES PROPERTIES
         n_n_plus = self.simulation.get_species_number_density("n") # get from particle
         n_e = self.simulation.get_species_number_density("e")
+        # n_e_plus = n_e
         n_e_plus = self.simulation.get_species_number_density("i") # get n_i_plus from particle
         
         n_e_a_plus = np.mean(n_e_plus[self.inp.ng, :])

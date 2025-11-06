@@ -223,7 +223,7 @@ class Simulation:
         
         if species == "i":
             try:
-                return np.maximum(self.ions.get_number_density(), 100)
+                return np.maximum(self.ions.get_number_density(), 1e17)
             except:
                 return self.ions.grid[self.ions.c.RHOCOMP, ng:-ng, ng:-ng]/self.inp.m_i
         elif species == "n":
@@ -530,13 +530,13 @@ class Simulation:
             
             "phi": lambda idx: self.plot_2d_data(axs[idx], potential_data, extent, "Electric Potential", cmap='coolwarm'),
             
-            "i": lambda idx: self.plot_2d_data(axs[idx], self.get_species_number_density("i")[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Ion Density (Scatter)", cmap=mpl.cm.Blues, scatter_data=(self.ions.particles[self.pc.XCOMP] * self.ref.L, self.ions.particles[self.pc.YCOMP] * self.ref.L)),
-            "n": lambda idx: self.plot_2d_data(axs[idx], self.get_species_number_density("n")[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Neutral Density (Scatter)", cmap=mpl.cm.Greys, scatter_data=(self.neutrals.particles[self.pc.XCOMP] * self.ref.L, self.neutrals.particles[self.pc.YCOMP] * self.ref.L)),
-            "n_i": lambda idx: self.plot_2d_data(axs[idx], self.get_species_number_density("i")[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Ion Number Density", cmap=mpl.cm.Blues),
+            "i": lambda idx: self.plot_2d_data(axs[idx], self.get_species_number_density("i"), extent, "Ion Density (Scatter)", cmap=mpl.cm.Blues, scatter_data=(self.ions.particles[self.pc.XCOMP] * self.ref.L, self.ions.particles[self.pc.YCOMP] * self.ref.L)),
+            "n": lambda idx: self.plot_2d_data(axs[idx], self.get_species_number_density("n"), extent, "Neutral Density (Scatter)", cmap=mpl.cm.Greys, scatter_data=(self.neutrals.particles[self.pc.XCOMP] * self.ref.L, self.neutrals.particles[self.pc.YCOMP] * self.ref.L)),
+            "n_i": lambda idx: self.plot_2d_data(axs[idx], self.get_species_number_density("i"), extent, "Ion Number Density", cmap=mpl.cm.Blues),
             "rho_i": lambda idx: self.plot_2d_data(axs[idx], self.ions.grid[self.ions.c.RHOCOMP, self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Ion Mass Density", cmap=mpl.cm.Blues),
             "u_i": lambda idx: self.plot_2d_data(axs[idx], self.ions.grid[self.ions.c.UCOMP, self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Ion Axial Velocity", cmap="magma"),
             "p_i": lambda idx: self.plot_2d_data(axs[idx], self.ions.grid[self.ions.c.PCOMP, self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Ion Pressure", cmap="magma"),
-            "n_n": lambda idx: self.plot_2d_data(axs[idx], self.get_species_number_density("n")[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Neutral Number Density", cmap=mpl.cm.Greys),
+            "n_n": lambda idx: self.plot_2d_data(axs[idx], self.get_species_number_density("n"), extent, "Neutral Number Density", cmap=mpl.cm.Greys),
             "rho_q": lambda idx: self.plot_2d_data(axs[idx], self.fields.charge_density[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Charge Density", cmap='coolwarm'),
             "energy": lambda idx: self.plot_2d_data(axs[idx], self.electrons.euler.prim_to_cons(self.electrons.grid)[self.electrons.c.ECOMP,self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Energy"),
             #TODO: temp change for plotting nu instead of sigma
