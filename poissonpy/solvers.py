@@ -336,7 +336,7 @@ def test_poisson_solver():
     Ex = -np.gradient(solution, solver.dx, axis=1)  # axis=1 is x-direction
 
     # Plot results
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    fig, axes = plt.subplots(1, 4, figsize=(24, 5))
 
     # Contour line plot
     contour = axes[0].contour(solver.x_grid, solver.y_grid, solution, levels=20, colors='black', linewidths=0.8)
@@ -361,6 +361,14 @@ def test_poisson_solver():
     axes[2].set_ylabel('y')
     axes[2].set_title('Electric Field Ex = -dV/dx')
     plt.colorbar(im2, ax=axes[2], label='Ex (V/m)')
+
+    # 1D plot along y-centerline (x-axis)
+    y_center_idx = ny // 2
+    axes[3].plot(solver.x, solution[y_center_idx, :], 'b-', linewidth=2)
+    axes[3].set_xlabel('x')
+    axes[3].set_ylabel('Potential (V)')
+    axes[3].set_title(f'1D Potential Profile at y = {solver.y[y_center_idx]:.2f}')
+    axes[3].grid(True, alpha=0.3)
 
     # create output directory if it doesn't exist
     output_dir = os.path.join(os.path.dirname(__file__), '..', 'output', 'poisson')
