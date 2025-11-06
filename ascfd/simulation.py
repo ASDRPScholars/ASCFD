@@ -340,7 +340,7 @@ class Simulation:
             "Ey": lambda idx: self.plot_2d_data(axs[idx], norm_E[:,:,1], extent, "Electric Field Y", cmap='coolwarm'),
             "By": lambda idx: self.plot_2d_data(axs[idx], norm_B[:,:,1], extent, "Magnetic Field Y", cmap='magma'),
             
-            "phi": lambda idx: self.plot_2d_data(axs[idx], norm_potential, extent, "Electric Potential", cmap='coolwarm'),
+            "phi": lambda idx: self.plot_2d_data(axs[idx], norm_potential, extent, "Electric Potential", cmap=mpl.cm.Blues),
             
             "i": lambda idx: self.plot_2d_data(axs[idx], self.ions._compute_particle_density_field(self.ions)[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Ion Density (Scatter)", cmap=mpl.cm.Blues, scatter_data=(self.ions.particles[self.pc.XCOMP] * self.ref.L, self.ions.particles[self.pc.YCOMP] * self.ref.L)),
             "n": lambda idx: self.plot_2d_data(axs[idx], self.neutrals._compute_particle_density_field(self.neutrals)[self.inp.ng:-self.inp.ng,self.inp.ng:-self.inp.ng], extent, "Neutral Density (Scatter)", cmap=mpl.cm.Greys, scatter_data=(self.neutrals.particles[self.pc.XCOMP] * self.ref.L, self.neutrals.particles[self.pc.YCOMP] * self.ref.L)),

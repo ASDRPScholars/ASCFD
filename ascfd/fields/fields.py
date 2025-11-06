@@ -75,6 +75,25 @@ class Fields:
         
         rhs = - self.charge_density / self.eps0_normalized        
         rect = ((self.inp.xlim[0], self.inp.ylim[0]), (self.inp.xlim[1], self.inp.ylim[1]))
+        
+        # def top_boundary(x, y):
+        #     return np.where(x <= self.inp.ylim[1]/2, 300 * (1 - 2*x), 0)
+
+        # def bottom_boundary(x, y):
+        #     return np.where(x <= self.inp.ylim[1]/2, 300 * (1 - 2*x), 0)
+
+        # # Define boundary conditions
+        # boundary = {
+        #     "left": (bottom_boundary, "dirichlet"),                    # Left edge (zero gradient)
+        #     "right": (top_boundary, "dirichlet"),                   # Right edge (zero gradient)
+        #     "top": (300, "dirichlet"),         # Top edge (linear drop profile)
+        #     "bottom": (0, "dirichlet")      # Bottom edge (linear drop profile)
+        # }
+
+        # rhs = 0
+
+        # solver = solvers.Poisson2DRectangle(rect=rect, interior=rhs, boundary=boundary, X=self.inp.ny, Y=self.inp.nx)
+        # self.potential[:] = solver.solve()
 
         ## GRID IS ROTATED TO LINE UP WITH FLUID GRID so these are a bit jank:
         boundary = {
@@ -105,4 +124,6 @@ class Fields:
     
     def check_E_field(self):
         pass
+    
+    
     
