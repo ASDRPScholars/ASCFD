@@ -26,6 +26,47 @@ class ParticleInitialConditions:
             
     def seed(self, weight):
         return self.random(a_weight=weight)
+
+    # TODO TEMP
+    def seed_in_cell(self, cell_index, weight):
+        """
+        Create a single particle in a specific cell with given weight.
+
+        Args:
+            cell_index: 1D cell index (cell_index = ix * ny + iy)
+            weight: Particle weight (number of physical particles this macro-particle represents)
+
+        Returns:
+            new_particle: Array of shape (NUMQ+1, 1) containing the new particle
+        """
+        # Convert 1D cell index to 2D grid indices
+        ix = cell_index // self.inp.ny
+        iy = cell_index % self.inp.ny
+
+        # Create single particle array
+        new_particle = np.zeros((self.pc.NUMQ + 1, 1))
+
+        # Random position within the cell
+        dx = self.inp.dx
+        dy = self.inp.dy
+        random_x = np.random.uniform(ix * dx, (ix + 1) * dx) + self.inp.xlim[0]
+        random_y = np.random.uniform(iy * dy, (iy + 1) * dy) + self.inp.ylim[0]
+
+        # Sample velocity from Maxwellian distribution
+        vx, vy, vz = self.sample_maxwellian_velocity()
+
+        # Set particle properties
+        new_particle[self.pc.XCOMP, 0] = random_x
+        new_particle[self.pc.YCOMP, 0] = random_y
+        new_particle[self.pc.UCOMP, 0] = vx
+        new_particle[self.pc.VCOMP, 0] = vy
+
+        if self.pc.WCOMP < self.pc.NUMQ:
+            new_particle[self.pc.WCOMP, 0] = vz
+
+        new_particle[self.pc.NUMQ, 0] = weight
+
+        return new_particle
         
     def origin(self):
         ic_particles = np.ones_like(self.particles) * 0.5

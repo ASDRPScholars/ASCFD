@@ -209,7 +209,7 @@ class Simulation:
 
                 k_grid[i, j] = row[column].iloc[0]
             
-            print("got all k")
+            # print("got all k")
             
         return k_grid
     
@@ -223,7 +223,7 @@ class Simulation:
         
         if species == "i":
             try:
-                return np.maximum(self.ions.get_number_density(), 1e17)
+                return np.maximum(self.ions.get_number_density(), 0)
             except:
                 return self.ions.grid[self.ions.c.RHOCOMP, ng:-ng, ng:-ng]/self.inp.m_i
         elif species == "n":

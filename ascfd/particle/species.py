@@ -83,17 +83,73 @@ class ParticleSpecies:
         self.particles[self.pc.UCOMP] = vx_new
         self.particles[self.pc.VCOMP] = vy_new
         
+    # TODO TEMP
     def ionize(self):
         n_e = self.simulation.get_species_number_density("e")
         N = self.simulation.get_species_number_density("n")
         k_iz = self.simulation.get_coeffs("k_iz")
         
+        # Physical ion density created this timestep [m^-3]
         n_iz = n_e * N * k_iz * self.dt
         
-        iz_particles = self.ics.seed(weight=n_iz)
-        
         if self.params.type == "i":
-            self.add_particles(iz_particles)
+            cell_volume = self.inp.dx * self.inp.dy
+
+            # Count existing particles per cell
+            particles_per_cell = self.count_particles_per_cell()
+
+            # Target: maintain ~50-100 particles per cell
+            target_ppc = self.inp.n_ppc
+
+            # Flatten n_iz to 1D for cell iteration
+            n_iz_flat = n_iz.flatten()
+
+            for i in range(len(n_iz_flat)):
+                # Physical ions to create
+                n_ions_physical = n_iz_flat[i] * cell_volume
+                
+                if n_ions_physical < 1.0:
+                    continue
+                
+                current_ppc = particles_per_cell[i]
+                
+                # ADAPTIVE LOGIC:
+                if current_ppc < target_ppc:
+                    # Room for more particles - create new ones
+                    n_macro = min(10, int(target_ppc - current_ppc))
+                    weight = n_ions_physical / n_macro
+                    
+                    for _ in range(n_macro):
+                        iz_particles = self.ics.seed_in_cell(cell_index=i, weight=weight)
+                        self.add_particles(iz_particles)
+                else:
+                    # Too many particles - add weight to existing particles
+                    particle_indices = self.get_particles_in_cell(i)
+                    if len(particle_indices) > 0:
+                        weight_per_particle = n_ions_physical / len(particle_indices)
+
+                        # Debug: print before and after weights
+                        old_weights = self.particles[self.pc.NUMQ, particle_indices].copy()
+                        self.particles[self.pc.NUMQ, particle_indices] += weight_per_particle
+                        new_weights = self.particles[self.pc.NUMQ, particle_indices]
+
+                        print(f"Cell {i}: Adding {weight_per_particle:.2e} to {len(particle_indices)} particles")
+                        print(f"  Old weights (first 3): {old_weights[:3]}")
+                        print(f"  New weights (first 3): {new_weights[:3]}")
+                        print(f"  Delta: {new_weights[:3] - old_weights[:3]}")
+    
+    # def ionize(self):
+    #     n_e = self.simulation.get_species_number_density("e")
+    #     N = self.simulation.get_species_number_density("n")
+    #     k_iz = self.simulation.get_coeffs("k_iz")
+        
+    #     n_iz = n_e * N * k_iz * self.dt
+        
+    #     if n_ppc <
+    #     iz_particles = self.ics.seed(weight=n_iz)
+        
+    #     if self.params.type == "i":
+    #         self.add_particles(iz_particles)
         
     def add_particles(self, new_particles):
         self.particles = np.hstack([self.particles, new_particles])
@@ -149,6 +205,15 @@ class ParticleSpecies:
     def iy(self, y_pos):
         """Converts physical y coordinate to grid coordinate."""
         return np.floor((y_pos - self.inp.ylim[0]) / self.inp.dy).astype(int)
+    
+    def x(self, ix):
+        """Converts grid x coordinate to physical coordinate."""
+        return (ix+0.5) * self.inp.dx + self.inp.xlim[0]
+
+    def y(self, iy):
+        """Converts grid y coordinate to physical coordinate."""
+        return (iy+0.5) * self.inp.dy + self.inp.ylim[0]
+
     
     def particles_to_field(self, particle_quantity):
         """
@@ -262,10 +327,63 @@ class ParticleSpecies:
 
         return vx_mean, vy_mean
 
-    def x(self, ix):
-        """Converts grid x coordinate to physical coordinate."""
-        return (ix+0.5) * self.inp.dx + self.inp.xlim[0]
+    # TODO TEMP
+    def count_particles_per_cell(self):
+        """
+        Count the number of particles in each cell.
 
-    def y(self, iy):
-        """Converts grid y coordinate to physical coordinate."""
-        return (iy+0.5) * self.inp.dy + self.inp.ylim[0]
+        Returns:
+            counts: 1D array of length (nx * ny) with particle counts per cell
+        """
+        counts = np.zeros(self.inp.nx * self.inp.ny, dtype=int)
+
+        # Get particle positions
+        x_pos = self.particles[self.pc.XCOMP]
+        y_pos = self.particles[self.pc.YCOMP]
+
+        # Convert to grid indices
+        ix = self.ix(x_pos)
+        iy = self.iy(y_pos)
+
+        # Only count particles within valid bounds
+        valid_mask = (ix >= 0) & (ix < self.inp.nx) & (iy >= 0) & (iy < self.inp.ny)
+
+        ix_valid = ix[valid_mask]
+        iy_valid = iy[valid_mask]
+
+        # Convert 2D indices to 1D cell index
+        cell_indices = ix_valid * self.inp.ny + iy_valid
+
+        # Count particles in each cell
+        np.add.at(counts, cell_indices, 1)
+
+        return counts
+
+    # TODO TEMP
+    def get_particles_in_cell(self, cell_index):
+        """
+        Get indices of all particles in a specific cell.
+
+        Args:
+            cell_index: 1D cell index (cell_index = ix * ny + iy)
+
+        Returns:
+            particle_indices: Array of particle indices in the specified cell
+        """
+        # Convert 1D cell index to 2D grid indices
+        ix_cell = cell_index // self.inp.ny
+        iy_cell = cell_index % self.inp.ny
+
+        # Get particle positions
+        x_pos = self.particles[self.pc.XCOMP]
+        y_pos = self.particles[self.pc.YCOMP]
+
+        # Convert to grid indices
+        ix = self.ix(x_pos)
+        iy = self.iy(y_pos)
+
+        # Find particles in this cell
+        mask = (ix == ix_cell) & (iy == iy_cell)
+        particle_indices = np.where(mask)[0]
+
+        return particle_indices
