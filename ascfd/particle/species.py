@@ -26,7 +26,7 @@ class ParticleSpecies:
         
     def update(self):
         self.push()
-        self.ionize()
+        # self.ionize()
         self.bcs.apply_bcs()
         
     def push(self):

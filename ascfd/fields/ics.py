@@ -19,7 +19,10 @@ class FieldInitialConditions:
                 
                 
     def apply_E_ics(self):
-        return np.ones_like(self.E_field) * 1e4
+        ic_grid = np.ones_like(self.E_field) * 1e4
+        ic_grid[:, :, 1] = 0
+        
+        return ic_grid
     
         if self.inp.e_system == "euler2d":
             pass

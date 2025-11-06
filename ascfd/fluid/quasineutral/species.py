@@ -57,9 +57,9 @@ class QNFluidSpecies(FluidSpecies):
         V_a = self.inp.V_anode # TODO or get from grid?
         V_c = self.inp.V_cathode
         
-        energy_e_a = 3 * e # Joules
-        energy_e_c = 3 * e # Joules
-        energy_e = self.simulation.get_species_energy("e") * e # Joules
+        energy_e_a = 3 
+        energy_e_c = 3 
+        energy_e = self.simulation.get_species_energy("e") 
         
         deps_dx = np.gradient(energy_e, self.inp.dx, axis=0)
         
@@ -70,7 +70,8 @@ class QNFluidSpecies(FluidSpecies):
         n_n_plus = self.simulation.get_species_number_density("n") # get from particle
         n_e = self.simulation.get_species_number_density("e")
         # n_e_plus = n_e
-        n_e_plus = self.simulation.get_species_number_density("i") # get n_i_plus from particle
+        n_e_plus = np.ones_like(n_e) * 1e17
+        # n_e_plus = self.simulation.get_species_number_density("i") # get n_i_plus from particle
         
         n_e_a_plus = np.mean(n_e_plus[self.inp.ng, :])
         n_e_c_plus = np.mean(n_e_plus[-self.inp.ng, :])
@@ -89,16 +90,14 @@ class QNFluidSpecies(FluidSpecies):
         V_star = self.fields.potential_star
         # V = np.linspace(V_a, V_c, self.inp.nx)[:, np.newaxis] * np.ones((self.inp.nx, self.inp.ny))
         # V_star = V.copy()
-
-        area = np.pi * (0.050**2 - 0.035**2)
         
         # INTEGRALS
         c_1_plus = flux_i_plus
         c_2_plus = r * B * mu_perp * n_e_plus
         c_3_plus = r * B * mu_perp * n_e_plus * (np.log(n_e_plus / n_0) - 1)
-        c_4 = n_e * area
-        c_4_plus = n_e_plus * area
-        c_5_plus = n_n_plus * n_e_plus * area
+        c_4 = n_e 
+        c_4_plus = n_e_plus 
+        c_5_plus = n_n_plus * n_e_plus 
 
         # c_6: use np.grad for partial x's
         dV_dx = np.gradient(V, self.inp.dx, axis=0)
