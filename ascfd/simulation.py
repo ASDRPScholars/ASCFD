@@ -591,7 +591,7 @@ class Simulation:
         # Define 1D plotting logic
         plot_map_1d = {
             "rho_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, plot_data[0, :, iy], "Electron Mass Density", ylabel="$\\rho_e$ (kg/m³)"),
-            "n_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, plot_data[0, :, iy]/self.inp.m_e, "Electron Number Density", ylabel="$n_e$ (1/m³)"),
+            "n_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, plot_data[0, :, iy], "Electron Number Density", ylabel="$n_e$ (1/m³)"),
             "u_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, plot_data[1, :, iy], "Electron Axial Velocity", ylabel="$u_e$ (m/s)"),
             "v_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, plot_data[2, :, iy], "Electron Radial Velocity", ylabel="$v_e$ (m/s)"),
             "w_e": lambda idx: self.plot_1d_data(axs1d[idx], x_phys, plot_data[3, :, iy], "Electron Azimuthal Velocity", ylabel="$w_e$ (m/s)"),
