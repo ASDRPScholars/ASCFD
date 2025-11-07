@@ -20,12 +20,17 @@ import copy
 import sys
 
 class FluidSpecies:
-    def __init__(self, params: SpeciesParams, a_inputs: Inputs, fields: Fields, simulation):
+    def __init__(self, c: FluidConstants, params: SpeciesParams, a_inputs: Inputs, fields: Fields, simulation):
         print("INITIALIZED ELECTRONS")
-        self.c = FluidConstants(a_inputs)
+        
+        self.inp = a_inputs
+        self.params = params
+        self.dt = None
+        
+        self.c = c
         self.pc = ParticleConstants()
-        self.euler = FluidEuler(self.c)
-        self.flux = FluidFlux(self.c, a_inputs.flux)
+        self.euler = FluidEuler(self.c, self.inp, self.params, simulation)
+        self.flux = FluidFlux(self.c, self.inp, self.params, simulation)
         
         self.ref = PlasmaReferences()
         
@@ -33,65 +38,139 @@ class FluidSpecies:
         self.simulation = simulation
         self.pelectrons = None
         
-        self.inp = a_inputs
-        self.params = params
-        self.dt = None
         
         self.grid = np.zeros((self.c.NUMQ, self.inp.nx_with_ghosts, self.inp.ny_with_ghosts))
         
-        self.bcs = FluidBoundaryConditions(self.grid, self.inp.bcs_lo, self.inp.bcs_hi, self.inp)
-        self.ics = FluidInitialConditions(self.grid, self.inp, self.params)
+        self.bcs = FluidBoundaryConditions(self.c, self.inp, self.grid, self.inp.bcs_lo, self.inp.bcs_hi)
+        self.ics = FluidInitialConditions(self.c, self.inp, self.params, self.grid)
         
         self.grid[:] = self.ics.apply_ics()
-        
+    
         # Apply boundary conditions AFTER setting initial conditions
-        self.bcs.apply_bcs()
+        # return 
+        if self.params.type == "i":
+            self.bcs.apply_bcs()
         
-        self.check_grid(self.c)
+        # self.check_grid(self.c)
         
         
     def update(self):
-        
-        print("dt is", self.dt)
+        ng = self.inp.ng
+        k_B = self.c.k_B
+        m_e = self.inp.m_e
         consU = self.euler.prim_to_cons(self.grid)
 
-        _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
-                
-        for i in range(self.inp.ng, self.inp.nx + self.inp.ng):
-            for j in range(self.inp.ng, self.inp.ny + self.inp.ng):
+        if self.inp.system != "euler1d":
+            _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
+        else:
+            _, right_flux, left_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
+        
+        ### THERMAL SHEATH BOUNDARIES
+        
+        KE = 0.5 * consU[self.c.UCOMP]**2 / consU[self.c.RHOCOMP]  # per unit mass
+        # Or if UCOMP is momentum:
+        KE = 0.5 * consU[self.c.UCOMP]**2 / consU[self.c.RHOCOMP]
+
+        # Internal energy
+        internal_energy = consU[self.c.ECOMP] - 0.5 * consU[self.c.UCOMP]**2 / consU[self.c.RHOCOMP]
+
+        # Temperature (for gamma = 5/3)
+        T_e = (2.0/3.0) * internal_energy * m_e / (consU[self.c.RHOCOMP] * k_B)
+
+        v_th = np.sqrt(2 * k_B * T_e / m_e)
+        
+        phi_th = consU[self.c.RHOCOMP] * v_th / (2 * np.sqrt(np.pi))
+        Q_th = consU[self.c.RHOCOMP] * v_th / (2 * np.sqrt(np.pi)) * (2 * k_B * T_e) / (m_e)
+        
+        left_convect_flux = left_flux[self.c.RHOCOMP, ng, :]
+        left_outflow_mask = left_convect_flux > 0
+        
+        left_flux[self.c.RHOCOMP, ng, :] = np.where(
+            left_outflow_mask,
+            left_convect_flux + phi_th[ng, :],  # Add thermal mass flux
+            0.0  # Block inflow
+        )
+
+        left_flux[self.c.ECOMP, ng, :] = np.where(
+            left_outflow_mask,
+            left_flux[self.c.ECOMP, ng, :] + Q_th[ng, :],  # Add thermal energy flux
+            0.0  # Block inflow
+        )
+        
+        if self.inp.system != "euler1d":
+        
+        # TOP
+            top_convect_flux = top_flux[self.c.RHOCOMP, :, ng]
+            top_outflow_mask = top_convect_flux < 0
+            
+            top_flux[self.c.RHOCOMP, :, ng] = np.where(
+                top_outflow_mask,
+                top_convect_flux + phi_th[:, ng],  # Add thermal mass flux
+                0.0  # Block inflow
+            )
+
+            top_flux[self.c.ECOMP, :, ng] = np.where(
+                top_outflow_mask,
+                top_flux[self.c.ECOMP, :, ng] + Q_th[:, ng],  # Add thermal energy flux
+                0.0  # Block inflow
+            )
+            
+            # BOTTOM
+            
+            bottom_convect_flux = bottom_flux[self.c.RHOCOMP, :, self.inp.ny + ng]
+            bottom_outflow_mask = bottom_convect_flux < 0
+            
+            bottom_flux[self.c.RHOCOMP, :, self.inp.ny + ng] = np.where(
+                bottom_outflow_mask,
+                bottom_convect_flux + phi_th[:, self.inp.ny + ng],  # Add thermal mass flux
+                0.0  # Block inflow
+            )
+
+            bottom_flux[self.c.ECOMP, :, self.inp.ny + ng] = np.where(
+                bottom_outflow_mask,
+                bottom_flux[self.c.ECOMP, :, self.inp.ny + ng] + Q_th[:, self.inp.ny + ng],  # Add thermal energy flux
+                0.0  # Block inflow
+            )
+
+        
+        for i in range(ng, self.inp.nx + ng):
+            for j in range(ng, self.inp.ny + ng):
                 for icomp in range(self.c.NUMQ):
                     
-                    delta = (
-                        (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
-                        (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
+                    if self.inp.system != "euler1d":
+                        delta = (
+                            (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
+                            (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))
+                    else:
+                        delta = (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j])
                         
                     consU[icomp, i, j] = consU[icomp, i, j] - delta
                     
         ## --LORENTZ UPDATE--
-        self._apply_lorentz_source_terms(consU)
+        # self._apply_lorentz_source_terms(consU)
         
         self.grid[:] = self.euler.cons_to_prim(consU)
         
-        if self.pelectrons:
-            ## --P ELECTRONS UPDATE + COLLISIONAL DAMPING--
-            new_particle_array = self.convert_to_particles()
+        # if self.pelectrons:
+        #     ## --P ELECTRONS UPDATE + COLLISIONAL DAMPING--
+        #     new_particle_array = self.convert_to_particles()
             
-            # Clear existing particles and properly initialize with new ones
-            self.pelectrons.active_count = 0
-            self.pelectrons.is_active.fill(False)
-            self.pelectrons.free_slots.clear()
+        #     # Clear existing particles and properly initialize with new ones
+        #     self.pelectrons.active_count = 0
+        #     self.pelectrons.is_active.fill(False)
+        #     self.pelectrons.free_slots.clear()
         
-            # Add particles from converted array
-            n_new_particles = new_particle_array.shape[1]
-            for i in range(n_new_particles):
-                if i < self.pelectrons.capacity:
-                    self.pelectrons.particles[:, i] = new_particle_array[:, i]
-                    self.pelectrons.is_active[i] = True
-                    self.pelectrons.active_count += 1
+        #     # Add particles from converted array
+        #     n_new_particles = new_particle_array.shape[1]
+        #     for i in range(n_new_particles):
+        #         if i < self.pelectrons.capacity:
+        #             self.pelectrons.particles[:, i] = new_particle_array[:, i]
+        #             self.pelectrons.is_active[i] = True
+        #             self.pelectrons.active_count += 1
             
-            new_particles = self.pelectrons.update()
-            self.pelectrons.update_cross_section_grid()
-            sigma = self.pelectrons.cross_section_grid
+        #     new_particles = self.pelectrons.update()
+        #     self.pelectrons.update_cross_section_grid()
+        #     sigma = self.pelectrons.cross_section_grid
             
             # self._apply_damping_source_terms(sigma, consU)
 
@@ -104,10 +183,10 @@ class FluidSpecies:
         self.fields.clear_charge_density()
         self.fields.add_charge_density(charge_density) # -!- TOGGLE -!-
 
-        self.fields.update_E()
+        self.fields.update_E(t=self.simulation.t)
 
-        if self.pelectrons:
-            return new_particles
+        # if self.pelectrons:
+        #     return new_particles
     
 
     # def _apply_damping_source_terms(self, sigma, consU_new):
@@ -145,7 +224,6 @@ class FluidSpecies:
         m_e = self.params.mass
         n_e = self.get_number_density()
         u_e_perp = consU_new[self.c.VCOMP]
-        nu_
         
     
     def _apply_lorentz_source_terms(self, consU_new):

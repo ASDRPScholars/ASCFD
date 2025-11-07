@@ -107,12 +107,6 @@ class XenonCollisionData:
         self.electron_collisions = self._init_electron_collisions()
         self.ion_collisions = self._init_ion_collisions()
     
-    def load_lxcat_file(self, filename, process_name):
-        """Load a single LXCAT file"""
-        self.parser.parse_lxcat_file(filename, process_name)
-        # Reinitialize collision dictionaries to use new data
-        self.electron_collisions = self._init_electron_collisions()
-        self.ion_collisions = self._init_ion_collisions()
     
     # TODO: add back exc_3 and exc_4?
     def _init_electron_collisions(self):
@@ -154,10 +148,15 @@ class XenonCollisionData:
                 "energy_loss": 0.0
             }
         }
-    
-    def load_lxcat_file(self, filename, process_name):
-        """Load a single LXCAT file"""
-        self.parser.parse_lxcat_file(filename, process_name)
+        
+    def get_total_en_cross_section(self, energy_ev):
+        total = self._elastic_cross_section(energy_ev)
+        total += self._excitation_cross_section_1(energy_ev)
+        total += self._excitation_cross_section_2(energy_ev)
+        total += self._excitation_cross_section_3(energy_ev)
+        total += self._excitation_cross_section_4(energy_ev)
+        total += self._ionization_cross_section(energy_ev)
+        return total
     
     def _elastic_cross_section(self, energy_ev):
         """Elastic cross section - uses LXCAT data if available, otherwise analytical"""
