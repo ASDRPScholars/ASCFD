@@ -13,13 +13,14 @@ Notes:
 """
 class FluidBoundaryConditions:
     
-    def __init__(self, grid, types_lo: tuple[str, str], types_hi: tuple[str, str], a_inputs: Inputs) -> None:
+    def __init__(self, c: FluidConstants, a_inputs: Inputs, grid, types_lo: tuple[str, str], types_hi: tuple[str, str]) -> None:
+        self.c = c
+        self.inp = a_inputs
+        
         # store boundary condition types and associate grid object
         self.types_lo = types_lo
         self.types_hi = types_hi
         self.grid = grid
-        self.inp = a_inputs
-        self.c = FluidConstants(a_inputs)
         
         self.ref = PlasmaReferences()
 
@@ -59,7 +60,7 @@ class FluidBoundaryConditions:
                 raise RuntimeError(f"BC Hi Type not supported: {self.types_hi[idim]}")
 
     def apply_bcs(self) -> None:
-         # apply boundary conditions for both low and high boundaries
+        # apply boundary conditions for both low and high boundaries
         self.apply_lo()
         self.apply_hi()
 

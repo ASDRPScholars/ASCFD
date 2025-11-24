@@ -14,7 +14,7 @@
 
 **Built by the DeGrendele Simulation Lab.**
 
-Chris DeGrendele, Weiping Li, Matthew Fang, Claire Chen, Naga Chintalapati, Efthimios Gkatzimas, Rhea Haridas, Aditya Kaul, Ashita Pant, Vunal Jinasundera
+Weiping Li, Matthew Fang, Claire Chen, Naga Chintalapati, Efthimios Gkatzimas, Rhea Haridas, Aditya Kaul, Ashita Pant, Vunal Jinasundera
 
 ## Abstract
 
