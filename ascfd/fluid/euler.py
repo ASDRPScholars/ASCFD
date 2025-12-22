@@ -146,7 +146,7 @@ class FluidEuler:
         flux_x = np.zeros_like(a_prim) # flux in x-direction
         flux_y = np.zeros_like(a_prim) # flux in y-direction
 
-        if self.inp.i_system == "euler2d" and self.params.type == "i":
+        if self.inp.e_system == "euler2d" and self.params.type == "e":
             # extract primitive variables
             rho = a_prim[self.c.RHOCOMP] # density
             u = a_prim[self.c.UCOMP] # x-velocity

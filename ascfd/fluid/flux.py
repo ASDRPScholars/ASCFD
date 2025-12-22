@@ -55,7 +55,7 @@ class FluidFlux:
         
         #get density 
 
-        if self.inp.i_system in ["euler2d", "euler1d"]:
+        if self.inp.e_system in ["euler2d", "euler1d"]:
             density = a_grid[self.c.RHOCOMP]
             a = np.sqrt(self.c.gamma * a_grid[self.c.PCOMP] / density)
         elif self.inp.e_system == "quasineutral" and self.params.type == "e":
@@ -82,16 +82,14 @@ class FluidFlux:
                     np.abs(a_grid[self.c.UCOMP, i+1, j]) + a[i+1, j]
                 )
                 
-                if self.inp.system != "euler1d":
+                if self.inp.e_system != "euler1d":
                     sMaxY = max(
                         np.abs(a_grid[self.c.VCOMP, i, j]) + a[i, j],
                         np.abs(a_grid[self.c.VCOMP, i, j+1]) + a[i, j+1]
                     )
-                
-                if self.inp.e_system == "quasineutral" and self.params.type == "e":
+                elif self.inp.e_system == "quasineutral" and self.params.type == "e":
                     sMaxX = 0 
                     sMaxY = 0
-                    
                 else:
                     raise AssertionError("[FLUX] SYSTEM FOR RUSANOV NOT SUPPORTED")
 
@@ -100,11 +98,11 @@ class FluidFlux:
                     numFluxX_plus[icomp, i, j] = 0.5 * (fx[icomp, i+1, j] + fx[icomp, i, j]) - 0.5 * sMaxX * (consU[icomp, i+1, j] - consU[icomp, i, j])
                     numFluxX_minus[icomp, i, j] = 0.5 * (fx[icomp, i, j] + fx[icomp, i-1, j]) - 0.5 * sMaxX * (consU[icomp, i, j] - consU[icomp, i-1, j])
                     
-                    if self.inp.system != "euler1d":
+                    if self.inp.e_system != "euler1d":
                         numFluxY_plus[icomp, i, j] = 0.5 * (fy[icomp, i, j+1] + fy[icomp, i, j]) - 0.5 * sMaxY * (consU[icomp, i, j+1] - consU[icomp, i, j])
                         numFluxY_minus[icomp, i, j] = 0.5 * (fy[icomp, i, j] + fy[icomp, i, j-1]) - 0.5 * sMaxY * (consU[icomp, i, j] - consU[icomp, i, j-1])
 
-        if self.inp.system != "euler1d":
+        if self.inp.e_system != "euler1d":
             return consU, numFluxX_plus, numFluxX_minus, numFluxY_plus, numFluxY_minus
         else:
             return consU, numFluxX_plus, numFluxX_minus

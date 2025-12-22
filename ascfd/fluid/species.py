@@ -60,7 +60,7 @@ class FluidSpecies:
         m_e = self.inp.m_e
         consU = self.euler.prim_to_cons(self.grid)
 
-        if self.inp.system != "euler1d":
+        if self.inp.e_system != "euler1d":
             _, right_flux, left_flux, top_flux, bottom_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
         else:
             _, right_flux, left_flux = self.flux.getFlux(self.grid, self.inp.nx, self.inp.ny, self.inp.ng)
@@ -97,7 +97,7 @@ class FluidSpecies:
             0.0  # Block inflow
         )
         
-        if self.inp.system != "euler1d":
+        if self.inp.e_system != "euler1d":
         
         # TOP
             top_convect_flux = top_flux[self.c.RHOCOMP, :, ng]
@@ -137,7 +137,7 @@ class FluidSpecies:
             for j in range(ng, self.inp.ny + ng):
                 for icomp in range(self.c.NUMQ):
                     
-                    if self.inp.system != "euler1d":
+                    if self.inp.e_system != "euler1d":
                         delta = (
                             (self.dt / self.inp.dx) * (right_flux[icomp, i, j] - left_flux[icomp, i, j]) +
                             (self.dt / self.inp.dy) * (top_flux[icomp, i, j] - bottom_flux[icomp, i, j]))

@@ -369,7 +369,7 @@ class Simulation:
             max_speed_y = np.max(np.abs(v) + a)
             max_speed = max(max_speed_x, max_speed_y) # More robust estimate
             
-        if self.inp.system == "euler1d":
+        if self.inp.e_system == "euler1d":
             density = self.electrons.grid[self.c.RHOCOMP]
             pressure = self.electrons.grid[self.c.PCOMP]
             u = self.electrons.grid[self.c.UCOMP]

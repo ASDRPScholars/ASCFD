@@ -15,12 +15,12 @@ class FluidInitialConditions:
     def apply_ics(self):
         
         if self.inp.e_system == "euler1d":
-            if self.inp.fluid_ics == "rf1d":
+            if self.inp.e_ics == "rf1d":
                 return self.rf()
                 
         elif self.inp.e_system == "euler2d":
                 
-            if self.inp.fluid_ics == "diagonal_advection":
+            if self.inp.e_ics == "diagonal_advection":
                 print("applying diag advection")
                 f = self.diagonal_advection_2d
                 
@@ -32,7 +32,7 @@ class FluidInitialConditions:
                     
                 return new_grid
             
-            elif self.inp.fluid_ics == "poisson_validation":
+            elif self.inp.e_ics == "poisson_validation":
                 print("applying diag advection")
                 f = self.poisson_validation_charge_density
                 
@@ -44,17 +44,17 @@ class FluidInitialConditions:
                     
                 return new_grid
 
-            elif self.inp.fluid_ics == "tame_static":
+            elif self.inp.e_ics == "tame_static":
                 return self.tame_static()
             
-            elif self.inp.fluid_ics == "e_cloud_test":
+            elif self.inp.e_ics == "e_cloud_test":
                 return self.e_cloud_test()
                 
-            elif self.inp.fluid_ics == "kelvin_helmholtz":
+            elif self.inp.e_ics == "kelvin_helmholtz":
                 self.grid = self.kelvin_helmholtz_2d()
-            elif self.inp.fluid_ics == "double_mach_reflection":
+            elif self.inp.e_ics == "double_mach_reflection":
                 self.grid = self.double_mach_reflection_2d()
-            elif self.inp.fluid_ics == "riemann_problem":
+            elif self.inp.e_ics == "riemann_problem":
                 self.grid = self.riemann_2d()
 
             else:
