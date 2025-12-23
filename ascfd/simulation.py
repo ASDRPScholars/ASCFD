@@ -467,7 +467,7 @@ class Simulation:
 
         # File names
         output_filename = os.path.join(data_dir, f"output_{str(self.timestep).zfill(6)}.txt")
-        output_plotname = os.path.join(frames_dir, f"output_{str(self.timestep).zfill(6)}.pdf")
+        output_plotname = os.path.join(frames_dir, f"output_{str(self.timestep).zfill(6)}.png")
         output_lineplotname = os.path.join(lineplot_dir, f"output_{str(self.timestep).zfill(6)}.pdf")
 
         # Write raw text data
@@ -498,6 +498,7 @@ class Simulation:
         E_data, B_data, potential_data = self.fields.E, self.fields.B, self.fields.potential
 
         plot_vars_2d = self.inp.data_2d
+
         
         print("PLOT VARS ARE", plot_vars_2d)
 
