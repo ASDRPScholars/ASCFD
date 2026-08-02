@@ -1,14 +1,13 @@
 
-![ascfd logo](https://github.com/user-attachments/assets/4d73c58c-e9b8-457e-993d-4614eb6b06d3#gh-dark-mode-only)
-![ascfd logo light](https://github.com/user-attachments/assets/c0e90a31-abcf-47ce-b9cb-ff35a7b556ba#gh-light-mode-only)
+![ascfd logo](<img width="6000" height="1060" alt="AEGIS_wordmark_white_transparent_6000px" src="https://github.com/user-attachments/assets/3599584e-acaa-4b44-8a32-a1800449ebe2" />
+)
 
 ---
 <p align="center">
   <i align="center">A full-physics 2D hybrid-PIC code for Hall Thruster simulation and design.</i>
 </p>
 
-![ascfd banner 2](https://github.com/user-attachments/assets/f08a45b3-4e36-41eb-a532-98c68c6b8db3#gh-dark-mode-only)
-![ascfd banner light](https://github.com/user-attachments/assets/dad2f09c-c803-4399-add4-1c4e95a7b65b#gh-light-mode-only)
+![ascfd banner 2](<img width="2500" height="950" alt="AEGIS-6" src="https://github.com/user-attachments/assets/1e6598a3-a7a1-4b39-9a3a-d50e886a6c38" />)
 
 ---
 
